@@ -1,0 +1,220 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Liste des Factures{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1>📄 Factures</h1>
+        <p>Gérez toutes vos factures</p>
+    </div>
+    <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-primary">+ Créer une facture</a>
+</div>
+
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-body">
+        <form method="get" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+            <div class="form-group" style="margin: 0;">
+                <label for="status">Statut</label>
+                <select name="status" id="status" class="form-control">
+                    <option value="">Tous</option>
+                    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Brouillon</option>
+                    <option value="sent" {% if status_filter == 'sent' %}selected{% endif %}>Envoyée</option>
+                    <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Payée</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Annulée</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label for="type">Type</label>
+                <select name="type" id="type" class="form-control">
+                    <option value="">Tous</option>
+                    <option value="proforma" {% if type_filter == 'proforma' %}selected{% endif %}>Pro Forma</option>
+                    <option value="standard" {% if type_filter == 'standard' %}selected{% endif %}>Standard</option>
+                    <option value="credit_note" {% if type_filter == 'credit_note' %}selected{% endif %}>Avoir</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin: 0;">
+                <label for="q">Recherche</label>
+                <input type="text" name="q" id="q" class="form-control" placeholder="N°, client, email..." value="{{ search }}">
+            </div>
+
+            <button type="submit" class="btn btn-primary">🔍 Filtrer</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>N° Facture</th>
+                <th>Client</th>
+                <th>Type</th>
+                <th>Date d'émission</th>
+                <th>Date d'échéance</th>
+                <th>Montant</th>
+                <th>Statut</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td><strong><a href="{% url 'invoicing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></strong></td>
+                <td>
+                    <div>{{ invoice.customer_name }}</div>
+                    {% if invoice.customer_email %}
+                    <div style="font-size: 0.75rem; color: #6b7280;">{{ invoice.customer_email }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if invoice.invoice_type == 'proforma' %}
+                    <span class="badge" style="background: #dbeafe; color: #1e40af;">Pro Forma</span>
+                    {% elif invoice.invoice_type == 'credit_note' %}
+                    <span class="badge" style="background: #fee2e2; color: #991b1b;">Avoir</span>
+                    {% else %}
+                    <span class="badge">Standard</span>
+                    {% endif %}
+                </td>
+                <td>{{ invoice.issue_date|date:"d/m/Y" }}</td>
+                <td>
+                    {% if invoice.due_date %}
+                    {{ invoice.due_date|date:"d/m/Y" }}
+                    {% if invoice.is_overdue %}
+                    <span style="color: #dc2626; font-weight: bold;">⚠️</span>
+                    {% endif %}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td><strong>{{ invoice.total_amount|floatformat:0|intcomma }} F</strong></td>
+                <td>
+                    {% if invoice.status == 'paid' %}
+                    <span class="badge badge-success">✓ Payée</span>
+                    {% elif invoice.status == 'sent' %}
+                    <span class="badge badge-warning">📤 Envoyée</span>
+                    {% elif invoice.status == 'draft' %}
+                    <span class="badge badge-secondary">📝 Brouillon</span>
+                    {% else %}
+                    <span class="badge badge-danger">✗ Annulée</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="{% url 'invoicing:invoice_detail' invoice.pk %}" class="btn btn-sm" title="Voir">👁️</a>
+                        <a href="{% url 'invoicing:invoice_pdf' invoice.pk %}" class="btn btn-sm" title="Télécharger PDF">⬇️</a>
+                        {% if invoice.status == 'draft' %}
+                        <a href="{% url 'invoicing:invoice_edit' invoice.pk %}" class="btn btn-sm" title="Modifier">✏️</a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 3rem; color: #6b7280;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+                    {% if search or status_filter or type_filter %}
+                    <p>Aucune facture ne correspond à vos critères.</p>
+                    <a href="{% url 'invoicing:invoices' %}" class="btn">Effacer les filtres</a>
+                    {% else %}
+                    <p>Aucune facture pour le moment.</p>
+                    <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-primary" style="margin-top: 1rem;">Créer votre première facture</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #1a56db;
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #f3f4f6;
+    color: #374151;
+    white-space: nowrap;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-secondary {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+</style>
+{% endblock %}

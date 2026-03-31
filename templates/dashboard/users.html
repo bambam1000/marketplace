@@ -1,0 +1,28 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Utilisateurs{% endblock %}
+{% block dash %}
+<div class="dash-header"><div><h1>👤 Gestion des utilisateurs</h1><p style="font-size:13px;color:var(--text3);">{{ total }} utilisateur{{ total|pluralize:"s" }} au total</p></div></div>
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+<div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">{{ total }}</div></div>
+<div class="stat-card"><div class="stat-label">Acheteurs</div><div class="stat-value" style="color:var(--blue);">{{ buyers }}</div></div>
+<div class="stat-card"><div class="stat-label">Vendeurs</div><div class="stat-value" style="color:var(--orange);">{{ sellers_count }}</div></div>
+<div class="stat-card"><div class="stat-label">Admins</div><div class="stat-value" style="color:var(--purple);">{{ admins }}</div></div>
+</div>
+<div class="dash-card">
+<div class="dash-card-title">
+<div style="display:flex;gap:6px;"><a href="{% url 'dashboard:users' %}" class="btn btn-sm {% if not request.GET.role %}btn-orange{% else %}btn-outline{% endif %}">Tous</a><a href="?role=buyer" class="btn btn-sm {% if request.GET.role == 'buyer' %}btn-orange{% else %}btn-outline{% endif %}">Acheteurs</a><a href="?role=seller" class="btn btn-sm {% if request.GET.role == 'seller' %}btn-orange{% else %}btn-outline{% endif %}">Vendeurs</a><a href="?role=admin" class="btn btn-sm {% if request.GET.role == 'admin' %}btn-orange{% else %}btn-outline{% endif %}">Admins</a></div>
+<form method="get" style="display:flex;gap:4px;"><input type="text" name="q" value="{{ request.GET.q|default:'' }}" class="form-control" style="width:200px;padding:6px 10px;" placeholder="Rechercher..."><button class="btn btn-sm btn-orange">🔍</button></form>
+</div>
+<table class="dash-table"><thead><tr><th>Utilisateur</th><th>Email</th><th>Rôle</th><th>Ville</th><th>Vérifié</th><th>Statut</th><th>Inscrit</th><th></th></tr></thead><tbody>
+{% for u in users %}<tr>
+<td><div style="display:flex;align-items:center;gap:8px;"><div style="width:32px;height:32px;border-radius:50%;background:{% if u.role == 'seller' %}var(--orange-light){% elif u.role == 'admin' %}#f5f3ff{% else %}var(--blue-bg){% endif %};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:{% if u.role == 'seller' %}var(--orange){% elif u.role == 'admin' %}var(--purple){% else %}var(--blue){% endif %};">{{ u.initials }}</div><div><div style="font-weight:600;">{{ u.display_name }}</div><div style="font-size:11px;color:var(--text3);">@{{ u.username }}</div></div></div></td>
+<td style="font-size:12px;">{{ u.email }}</td>
+<td><span class="status-badge {% if u.role == 'seller' %}st-confirmed{% elif u.role == 'admin' %}st-processing{% else %}st-shipped{% endif %}">{{ u.get_role_display }}</span></td>
+<td>{{ u.city|default:"—" }}</td>
+<td>{% if u.is_verified %}<span style="color:var(--green);">✓</span>{% else %}<span style="color:var(--text3);">—</span>{% endif %}</td>
+<td>{% if u.is_active %}<span style="color:var(--green);font-size:12px;">Actif</span>{% else %}<span style="color:var(--red);font-size:12px;">Inactif</span>{% endif %}</td>
+<td style="font-size:12px;color:var(--text3);">{{ u.date_joined|date:"d/m/Y" }}</td>
+<td><div style="display:flex;gap:4px;"><a href="{% url 'dashboard:user_detail' u.pk %}" class="btn btn-sm btn-outline">Voir</a><a href="{% url 'dashboard:toggle_user' u.pk %}" class="btn btn-sm {% if u.is_active %}btn-outline{% else %}btn-green{% endif %}" style="font-size:10px;">{% if u.is_active %}Désactiver{% else %}Activer{% endif %}</a></div></td>
+</tr>{% endfor %}</tbody></table>
+</div>
+{% endblock %}

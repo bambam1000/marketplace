@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}FAQ{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › FAQ</div>
+<div class="section" style="padding-top:0;max-width:800px;">
+<div style="text-align:center;margin-bottom:2rem;"><h2 style="font-size:20px;">❓ Questions fréquentes</h2></div>
+{% for section, questions in faq_data.items %}
+<h3 style="font-size:14px;color:var(--orange);margin:1.5rem 0 .8rem;">{{ section }}</h3>
+{% for q, a in questions %}
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:6px;overflow:hidden;">
+<button onclick="let ans=this.nextElementSibling;ans.style.display=ans.style.display==='block'?'none':'block';this.querySelector('.arr').textContent=ans.style.display==='block'?'▲':'▼';" style="width:100%;padding:14px 16px;background:none;border:none;font-size:13px;font-weight:600;text-align:left;display:flex;justify-content:space-between;cursor:pointer;font-family:var(--font);">{{ q }}<span class="arr" style="color:var(--text3);">▼</span></button>
+<div style="display:none;padding:0 16px 14px;font-size:13px;color:var(--text2);line-height:1.7;">{{ a }}</div>
+</div>
+{% endfor %}{% endfor %}
+<div style="text-align:center;margin-top:2rem;padding:2rem;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);">
+<div style="font-size:2rem;margin-bottom:8px;">🤔</div>
+<h3 style="font-size:15px;margin-bottom:4px;">Question non trouvée ?</h3>
+<p style="font-size:13px;color:var(--text3);margin-bottom:12px;">Contactez-nous, on vous répond sous 24h.</p>
+<a href="{% url 'contact' %}" class="btn btn-orange">Nous contacter</a>
+</div>
+</div>
+{% endblock %}

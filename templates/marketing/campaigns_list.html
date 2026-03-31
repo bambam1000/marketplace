@@ -1,0 +1,247 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Campagnes Marketing{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1>🎯 Campagnes Marketing</h1>
+        <p>Créez et gérez vos campagnes promotionnelles</p>
+    </div>
+    <a href="{% url 'marketing:campaign_create' %}" class="btn btn-primary">+ Créer une campagne</a>
+</div>
+
+<div class="stats-mini" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-mini-card">
+        <div class="stat-mini-label">Total</div>
+        <div class="stat-mini-value">{{ campaigns.count }}</div>
+    </div>
+    <div class="stat-mini-card">
+        <div class="stat-mini-label">Actives</div>
+        <div class="stat-mini-value" style="color: #059669;">{{ active_count }}</div>
+    </div>
+    <div class="stat-mini-card">
+        <div class="stat-mini-label">Programmées</div>
+        <div class="stat-mini-value" style="color: #f59e0b;">{{ campaigns|length }}</div>
+    </div>
+    <div class="stat-mini-card">
+        <div class="stat-mini-label">Terminées</div>
+        <div class="stat-mini-value" style="color: #6b7280;">0</div>
+    </div>
+</div>
+
+<div class="campaigns-grid">
+    {% for campaign in campaigns %}
+    <div class="campaign-card">
+        {% if campaign.banner %}
+        <div class="campaign-banner" style="background-image: url('{{ campaign.banner.url }}');"></div>
+        {% else %}
+        <div class="campaign-banner" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+        {% endif %}
+
+        <div class="campaign-content">
+            <div class="campaign-header">
+                <h3>{{ campaign.name }}</h3>
+                <span class="campaign-status campaign-status-{{ campaign.status }}">
+                    {{ campaign.get_status_display }}
+                </span>
+            </div>
+
+            <p class="campaign-desc">{{ campaign.description|truncatewords:20 }}</p>
+
+            <div class="campaign-meta">
+                <div class="campaign-meta-item">
+                    <span class="meta-label">Type</span>
+                    <span class="meta-value">{{ campaign.get_campaign_type_display }}</span>
+                </div>
+                <div class="campaign-meta-item">
+                    <span class="meta-label">Période</span>
+                    <span class="meta-value">{{ campaign.start_date|date:"d/m" }} - {{ campaign.end_date|date:"d/m" }}</span>
+                </div>
+            </div>
+
+            <div class="campaign-stats">
+                <div class="stat-item">
+                    <div class="stat-number">{{ campaign.views_count|intcomma }}</div>
+                    <div class="stat-name">Vues</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ campaign.clicks_count|intcomma }}</div>
+                    <div class="stat-name">Clics</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ campaign.conversions_count }}</div>
+                    <div class="stat-name">Conversions</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ campaign.roi }}%</div>
+                    <div class="stat-name">ROI</div>
+                </div>
+            </div>
+
+            <div class="campaign-actions">
+                <a href="{% url 'marketing:campaign_detail' campaign.pk %}" class="btn btn-sm btn-primary">Voir détails</a>
+                <a href="{% url 'marketing:campaign_edit' campaign.pk %}" class="btn btn-sm">✏️ Modifier</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: #6b7280;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">🎯</div>
+        <h3>Aucune campagne pour le moment</h3>
+        <p>Créez votre première campagne marketing pour booster vos ventes</p>
+        <a href="{% url 'marketing:campaign_create' %}" class="btn btn-primary" style="margin-top: 1.5rem;">+ Créer ma première campagne</a>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.campaigns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.campaign-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.campaign-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.campaign-banner {
+    height: 150px;
+    background-size: cover;
+    background-position: center;
+}
+
+.campaign-content {
+    padding: 1.25rem;
+}
+
+.campaign-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 0.75rem;
+}
+
+.campaign-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    color: #111827;
+}
+
+.campaign-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.campaign-status-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.campaign-status-draft {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.campaign-status-scheduled {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.campaign-status-completed {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.campaign-desc {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.campaign-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.campaign-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.meta-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.meta-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+}
+
+.campaign-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #1a56db;
+}
+
+.stat-name {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.campaign-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.stat-mini-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-mini-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.stat-mini-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #111827;
+}
+</style>
+{% endblock %}

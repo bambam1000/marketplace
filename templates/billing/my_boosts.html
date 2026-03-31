@@ -1,0 +1,8 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Mes Boosts{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>🚀 Mes Boosts</h1></div>
+<div class="dash-card"><table class="dash-table"><thead><tr><th>Produit</th><th>Plateforme</th><th>Budget</th><th>Durée</th><th>Impressions</th><th>Clics</th><th>CTR</th><th>Statut</th></tr></thead><tbody>
+{% for b in boosts %}<tr><td style="font-weight:500;">{{ b.product.name|truncatechars:30 }}</td><td>{{ b.get_platform_display }}</td><td style="font-weight:600;">{{ b.budget|intcomma }} F</td><td>{{ b.duration_days }}j</td><td>{{ b.impressions|intcomma }}</td><td>{{ b.clicks|intcomma }}</td><td>{{ b.ctr }}%</td><td><span class="status-badge st-{% if b.status == 'active' %}delivered{% elif b.status == 'completed' %}confirmed{% else %}pending{% endif %}">{{ b.get_status_display }}</span></td></tr>{% empty %}<tr><td colspan="8" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">🚀</div><div style="color:var(--text3);font-size:14px;">Aucun boost actif</div><div style="margin-top:8px;"><a href="{% url 'dashboard:products' %}" style="color:var(--orange);font-size:13px;text-decoration:none;">Boostez un produit →</a></div></td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

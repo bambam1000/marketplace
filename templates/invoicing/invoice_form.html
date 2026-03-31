@@ -1,0 +1,199 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}{% if invoice %}Modifier{% else %}Créer{% endif %} Facture{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <h1>🧾 {% if invoice %}Modifier{% else %}Créer{% endif %} une Facture</h1>
+</div>
+
+<div class="card" style="max-width: 1000px;">
+    <div class="card-body">
+        <form method="post" id="invoiceForm">
+            {% csrf_token %}
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="invoice_type">Type de facture *</label>
+                    <select id="invoice_type" name="invoice_type" class="form-control" required>
+                        <option value="standard" {% if not invoice or invoice.invoice_type == 'standard' %}selected{% endif %}>Facture Standard</option>
+                        <option value="proforma" {% if invoice and invoice.invoice_type == 'proforma' %}selected{% endif %}>Pro Forma (Devis)</option>
+                        <option value="credit_note" {% if invoice and invoice.invoice_type == 'credit_note' %}selected{% endif %}>Avoir</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="issue_date">Date d'émission *</label>
+                    <input type="date" id="issue_date" name="issue_date" class="form-control"
+                           value="{% if invoice %}{{ invoice.issue_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="due_date">Date d'échéance</label>
+                <input type="date" id="due_date" name="due_date" class="form-control"
+                       value="{% if invoice and invoice.due_date %}{{ invoice.due_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <h3 style="margin-bottom: 1rem;">👤 Informations Client</h3>
+
+            <div class="form-group">
+                <label for="customer_name">Nom du client *</label>
+                <input type="text" id="customer_name" name="customer_name" class="form-control"
+                       value="{% if invoice %}{{ invoice.customer_name }}{% endif %}" required>
+            </div>
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="customer_email">Email</label>
+                    <input type="email" id="customer_email" name="customer_email" class="form-control"
+                           value="{% if invoice %}{{ invoice.customer_email }}{% endif %}">
+                </div>
+
+                <div class="form-group">
+                    <label for="customer_phone">Téléphone</label>
+                    <input type="tel" id="customer_phone" name="customer_phone" class="form-control"
+                           value="{% if invoice %}{{ invoice.customer_phone }}{% endif %}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="customer_address">Adresse</label>
+                <textarea id="customer_address" name="customer_address" class="form-control" rows="2">{% if invoice %}{{ invoice.customer_address }}{% endif %}</textarea>
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">🏷️ Articles</h3>
+                <button type="button" class="btn btn-sm" onclick="addItem()">+ Ajouter un article</button>
+            </div>
+
+            <div id="items-container">
+                {% if invoice %}
+                {% for item in invoice.items.all %}
+                <div class="item-row">
+                    <input type="text" name="item_description[]" class="form-control" placeholder="Description" value="{{ item.description }}" required>
+                    <input type="number" name="item_quantity[]" class="form-control" placeholder="Qté" value="{{ item.quantity }}" min="1" required>
+                    <input type="number" name="item_unit_price[]" class="form-control" placeholder="Prix unitaire" value="{{ item.unit_price }}" step="1" required>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">✗</button>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="item-row">
+                    <input type="text" name="item_description[]" class="form-control" placeholder="Description" required>
+                    <input type="number" name="item_quantity[]" class="form-control" placeholder="Qté" value="1" min="1" required>
+                    <input type="number" name="item_unit_price[]" class="form-control" placeholder="Prix unitaire" step="1" required>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">✗</button>
+                </div>
+                {% endif %}
+            </div>
+
+            <hr style="margin: 2rem 0;">
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="discount_amount">Réduction (F CFA)</label>
+                    <input type="number" id="discount_amount" name="discount_amount" class="form-control"
+                           value="{% if invoice %}{{ invoice.discount_amount }}{% else %}0{% endif %}" step="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="shipping_amount">Frais de livraison (F CFA)</label>
+                    <input type="number" id="shipping_amount" name="shipping_amount" class="form-control"
+                           value="{% if invoice %}{{ invoice.shipping_amount }}{% else %}0{% endif %}" step="1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes pour le client</label>
+                <textarea id="notes" name="notes" class="form-control" rows="3">{% if invoice %}{{ invoice.notes }}{% endif %}</textarea>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+                <a href="{% url 'invoicing:invoices' %}" class="btn">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function addItem() {
+    const container = document.getElementById('items-container');
+    const newItem = document.createElement('div');
+    newItem.className = 'item-row';
+    newItem.innerHTML = `
+        <input type="text" name="item_description[]" class="form-control" placeholder="Description" required>
+        <input type="number" name="item_quantity[]" class="form-control" placeholder="Qté" value="1" min="1" required>
+        <input type="number" name="item_unit_price[]" class="form-control" placeholder="Prix unitaire" step="1" required>
+        <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">✗</button>
+    `;
+    container.appendChild(newItem);
+}
+
+function removeItem(btn) {
+    const container = document.getElementById('items-container');
+    if (container.children.length > 1) {
+        btn.parentElement.remove();
+    } else {
+        alert('Vous devez avoir au moins un article.');
+    }
+}
+</script>
+
+<style>
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #1a56db;
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 3fr 1fr 1.5fr auto;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.btn-danger {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+}
+</style>
+{% endblock %}

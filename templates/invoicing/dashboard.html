@@ -1,0 +1,252 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard Facturation{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1>🧾 Facturation</h1>
+        <p>Gérez vos factures et documents commerciaux</p>
+    </div>
+    <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-primary">+ Créer une facture</a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📄</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_invoices }}</div>
+            <div class="stat-label">Factures totales</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">📤</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.sent }}</div>
+            <div class="stat-label">Envoyées</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">✅</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.paid }}</div>
+            <div class="stat-label">Payées</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #ffa751 0%, #ffe259 100%);">⏰</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.overdue }}</div>
+            <div class="stat-label">En retard</div>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="metric-card">
+        <div class="metric-label">Revenus encaissés</div>
+        <div class="metric-value" style="color: #059669;">{{ stats.total_revenue|floatformat:0|intcomma }} F CFA</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-label">Montant en attente</div>
+        <div class="metric-value" style="color: #f59e0b;">{{ stats.pending_amount|floatformat:0|intcomma }} F CFA</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>📋 Factures Récentes</h3>
+        <a href="{% url 'invoicing:invoices' %}" class="btn btn-sm">Voir tout</a>
+    </div>
+    <div class="card-body">
+        {% if recent_invoices %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>N° Facture</th>
+                    <th>Client</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in recent_invoices %}
+                <tr>
+                    <td><strong>{{ invoice.invoice_number }}</strong></td>
+                    <td>{{ invoice.customer_name }}</td>
+                    <td>
+                        <span class="badge">{{ invoice.get_invoice_type_display }}</span>
+                    </td>
+                    <td>{{ invoice.issue_date|date:"d/m/Y" }}</td>
+                    <td><strong>{{ invoice.total_amount|floatformat:0|intcomma }} F</strong></td>
+                    <td>
+                        {% if invoice.status == 'paid' %}
+                        <span class="badge badge-success">✓ Payée</span>
+                        {% elif invoice.status == 'sent' %}
+                        <span class="badge badge-warning">📤 Envoyée</span>
+                        {% elif invoice.status == 'draft' %}
+                        <span class="badge badge-secondary">📝 Brouillon</span>
+                        {% else %}
+                        <span class="badge badge-danger">✗ Annulée</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="{% url 'invoicing:invoice_detail' invoice.pk %}" class="btn btn-sm">👁️</a>
+                            <a href="{% url 'invoicing:invoice_pdf' invoice.pk %}" class="btn btn-sm">⬇️</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: #6b7280;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🧾</div>
+            <p>Aucune facture pour le moment.</p>
+            <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-primary" style="margin-top: 1rem;">Créer votre première facture</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+    <h3 style="color: white; margin-bottom: 1rem;">⚙️ Configuration</h3>
+    <p style="margin-bottom: 1.5rem;">Configurez vos paramètres de facturation (logo, TVA, coordonnées bancaires, etc.)</p>
+    <a href="{% url 'invoicing:settings' %}" class="btn" style="background: white; color: #667eea;">Paramètres de facturation →</a>
+</div>
+
+<style>
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #111827;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.metric-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    font-size: 1.875rem;
+    font-weight: bold;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-secondary {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+</style>
+{% endblock %}

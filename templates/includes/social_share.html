@@ -1,0 +1,11 @@
+{% load humanize %}
+<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border2);">
+<div style="font-size:13px;font-weight:600;margin-bottom:8px;">Partager ce produit :</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#1877F2;color:#fff;">📘 Facebook</a>
+<a href="https://wa.me/?text={{ product.name|urlencode }}%20-%20{{ product.price|intcomma }}%20FCFA%20{{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#25D366;color:#fff;">💬 WhatsApp</a>
+<a href="https://twitter.com/intent/tweet?text={{ product.name|urlencode }}%20{{ product.price|intcomma }}%20FCFA&url={{ request.build_absolute_uri }}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#1DA1F2;color:#fff;">🐦 Twitter</a>
+<a href="https://t.me/share/url?url={{ request.build_absolute_uri }}&text={{ product.name|urlencode }}" target="_blank" rel="noopener" class="btn btn-sm" style="background:#0088cc;color:#fff;">✈️ Telegram</a>
+<button onclick="navigator.clipboard.writeText('{{ request.build_absolute_uri }}');this.textContent='✓ Copié !';setTimeout(()=>this.textContent='🔗 Copier le lien',2000);" class="btn btn-sm btn-outline">🔗 Copier le lien</button>
+</div>
+</div>

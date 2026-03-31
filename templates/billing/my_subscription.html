@@ -1,0 +1,31 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Mon Abonnement{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>💎 Mon Abonnement</h1><a href="{% url 'billing:plans' %}" class="btn btn-sm btn-orange">Changer de plan</a></div>
+{% if subscription %}
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+<div class="stat-card"><div class="stat-label">Plan actuel</div><div class="stat-value" style="font-size:18px;">{{ subscription.plan.name }}</div><div style="font-size:12px;color:var(--orange);">{{ subscription.plan.badge_level|title }}</div></div>
+<div class="stat-card"><div class="stat-label">Statut</div><div class="stat-value" style="font-size:18px;"><span class="status-badge st-{% if subscription.is_active %}delivered{% else %}cancelled{% endif %}">{{ subscription.get_status_display }}</span></div></div>
+<div class="stat-card"><div class="stat-label">Jours restants</div><div class="stat-value" style="{% if subscription.days_remaining < 7 %}color:var(--red){% endif %}">{{ subscription.days_remaining }}</div></div>
+<div class="stat-card"><div class="stat-label">Crédits boost</div><div class="stat-value" style="color:var(--orange);">{{ subscription.boost_credits_remaining }}</div></div>
+</div>
+<div class="dash-card"><div class="dash-card-title">Détails du plan</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+<div>🏷️ {{ subscription.plan.max_products }} produits max</div>
+<div>💰 Commission: {{ subscription.plan.commission_rate }}%</div>
+<div>📷 {{ subscription.plan.max_images_per_product }} images/produit</div>
+<div>📅 Expire le {{ subscription.end_date|date:"d/m/Y" }}</div>
+<div>💳 {{ subscription.current_amount|intcomma }} F/{{ subscription.get_billing_cycle_display|lower }}</div>
+<div>🔄 Renouvellement auto: {% if subscription.auto_renew %}Oui{% else %}Non{% endif %}</div>
+</div></div>
+{% if payments %}<div class="dash-card"><div class="dash-card-title">Historique de paiement</div>
+<table class="dash-table"><thead><tr><th>Date</th><th>Montant</th><th>Moyen</th><th>Statut</th></tr></thead><tbody>
+{% for p in payments %}<tr><td>{{ p.created_at|date:"d/m/Y" }}</td><td style="font-weight:600;">{{ p.amount|intcomma }} F</td><td>{{ p.get_payment_method_display }}</td><td><span class="status-badge st-{{ p.status }}">{{ p.get_status_display }}</span></td></tr>{% endfor %}
+</tbody></table></div>{% endif %}
+{% else %}
+<div class="dash-card" style="text-align:center;padding:3rem;">
+<div style="font-size:3rem;margin-bottom:8px;">💎</div><h3>Aucun abonnement actif</h3>
+<p style="color:var(--text3);margin:8px 0 16px;">Choisissez un plan pour commencer à vendre.</p>
+<a href="{% url 'billing:plans' %}" class="btn btn-orange btn-lg">Voir les plans →</a>
+</div>{% endif %}
+{% endblock %}

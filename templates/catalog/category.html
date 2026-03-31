@@ -1,0 +1,10 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}{{ category.name }}{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › <span>{{ category.name }}</span></div>
+<div class="section" style="padding-top:0;">
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;"><span style="font-size:2rem;">{{ category.icon }}</span><div><h2 style="font-size:18px;">{{ category.name }}</h2>{% if category.description %}<p style="font-size:13px;color:var(--text2);">{{ category.description }}</p>{% endif %}</div></div>
+{% if subcategories %}<div style="display:flex;gap:8px;margin-bottom:1.2rem;flex-wrap:wrap;">{% for sub in subcategories %}<a href="{% url 'catalog:category' slug=sub.slug %}" class="btn btn-sm btn-outline">{{ sub.icon }} {{ sub.name }}</a>{% endfor %}</div>{% endif %}
+<div class="products-grid">{% for p in products %}{% include 'includes/product_card.html' with product=p %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon">📦</div><h3>Aucun produit dans cette catégorie</h3></div>{% endfor %}</div>
+</div>
+{% endblock %}

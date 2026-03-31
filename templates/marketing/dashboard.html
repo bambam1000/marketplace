@@ -1,0 +1,255 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard Marketing{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <h1>📣 Marketing Dashboard</h1>
+    <p>Gérez vos campagnes, codes promo et fidélisez vos clients</p>
+</div>
+
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">🎯</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ active_campaigns }}</div>
+            <div class="stat-label">Campagnes Actives</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🎫</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ active_promos }}</div>
+            <div class="stat-label">Codes Promo Actifs</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #ffa751 0%, #ffe259 100%);">⭐</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ total_loyalty_members }}</div>
+            <div class="stat-label">Membres Fidélité</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">👁️</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ analytics.total_visitors|default:0|intcomma }}</div>
+            <div class="stat-label">Visiteurs (30j)</div>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+    <div class="card">
+        <div class="card-header">
+            <h3>🎯 Campagnes Récentes</h3>
+            <a href="{% url 'marketing:campaign_create' %}" class="btn btn-sm btn-primary">+ Nouvelle</a>
+        </div>
+        <div class="card-body">
+            {% if recent_campaigns %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Campagne</th>
+                        <th>Type</th>
+                        <th>Statut</th>
+                        <th>ROI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for campaign in recent_campaigns %}
+                    <tr>
+                        <td><a href="{% url 'marketing:campaign_detail' campaign.pk %}">{{ campaign.name }}</a></td>
+                        <td><span class="badge">{{ campaign.get_campaign_type_display }}</span></td>
+                        <td>
+                            {% if campaign.status == 'active' %}
+                            <span class="badge badge-success">Actif</span>
+                            {% elif campaign.status == 'draft' %}
+                            <span class="badge badge-secondary">Brouillon</span>
+                            {% else %}
+                            <span class="badge">{{ campaign.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ campaign.roi }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">Aucune campagne pour le moment.</p>
+            {% endif %}
+            <a href="{% url 'marketing:campaigns' %}" class="btn btn-link">Voir toutes les campagnes →</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>🎫 Codes Promo Actifs</h3>
+            <a href="{% url 'marketing:promo_code_create' %}" class="btn btn-sm btn-primary">+ Nouveau</a>
+        </div>
+        <div class="card-body">
+            {% if active_promo_codes %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Réduction</th>
+                        <th>Utilisations</th>
+                        <th>Expire</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for promo in active_promo_codes %}
+                    <tr>
+                        <td><strong>{{ promo.code }}</strong></td>
+                        <td>
+                            {% if promo.discount_type == 'percentage' %}
+                            {{ promo.discount_value }}%
+                            {% else %}
+                            {{ promo.discount_value|floatformat:0|intcomma }} F
+                            {% endif %}
+                        </td>
+                        <td>{{ promo.usage_count }}{% if promo.usage_limit %}/{{ promo.usage_limit }}{% endif %}</td>
+                        <td>{{ promo.valid_to|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">Aucun code promo actif.</p>
+            {% endif %}
+            <a href="{% url 'marketing:promo_codes' %}" class="btn btn-link">Voir tous les codes →</a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>📊 Performance (30 derniers jours)</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; text-align: center;">
+            <div>
+                <div style="font-size: 2rem; font-weight: bold; color: #1a56db;">{{ analytics.total_views|default:0|intcomma }}</div>
+                <div style="color: #6b7280; font-size: 0.875rem;">Vues de pages</div>
+            </div>
+            <div>
+                <div style="font-size: 2rem; font-weight: bold; color: #059669;">{{ analytics.total_purchases|default:0|intcomma }}</div>
+                <div style="color: #6b7280; font-size: 0.875rem;">Achats</div>
+            </div>
+            <div>
+                <div style="font-size: 2rem; font-weight: bold; color: #7c3aed;">{{ analytics.total_revenue|default:0|floatformat:0|intcomma }} F</div>
+                <div style="color: #6b7280; font-size: 0.875rem;">Revenus</div>
+            </div>
+            <div>
+                <div style="font-size: 2rem; font-weight: bold; color: #dc2626;">
+                    {% if analytics.total_visitors > 0 %}
+                    {% widthratio analytics.total_purchases analytics.total_visitors 100 %}%
+                    {% else %}
+                    0%
+                    {% endif %}
+                </div>
+                <div style="color: #6b7280; font-size: 0.875rem;">Taux de conversion</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #111827;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-secondary {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.btn-link {
+    color: #1a56db;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 1rem;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

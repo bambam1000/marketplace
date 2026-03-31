@@ -1,0 +1,26 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}{% if current_category %}{{ current_category|title }}{% elif search_query %}Résultats: {{ search_query }}{% else %}Tous les produits{% endif %}{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › <span>Boutique</span></div>
+<div class="section" style="padding-top:0;">
+<div class="catalog-layout">
+<aside class="filter-sidebar">
+<h3 style="font-size:15px;margin-bottom:1rem;">Filtres</h3>
+<div class="filter-section"><h4>Catégories</h4>{% for cat in categories %}<label class="filter-option"><input type="checkbox" {% if current_category == cat.slug %}checked{% endif %} onchange="location='?category={{ cat.slug }}'"> {{ cat.name }}</label>{% endfor %}</div>
+<div class="filter-section"><h4>Prix (FCFA)</h4><form method="get" action=""><div class="price-inputs"><input type="number" name="min_price" placeholder="Min"><span>—</span><input type="number" name="max_price" placeholder="Max"></div><button type="submit" class="btn btn-sm btn-orange btn-block" style="margin-top:8px;">Appliquer</button></form></div>
+<div class="filter-section"><h4>Vendeur</h4><label class="filter-option"><input type="checkbox" name="verified" onchange="location='?verified=1'"> ✓ Vendeurs vérifiés uniquement</label></div>
+</aside>
+<div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+<h2 style="font-size:16px;">{% if search_query %}Résultats pour "{{ search_query }}"{% elif current_category %}{{ current_category|title }}{% else %}Tous les produits{% endif %} <span style="font-size:13px;color:var(--text3);font-weight:400;">({{ total_count }} résultats)</span></h2>
+<div style="display:flex;gap:6px;align-items:center;font-size:13px;"><span style="color:var(--text3);">Trier :</span>
+<a href="?sort=-created_at&q={{ search_query }}&category={{ current_category|default:'' }}" class="btn btn-sm {% if sort == '-created_at' %}btn-orange{% else %}btn-outline{% endif %}">Récent</a>
+<a href="?sort=price&q={{ search_query }}&category={{ current_category|default:'' }}" class="btn btn-sm {% if sort == 'price' %}btn-orange{% else %}btn-outline{% endif %}">Prix ↑</a>
+<a href="?sort=-price&q={{ search_query }}&category={{ current_category|default:'' }}" class="btn btn-sm {% if sort == '-price' %}btn-orange{% else %}btn-outline{% endif %}">Prix ↓</a>
+<a href="?sort=popular&q={{ search_query }}&category={{ current_category|default:'' }}" class="btn btn-sm {% if sort == 'popular' %}btn-orange{% else %}btn-outline{% endif %}">Populaire</a>
+</div></div>
+<div class="products-grid">{% for p in products %}{% include 'includes/product_card.html' with product=p %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon">🔍</div><h3>Aucun produit trouvé</h3><p>Essayez d'autres filtres ou mots-clés.</p></div>{% endfor %}</div>
+</div>
+</div>
+</div>
+{% endblock %}

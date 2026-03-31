@@ -1,0 +1,8 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Produits{% endblock %}
+{% block dash %}
+<div class="dash-header"><div><h1>Produits</h1><p style="font-size:13px;color:var(--text3);">{{ products|length }} produit{{ products|length|pluralize:"s" }}</p></div><a href="{% url 'dashboard:product_add' %}" class="btn btn-orange">+ Ajouter un produit</a></div>
+<div class="dash-card"><table class="dash-table"><thead><tr><th>Produit</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>Ventes</th><th>Statut</th><th></th></tr></thead><tbody>
+{% for p in products %}<tr><td style="font-weight:500;">{{ p.name|truncatechars:40 }}{% if p.is_featured %} <span class="tag tag-orange">⭐</span>{% endif %}{% if p.is_flash_deal %} <span class="tag tag-orange">⚡</span>{% endif %}</td><td>{{ p.category.name }}</td><td style="font-weight:600;">{{ p.price|intcomma }} F</td><td>{% if p.stock <= 5 %}<span style="color:var(--red);font-weight:600;">{{ p.stock }}</span>{% else %}{{ p.stock }}{% endif %}</td><td>{{ p.orders_count }}</td><td>{% if p.is_active %}<span class="status-badge st-delivered">Actif</span>{% else %}<span class="status-badge st-cancelled">Inactif</span>{% endif %}</td><td><div style="display:flex;gap:4px;"><a href="{% url 'dashboard:product_edit' p.pk %}" class="btn btn-sm btn-outline">Modifier</a><a href="{% url 'billing:boost_product' p.pk %}" class="btn btn-sm btn-outline" style="color:var(--orange);" title="Booster">🚀</a></div></td></tr>{% empty %}<tr><td colspan="7" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">🏷️</div><div style="color:var(--text3);font-size:14px;">Aucun produit</div></td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

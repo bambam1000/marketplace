@@ -1,0 +1,18 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Souscrire: {{ plan.name }}{% endblock %}
+{% block content %}
+<div style="max-width:600px;margin:0 auto;padding:2rem;">
+<h2 style="font-size:18px;margin-bottom:1.5rem;">💎 Souscrire au plan {{ plan.name }}</h2>
+<form method="post" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">{% csrf_token %}
+<div style="text-align:center;padding:1.5rem;background:#fafafa;border-radius:var(--radius-sm);margin-bottom:1.5rem;">
+<h3 style="font-size:20px;">{{ plan.name }}</h3>
+<div style="font-size:28px;font-weight:700;color:var(--orange);margin:8px 0;">{{ plan.price_monthly|intcomma }} F<span style="font-size:14px;color:var(--text3);">/mois</span></div>
+{% if plan.price_yearly %}<div style="font-size:13px;color:var(--text3);">ou {{ plan.price_yearly|intcomma }} F/an</div>{% endif %}
+</div>
+<div class="form-group"><label>Cycle de facturation</label><select name="billing_cycle" class="form-control"><option value="monthly">Mensuel — {{ plan.price_monthly|intcomma }} F/mois</option>{% if plan.price_yearly %}<option value="yearly">Annuel — {{ plan.price_yearly|intcomma }} F/an (économisez {{ plan.yearly_savings|intcomma }} F)</option>{% endif %}</select></div>
+<div class="form-group"><label>Moyen de paiement</label>
+<div class="payment-grid"><div class="payment-option"><input type="radio" name="payment_method" value="momo" id="pm1" checked><label for="pm1">📱 MTN MoMo</label></div><div class="payment-option"><input type="radio" name="payment_method" value="om" id="pm2"><label for="pm2">📱 Orange Money</label></div><div class="payment-option"><input type="radio" name="payment_method" value="card" id="pm3"><label for="pm3">💳 Carte</label></div></div>
+</div>
+<button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:1rem;">Confirmer l'abonnement</button>
+</form></div>
+{% endblock %}

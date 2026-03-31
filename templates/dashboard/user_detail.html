@@ -1,0 +1,36 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}{{ profile_user.display_name }}{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>{{ profile_user.display_name }}</h1><a href="{% url 'dashboard:users' %}" class="btn btn-sm btn-outline">← Retour</a></div>
+<div style="display:grid;grid-template-columns:320px 1fr;gap:12px;">
+<div>
+<div class="dash-card" style="text-align:center;">
+<div style="width:64px;height:64px;border-radius:50%;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--orange);margin:0 auto 10px;">{{ profile_user.initials }}</div>
+<h3 style="font-size:16px;">{{ profile_user.display_name }}</h3>
+<span class="status-badge {% if profile_user.role == 'seller' %}st-confirmed{% elif profile_user.role == 'admin' %}st-processing{% else %}st-shipped{% endif %}">{{ profile_user.get_role_display }}</span>
+<div style="font-size:13px;color:var(--text3);margin-top:8px;">@{{ profile_user.username }}</div>
+</div>
+<div class="dash-card">
+<div style="font-size:13px;line-height:2;">
+<div>📧 {{ profile_user.email }}</div>
+<div>📞 {{ profile_user.phone|default:"Non renseigné" }}</div>
+<div>📍 {{ profile_user.city|default:"—" }}, {{ profile_user.country }}</div>
+<div>📅 Inscrit le {{ profile_user.date_joined|date:"d/m/Y" }}</div>
+{% if profile_user.is_verified %}<div style="color:var(--green);">✓ Vérifié</div>{% endif %}
+</div>
+</div>
+{% if subscription %}<div class="dash-card"><div class="dash-card-title">Abonnement</div><div style="font-size:13px;"><strong>{{ subscription.plan.name }}</strong> ({{ subscription.get_status_display }})<br>Expire: {{ subscription.end_date|date:"d/m/Y" }}</div></div>{% endif %}
+{% if wallet %}<div class="dash-card"><div class="dash-card-title">Portefeuille</div><div style="font-size:13px;"><div>Solde: <strong style="color:var(--green);">{{ wallet.balance|intcomma }} F</strong></div><div>Total gagné: {{ wallet.total_earned|intcomma }} F</div><div>Commissions: {{ wallet.total_commission_paid|intcomma }} F</div></div></div>{% endif %}
+</div>
+<div>
+<div class="dash-card"><div class="dash-card-title">Commandes récentes</div>
+<table class="dash-table"><thead><tr><th>N°</th><th>Total</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+{% for o in orders %}<tr><td style="font-weight:600;">{{ o.order_number }}</td><td>{{ o.total_amount|intcomma }} F</td><td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td><td style="font-size:12px;">{{ o.created_at|date:"d/m/Y" }}</td></tr>{% empty %}<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:2rem;">Aucune commande</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="dash-card"><div class="dash-card-title">Transactions récentes</div>
+<table class="dash-table"><thead><tr><th>ID</th><th>Type</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+{% for t in transactions %}<tr><td style="font-size:11px;">{{ t.transaction_id }}</td><td>{{ t.get_type_display }}</td><td style="font-weight:600;">{{ t.amount|intcomma }} F</td><td><span class="status-badge st-{{ t.status }}">{{ t.get_status_display }}</span></td><td style="font-size:12px;">{{ t.created_at|date:"d/m/Y" }}</td></tr>{% empty %}<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:2rem;">Aucune transaction</td></tr>{% endfor %}
+</tbody></table></div>
+</div>
+</div>
+{% endblock %}

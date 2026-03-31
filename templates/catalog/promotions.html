@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Promotions{% endblock %}
+{% block content %}
+<div class="section">
+<div style="text-align:center;margin-bottom:1.5rem;"><h1 style="font-size:2rem;">🔥 Promotions</h1><p style="color:var(--text2);">{{ products|length }} articles en réduction</p></div>
+<div class="products-grid">{% for p in products %}{% include 'includes/product_card.html' with product=p %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon">🏷️</div><h3>Aucune promo en cours</h3></div>{% endfor %}</div>
+</div>
+{% endblock %}

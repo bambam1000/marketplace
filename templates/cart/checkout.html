@@ -1,0 +1,33 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Commande{% endblock %}
+{% block content %}
+<div style="max-width:900px;margin:0 auto;padding:1.5rem;">
+<h2 style="font-size:18px;margin-bottom:1rem;">📋 Finaliser la commande</h2>
+<form method="post">{% csrf_token %}
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;">
+<h3 style="font-size:15px;margin-bottom:1rem;">📍 Adresse de livraison</h3>
+<div class="form-row"><div class="form-group"><label>Nom complet</label><input type="text" name="shipping_name" class="form-control" value="{{ user.get_full_name }}" required></div><div class="form-group"><label>Téléphone</label><input type="tel" name="shipping_phone" class="form-control" value="{{ user.phone }}" required></div></div>
+<div class="form-row"><div class="form-group"><label>Ville</label><select name="shipping_city" class="form-control"><option>Douala</option><option>Yaoundé</option><option>Bafoussam</option><option>Bamenda</option><option>Garoua</option><option>Maroua</option><option>Autre</option></select></div><div class="form-group"><label>Adresse</label><input type="text" name="shipping_address" class="form-control" value="{{ user.address }}" required></div></div>
+<div class="form-group"><label>Notes (optionnel)</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+</div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;">
+<h3 style="font-size:15px;margin-bottom:1rem;">💳 Mode de paiement</h3>
+<div class="payment-grid">
+<div class="payment-option"><input type="radio" name="payment_method" value="momo" id="pm1" checked><label for="pm1">📱<br>MTN MoMo</label></div>
+<div class="payment-option"><input type="radio" name="payment_method" value="om" id="pm2"><label for="pm2">📱<br>Orange Money</label></div>
+<div class="payment-option"><input type="radio" name="payment_method" value="cash" id="pm3"><label for="pm3">💵<br>Cash livraison</label></div>
+<div class="payment-option"><input type="radio" name="payment_method" value="card" id="pm4"><label for="pm4">💳<br>Carte bancaire</label></div>
+<div class="payment-option"><input type="radio" name="payment_method" value="transfer" id="pm5"><label for="pm5">🏦<br>Virement</label></div>
+</div>
+</div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;">
+<h3 style="font-size:15px;margin-bottom:10px;">🛒 Récapitulatif</h3>
+{% for item in cart_items %}<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border2);"><span>{{ item.name }} × {{ item.quantity }}</span><span style="font-weight:600;">{{ item.subtotal|intcomma }} F</span></div>{% endfor %}
+<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;"><span>Livraison</span><span>{% if shipping %}{{ shipping|intcomma }} F{% else %}<span style="color:var(--green);">Gratuit</span>{% endif %}</span></div>
+<div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--border);font-size:20px;font-weight:700;color:var(--red);"><span>Total</span><span>{{ total|intcomma }} FCFA</span></div>
+</div>
+<div class="trade-assurance">🛡️ <strong>Trade Assurance</strong> — Votre commande est protégée. Remboursement si non conforme.</div>
+<button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:8px;">✓ Confirmer et Payer</button>
+</form>
+</div>
+{% endblock %}

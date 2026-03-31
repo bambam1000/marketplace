@@ -1,0 +1,9 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Ma Wishlist{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Favoris</div>
+<div class="section" style="padding-top:0;">
+<h2 style="font-size:16px;margin-bottom:1rem;">❤️ Ma Wishlist ({{ items|length }})</h2>
+<div class="products-grid">{% for w in items %}{% include 'includes/product_card.html' with product=w.product %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon">❤️</div><h3>Votre wishlist est vide</h3><p>Explorez nos produits et ajoutez vos favoris.</p><a href="{% url 'catalog:product_list' %}" class="btn btn-orange" style="margin-top:12px;">Explorer</a></div>{% endfor %}</div>
+</div>
+{% endblock %}

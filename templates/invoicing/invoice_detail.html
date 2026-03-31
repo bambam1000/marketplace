@@ -1,0 +1,335 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Facture {{ invoice.invoice_number }}{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1>🧾 {{ invoice.invoice_number }}</h1>
+        <p>{{ invoice.get_invoice_type_display }}</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{% url 'invoicing:invoice_pdf' invoice.pk %}" class="btn btn-primary">⬇️ Télécharger PDF</a>
+        {% if invoice.status == 'draft' %}
+        <a href="{% url 'invoicing:invoice_edit' invoice.pk %}" class="btn">✏️ Modifier</a>
+        <a href="{% url 'invoicing:invoice_send' invoice.pk %}" class="btn"
+           onclick="return confirm('Envoyer cette facture au client ?')">📤 Envoyer</a>
+        {% endif %}
+        {% if invoice.status == 'sent' %}
+        <a href="{% url 'invoicing:invoice_mark_paid' invoice.pk %}" class="btn btn-success"
+           onclick="return confirm('Marquer cette facture comme payée ?')">✓ Marquer payée</a>
+        {% endif %}
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+    <div>
+        <div class="invoice-preview">
+            <div class="invoice-header">
+                <div>
+                    <h2 style="margin: 0 0 0.5rem 0;">{{ invoice.store.name }}</h2>
+                    <div style="color: #6b7280; font-size: 0.875rem;">
+                        {% if invoice.store.invoice_settings.company_name %}
+                        {{ invoice.store.invoice_settings.company_name }}<br>
+                        {% endif %}
+                        {{ invoice.store.invoice_settings.address }}<br>
+                        {{ invoice.store.invoice_settings.city }}, {{ invoice.store.invoice_settings.country }}<br>
+                        Tél: {{ invoice.store.invoice_settings.phone }}
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;">
+                        {% if invoice.invoice_type == 'proforma' %}
+                        FACTURE PRO FORMA
+                        {% elif invoice.invoice_type == 'credit_note' %}
+                        AVOIR
+                        {% else %}
+                        FACTURE
+                        {% endif %}
+                    </div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">
+                        N° {{ invoice.invoice_number }}<br>
+                        Date: {{ invoice.issue_date|date:"d/m/Y" }}
+                        {% if invoice.due_date %}<br>Échéance: {{ invoice.due_date|date:"d/m/Y" }}{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin: 2rem 0; padding: 1.5rem; background: #f9fafb; border-radius: 8px;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">FACTURÉ À:</div>
+                <div style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem;">{{ invoice.customer_name }}</div>
+                {% if invoice.customer_address %}
+                <div style="color: #6b7280; font-size: 0.875rem;">{{ invoice.customer_address }}</div>
+                {% endif %}
+                {% if invoice.customer_phone %}
+                <div style="color: #6b7280; font-size: 0.875rem;">Tél: {{ invoice.customer_phone }}</div>
+                {% endif %}
+                {% if invoice.customer_email %}
+                <div style="color: #6b7280; font-size: 0.875rem;">Email: {{ invoice.customer_email }}</div>
+                {% endif %}
+            </div>
+
+            <table class="invoice-items">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th style="text-align: center;">Quantité</th>
+                        <th style="text-align: right;">Prix unitaire</th>
+                        <th style="text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in invoice.items.all %}
+                    <tr>
+                        <td>{{ item.description }}</td>
+                        <td style="text-align: center;">{{ item.quantity }}</td>
+                        <td style="text-align: right;">{{ item.unit_price|floatformat:0|intcomma }} F</td>
+                        <td style="text-align: right;"><strong>{{ item.total|floatformat:0|intcomma }} F</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                <div style="min-width: 300px;">
+                    <div class="total-row">
+                        <span>Sous-total:</span>
+                        <span>{{ invoice.subtotal|floatformat:0|intcomma }} F</span>
+                    </div>
+                    {% if invoice.discount_amount > 0 %}
+                    <div class="total-row">
+                        <span>Réduction:</span>
+                        <span style="color: #dc2626;">-{{ invoice.discount_amount|floatformat:0|intcomma }} F</span>
+                    </div>
+                    {% endif %}
+                    {% if invoice.shipping_amount > 0 %}
+                    <div class="total-row">
+                        <span>Livraison:</span>
+                        <span>{{ invoice.shipping_amount|floatformat:0|intcomma }} F</span>
+                    </div>
+                    {% endif %}
+                    {% if invoice.tva_amount > 0 %}
+                    <div class="total-row">
+                        <span>TVA ({{ invoice.store.invoice_settings.tva_rate }}%):</span>
+                        <span>{{ invoice.tva_amount|floatformat:0|intcomma }} F</span>
+                    </div>
+                    {% endif %}
+                    <div class="total-row" style="border-top: 2px solid #1a56db; padding-top: 1rem; margin-top: 1rem; font-size: 1.25rem; font-weight: bold;">
+                        <span>TOTAL:</span>
+                        <span style="color: #1a56db;">{{ invoice.total_amount|floatformat:0|intcomma }} F CFA</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if invoice.notes %}
+            <div style="margin-top: 2rem; padding: 1rem; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Notes:</div>
+                <div style="white-space: pre-wrap;">{{ invoice.notes }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header">
+                <h3>ℹ️ Informations</h3>
+            </div>
+            <div class="card-body">
+                <div class="info-row">
+                    <span class="info-label">Statut</span>
+                    <span>
+                        {% if invoice.status == 'paid' %}
+                        <span class="badge badge-success">✓ Payée</span>
+                        {% elif invoice.status == 'sent' %}
+                        <span class="badge badge-warning">📤 Envoyée</span>
+                        {% elif invoice.status == 'draft' %}
+                        <span class="badge badge-secondary">📝 Brouillon</span>
+                        {% else %}
+                        <span class="badge badge-danger">✗ Annulée</span>
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span>{{ invoice.get_invoice_type_display }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Date d'émission</span>
+                    <span>{{ invoice.issue_date|date:"d/m/Y" }}</span>
+                </div>
+
+                {% if invoice.due_date %}
+                <div class="info-row">
+                    <span class="info-label">Date d'échéance</span>
+                    <span>
+                        {{ invoice.due_date|date:"d/m/Y" }}
+                        {% if invoice.is_overdue %}
+                        <span style="color: #dc2626; font-weight: bold;">⚠️ En retard</span>
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+
+                {% if invoice.paid_date %}
+                <div class="info-row">
+                    <span class="info-label">Payée le</span>
+                    <span>{{ invoice.paid_date|date:"d/m/Y" }}</span>
+                </div>
+                {% endif %}
+
+                {% if invoice.order %}
+                <div class="info-row">
+                    <span class="info-label">Commande</span>
+                    <span><a href="{% url 'dashboard:order_detail' invoice.order.order_number %}">{{ invoice.order.order_number }}</a></span>
+                </div>
+                {% endif %}
+
+                <div class="info-row">
+                    <span class="info-label">Créée le</span>
+                    <span>{{ invoice.created_at|date:"d/m/Y à H:i" }}</span>
+                </div>
+
+                {% if invoice.sent_at %}
+                <div class="info-row">
+                    <span class="info-label">Envoyée le</span>
+                    <span>{{ invoice.sent_at|date:"d/m/Y à H:i" }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if invoice.payment_method %}
+        <div class="card">
+            <div class="card-header">
+                <h3>💳 Paiement</h3>
+            </div>
+            <div class="card-body">
+                <div class="info-row">
+                    <span class="info-label">Méthode</span>
+                    <span>{{ invoice.payment_method }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.invoice-preview {
+    background: white;
+    padding: 3rem;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.invoice-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.invoice-items {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.invoice-items thead {
+    background: #1a56db;
+    color: white;
+}
+
+.invoice-items th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+}
+
+.invoice-items td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.invoice-items tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    font-size: 1rem;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-secondary {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.badge-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+</style>
+{% endblock %}

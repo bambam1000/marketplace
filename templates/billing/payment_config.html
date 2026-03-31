@@ -1,0 +1,26 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Configuration Paiement{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>💳 Configuration des moyens de paiement</h1></div>
+<div class="dash-card">
+<p style="font-size:13px;color:var(--text3);margin-bottom:1.5rem;">Configurez les moyens de paiement pour recevoir vos versements.</p>
+<form method="post">{% csrf_token %}
+<div style="border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
+<label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:12px;font-size:14px;"><input type="checkbox" name="momo_enabled" {% if config.momo_enabled %}checked{% endif %}> 📱 MTN Mobile Money</label>
+<div class="form-row"><div class="form-group"><label>Numéro MoMo</label><input type="tel" name="momo_number" value="{{ config.momo_number }}" class="form-control" placeholder="+237 6XX XXX XXX"></div><div class="form-group"><label>Nom du compte</label><input type="text" name="momo_name" value="{{ config.momo_name }}" class="form-control"></div></div>
+</div>
+<div style="border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
+<label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:12px;font-size:14px;"><input type="checkbox" name="om_enabled" {% if config.om_enabled %}checked{% endif %}> 📱 Orange Money</label>
+<div class="form-row"><div class="form-group"><label>Numéro OM</label><input type="tel" name="om_number" value="{{ config.om_number }}" class="form-control"></div><div class="form-group"><label>Nom</label><input type="text" name="om_name" value="{{ config.om_name }}" class="form-control"></div></div>
+</div>
+<div style="border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
+<label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:12px;font-size:14px;"><input type="checkbox" name="bank_enabled" {% if config.bank_enabled %}checked{% endif %}> 🏦 Virement Bancaire</label>
+<div class="form-group"><label>Banque</label><input type="text" name="bank_name" value="{{ config.bank_name }}" class="form-control" placeholder="Afriland First Bank"></div>
+<div class="form-row"><div class="form-group"><label>N° de compte</label><input type="text" name="bank_account_number" value="{{ config.bank_account_number }}" class="form-control"></div><div class="form-group"><label>Titulaire</label><input type="text" name="bank_account_name" value="{{ config.bank_account_name }}" class="form-control"></div></div>
+</div>
+<div style="border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
+<label style="display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;"><input type="checkbox" name="cash_enabled" {% if config.cash_enabled %}checked{% endif %}> 💵 Cash à la livraison</label>
+</div>
+<button type="submit" class="btn btn-orange btn-lg">Enregistrer</button>
+</form></div>
+{% endblock %}

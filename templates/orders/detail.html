@@ -1,0 +1,37 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Commande {{ order.order_number }}{% endblock %}
+{% block content %}
+<div class="section">
+<a href="{% url 'orders:list' %}" style="font-size:13px;color:var(--orange);">← Mes commandes</a>
+<h2 style="font-size:18px;margin:1rem 0;">Commande {{ order.order_number }}</h2>
+<div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;">
+<div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
+<h3 style="font-size:14px;margin-bottom:12px;">Progression</h3>
+<div style="height:6px;background:var(--border2);border-radius:3px;overflow:hidden;"><div style="height:100%;background:var(--orange);border-radius:3px;width:{{ order.progress_percent }}%;transition:width .5s;"></div></div>
+<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text3);"><span>En attente</span><span>Confirmée</span><span>En traitement</span><span>Expédiée</span><span>Livrée</span></div>
+</div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;">
+<h3 style="font-size:14px;margin-bottom:10px;">Articles</h3>
+{% for item in order.items.all %}<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);font-size:13px;"><div><strong>{{ item.product.name }}</strong><br><span style="color:var(--text3);">🏪 {{ item.store.name }}{% if item.color %} · {{ item.color }}{% endif %}</span></div><div style="text-align:right;"><div>{{ item.quantity }} × {{ item.price|intcomma }} F</div><div style="font-weight:700;">{{ item.subtotal|intcomma }} F</div></div></div>{% endfor %}
+<div style="display:flex;justify-content:space-between;padding:12px 0;font-size:18px;font-weight:700;color:var(--red);"><span>Total</span><span>{{ order.total_amount|intcomma }} FCFA</span></div>
+</div>
+</div>
+<div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
+<h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Statut</h4>
+<span class="status-badge st-{{ order.status }}">{{ order.get_status_display }}</span>
+<p style="font-size:12px;color:var(--text3);margin-top:6px;">{% if order.is_paid %}✓ Payée{% else %}⏳ En attente de paiement{% endif %}</p>
+</div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
+<h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Livraison</h4>
+<p style="font-size:13px;line-height:1.7;">{{ order.shipping_name }}<br>{{ order.shipping_phone }}<br>{{ order.shipping_address }}<br>{{ order.shipping_city }}</p>
+</div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;">
+<h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Paiement</h4>
+<p style="font-size:13px;">{{ order.get_payment_method_display }}</p>
+</div>
+</div>
+</div>
+</div>
+{% endblock %}

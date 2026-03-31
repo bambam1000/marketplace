@@ -1,0 +1,291 @@
+{% load static %}{% load humanize %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>{% block title %}AfriMarket{% endblock %} — La Marketplace Africaine</title>
+{% block extra_head %}{% endblock %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+<!-- Top Bar -->
+<div class="topbar">
+<div class="topbar-inner">
+<div class="topbar-links">
+<a href="{% url 'accounts:register' %}"><i class="fa-solid fa-store"></i> Vendre sur AfriMarket</a>
+<span class="topbar-sep"></span>
+{% if user.is_authenticated %}
+<a href="{% url 'orders:my_rfqs' %}"><i class="fa-solid fa-clipboard-list"></i> Mes demandes de devis</a>
+{% else %}
+<a href="{% url 'orders:create_rfq' %}"><i class="fa-solid fa-file-invoice"></i> Demander un devis</a>
+{% endif %}
+<span class="topbar-sep"></span>
+<a href="{% url 'faq' %}"><i class="fa-solid fa-circle-question"></i> Aide</a>
+</div>
+<div class="topbar-links">
+{% if user.is_authenticated %}
+<a href="{% url 'accounts:profile' %}"><i class="fa-solid fa-user"></i> {{ user.display_name }}</a>
+<span class="topbar-sep"></span>
+{% if user.store %}<a href="{% url 'store:detail' slug=user.store.slug %}"><i class="fa-solid fa-store"></i> Ma Boutique</a>
+<span class="topbar-sep"></span>{% endif %}
+<a href="{% url 'dashboard:index' %}"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+<span class="topbar-sep"></span>
+<a href="{% url 'accounts:logout' %}"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+{% else %}
+<a href="{% url 'accounts:login' %}"><i class="fa-solid fa-right-to-bracket"></i> Connexion</a>
+<span class="topbar-sep"></span>
+<a href="{% url 'accounts:register' %}"><i class="fa-solid fa-user-plus"></i> Inscription</a>
+{% endif %}
+</div>
+</div>
+</div>
+
+<!-- Header -->
+<header class="header">
+<div class="header-inner">
+<a href="{% url 'home' %}" class="logo">Afri<span>Market</span></a>
+<form method="get" action="{% url 'catalog:search' %}" class="search-bar" style="position:relative;">
+<div class="search-category">
+<i class="fa-solid fa-layer-group"></i>
+<select name="category">
+<option value="">Toutes catégories</option>
+{% for cat in nav_categories %}<option value="{{ cat.slug }}">{{ cat.name }}</option>{% endfor %}
+</select>
+</div>
+<div class="search-input-wrap">
+<input type="text" name="q" id="searchInput" placeholder="Rechercher des produits, marques, vendeurs..." value="{{ search_query|default:'' }}" autocomplete="off">
+<div id="searchAutocomplete" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border2);border-radius:var(--radius);margin-top:4px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:1000;max-height:400px;overflow-y:auto;"></div>
+</div>
+<button type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+</form>
+<div class="header-actions">
+<a href="{% url 'messaging:inbox' %}" class="header-icon" id="messagesIconMain">
+<i class="fa-regular fa-comment-dots"></i>
+<span class="header-icon-label">Messages</span>
+{% if unread_messages_count > 0 %}<span class="badge" id="messagesBadgeMain">{{ unread_messages_count }}</span>{% endif %}
+</a>
+<a href="{% url 'catalog:wishlist' %}" class="header-icon">
+<i class="fa-regular fa-heart"></i>
+<span class="header-icon-label">Favoris</span>
+{% if wishlist_count %}<span class="badge">{{ wishlist_count }}</span>{% endif %}
+</a>
+<a href="{% url 'cart:view' %}" class="header-icon">
+<i class="fa-solid fa-cart-shopping"></i>
+<span class="header-icon-label">Panier</span>
+{% if cart_count %}<span class="badge">{{ cart_count }}</span>{% endif %}
+</a>
+</div>
+</div>
+</header>
+
+<!-- Mega Nav -->
+<nav class="meganav">
+<div class="meganav-inner">
+<div class="meganav-links">
+<a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}"><i class="fa-solid fa-home"></i> Accueil</a>
+<a href="{% url 'catalog:flash_deals' %}" class="{% if request.resolver_match.url_name == 'flash_deals' and request.resolver_match.app_name == 'catalog' %}active{% endif %}"><i class="fa-solid fa-bolt"></i> Flash Deals</a>
+<a href="{% url 'catalog:promotions' %}" class="{% if request.resolver_match.url_name == 'promotions' and request.resolver_match.app_name == 'catalog' %}active{% endif %}"><i class="fa-solid fa-tags"></i> Promotions</a>
+<a href="{% url 'catalog:product_list' %}" class="{% if request.resolver_match.url_name == 'product_list' and request.resolver_match.app_name == 'catalog' %}active{% endif %}"><i class="fa-solid fa-th-large"></i> Tous les produits</a>
+<a href="{% url 'store:list' %}" class="{% if request.resolver_match.url_name == 'list' and request.resolver_match.app_name == 'store' %}active{% endif %}"><i class="fa-solid fa-store"></i> Vendeurs</a>
+{% if user.is_authenticated %}
+<a href="{% url 'orders:rfq_list' %}" class="{% if 'rfq' in request.resolver_match.url_name and request.resolver_match.app_name == 'orders' %}active{% endif %}"><i class="fa-solid fa-file-invoice"></i> Demandes de devis</a>
+{% else %}
+<a href="{% url 'orders:create_rfq' %}" class="{% if 'rfq' in request.resolver_match.url_name and request.resolver_match.app_name == 'orders' %}active{% endif %}"><i class="fa-solid fa-file-invoice"></i> Demander un devis</a>
+{% endif %}
+<a href="{% url 'about' %}" class="{% if request.resolver_match.url_name == 'about' %}active{% endif %}">À propos</a>
+<a href="{% url 'contact' %}" class="{% if request.resolver_match.url_name == 'contact' %}active{% endif %}">Contact</a>
+<div style="position:relative;display:inline-block;margin-left:auto;" id="languageSelectorMain">
+<a href="#" style="cursor:pointer;"><i class="fa-solid fa-globe"></i> Langue</a>
+<div class="header-dropdown" style="position:absolute;top:100%;right:0;margin-top:8px;background:#fff;border:1px solid var(--border2);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:150px;opacity:0;visibility:hidden;transform:translateY(-10px);transition:all .2s;z-index:1000;">
+<form action="{% url 'set_language' %}" method="post" style="margin:0;">
+{% csrf_token %}
+<input name="next" type="hidden" value="{{ request.path }}">
+<button type="submit" name="language" value="fr" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text1);font-size:13px;transition:background .2s;text-align:left;{% if LANGUAGE_CODE == 'fr' %}background:var(--bg2);font-weight:600;{% endif %}" onmouseover="this.style.background='var(--bg2)'" onmouseout="{% if LANGUAGE_CODE != 'fr' %}this.style.background='white'{% endif %}">
+<span style="font-size:18px;">🇫🇷</span> Français
+</button>
+<button type="submit" name="language" value="en" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text1);font-size:13px;transition:background .2s;text-align:left;{% if LANGUAGE_CODE == 'en' %}background:var(--bg2);font-weight:600;{% endif %}" onmouseover="this.style.background='var(--bg2)'" onmouseout="{% if LANGUAGE_CODE != 'en' %}this.style.background='white'{% endif %}">
+<span style="font-size:18px;">🇬🇧</span> English
+</button>
+</form>
+</div>
+</div>
+</div>
+</div>
+</nav>
+
+{% if messages %}
+<ul class="messages-list">
+{% for msg in messages %}<li class="alert alert-{{ msg.tags }}">{{ msg }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% block content %}{% endblock %}
+
+<!-- Footer -->
+<footer class="footer">
+<div class="footer-top">
+<div>
+<div class="footer-brand">Afri<span>Market</span></div>
+<p style="font-size:13px;line-height:1.7;max-width:300px;margin-top:.5rem;">La plus grande marketplace B2B et B2C d'Afrique Centrale. Des milliers de produits, des centaines de vendeurs vérifiés.</p>
+<div class="footer-payments" style="margin-top:1rem;">
+<span>📱 MoMo</span><span>📱 OM</span><span>💳 Visa</span><span>💳 Mastercard</span><span>💵 Cash</span>
+</div>
+</div>
+<div>
+<h4>Acheteur</h4>
+<ul>
+<li><a href="{% url 'catalog:product_list' %}">Tous les produits</a></li>
+<li><a href="{% url 'catalog:flash_deals' %}">Flash Deals</a></li>
+<li><a href="{% url 'catalog:promotions' %}">Promotions</a></li>
+<li><a href="{% url 'orders:create_rfq' %}">Demande de devis</a></li>
+</ul>
+</div>
+<div>
+<h4>Vendeur</h4>
+<ul>
+<li><a href="{% url 'accounts:register' %}">Devenir vendeur</a></li>
+<li><a href="{% url 'dashboard:index' %}">Espace vendeur</a></li>
+<li><a href="#">Centre d'aide vendeur</a></li>
+</ul>
+</div>
+<div>
+<h4>Informations</h4>
+<ul>
+<li><a href="{% url 'about' %}">À propos</a></li>
+<li><a href="{% url 'contact' %}">Contact</a></li>
+<li><a href="{% url 'faq' %}">FAQ</a></li>
+<li><a href="#">Conditions générales</a></li>
+<li><a href="#">Politique de confidentialité</a></li>
+</ul>
+</div>
+<div>
+<h4>Contact</h4>
+<ul>
+<li><a href="tel:+237677123456">📞 +237 677 123 456</a></li>
+<li><a href="#">💬 WhatsApp</a></li>
+<li><a href="mailto:contact@afrimarketplace.cm">📧 contact@afrimarketplace.cm</a></li>
+<li><a href="#">📍 Bonanjo, Douala, Cameroun</a></li>
+</ul>
+</div>
+</div>
+<div class="footer-bottom">
+<p>© 2026 AfriMarket — La Marketplace Africaine. Fait avec ❤️ au Cameroun par DigiSoft Africa</p>
+</div>
+</footer>
+
+<script>
+{% if user.is_authenticated %}
+// Mise à jour du compteur de messages non lus en temps réel
+function updateUnreadCountMain() {
+  fetch('/messages/api/unread-count/')
+    .then(response => response.json())
+    .then(data => {
+      const badge = document.getElementById('messagesBadgeMain');
+      const icon = document.getElementById('messagesIconMain');
+
+      if (data.unread_count > 0) {
+        if (badge) {
+          badge.textContent = data.unread_count;
+        } else if (icon) {
+          // Créer le badge s'il n'existe pas
+          const newBadge = document.createElement('span');
+          newBadge.className = 'badge';
+          newBadge.id = 'messagesBadgeMain';
+          newBadge.textContent = data.unread_count;
+          icon.appendChild(newBadge);
+        }
+      } else {
+        // Supprimer le badge s'il n'y a pas de messages
+        if (badge) {
+          badge.remove();
+        }
+      }
+    })
+    .catch(error => console.error('Erreur lors de la récupération des messages:', error));
+}
+
+// Vérifier les nouveaux messages toutes les 5 secondes
+setInterval(updateUnreadCountMain, 5000);
+{% endif %}
+
+// Autocomplete de recherche
+const searchInput = document.getElementById('searchInput');
+const autocompleteDropdown = document.getElementById('searchAutocomplete');
+let searchTimeout;
+
+if (searchInput && autocompleteDropdown) {
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
+
+    if (query.length < 2) {
+      autocompleteDropdown.style.display = 'none';
+      return;
+    }
+
+    searchTimeout = setTimeout(() => {
+      fetch(`/boutique/api/search-autocomplete/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.suggestions && data.suggestions.length > 0) {
+            autocompleteDropdown.innerHTML = data.suggestions.map(item => {
+              const priceFormatted = item.price ? new Intl.NumberFormat('fr-FR').format(item.price) + ' FCFA' : '';
+              return `
+                <a href="${item.url}" style="display:flex;align-items:center;gap:12px;padding:12px 16px;text-decoration:none;color:var(--text1);border-bottom:1px solid var(--border2);transition:var(--transition);" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background='white'">
+                  <span style="font-size:20px;">${item.icon}</span>
+                  <div style="flex:1;">
+                    <div style="font-weight:500;font-size:14px;">${item.name}</div>
+                    ${item.type === 'store' ? `<div style="font-size:12px;color:var(--text3);margin-top:2px;">📍 ${item.city || 'Boutique'}</div>` : `<div style="font-size:12px;color:var(--orange);margin-top:2px;font-weight:600;">${priceFormatted}</div>`}
+                  </div>
+                  <span style="font-size:11px;color:var(--text3);text-transform:uppercase;">${item.type === 'store' ? 'Boutique' : 'Produit'}</span>
+                </a>
+              `;
+            }).join('');
+            autocompleteDropdown.style.display = 'block';
+          } else {
+            autocompleteDropdown.style.display = 'none';
+          }
+        })
+        .catch(error => {
+          console.error('Erreur autocomplete:', error);
+          autocompleteDropdown.style.display = 'none';
+        });
+    }, 300);
+  });
+
+  // Cacher le dropdown quand on clique ailleurs
+  document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+      autocompleteDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Dropdown de sélection de langue
+const languageSelector = document.getElementById('languageSelectorMain');
+if (languageSelector) {
+  const dropdown = languageSelector.querySelector('.header-dropdown');
+
+  languageSelector.addEventListener('mouseenter', function() {
+    dropdown.style.opacity = '1';
+    dropdown.style.visibility = 'visible';
+    dropdown.style.transform = 'translateY(0)';
+  });
+
+  languageSelector.addEventListener('mouseleave', function() {
+    dropdown.style.opacity = '0';
+    dropdown.style.visibility = 'hidden';
+    dropdown.style.transform = 'translateY(-10px)';
+  });
+}
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

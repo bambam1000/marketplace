@@ -1,0 +1,48 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Rapport Financier{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>📑 Rapport Financier</h1>
+<div style="display:flex;gap:4px;">
+<a href="?period=7" class="btn btn-sm {% if period == '7' %}btn-orange{% else %}btn-outline{% endif %}">7j</a>
+<a href="?period=30" class="btn btn-sm {% if period == '30' %}btn-orange{% else %}btn-outline{% endif %}">30j</a>
+<a href="?period=90" class="btn btn-sm {% if period == '90' %}btn-orange{% else %}btn-outline{% endif %}">90j</a>
+<a href="?period=365" class="btn btn-sm {% if period == '365' %}btn-orange{% else %}btn-outline{% endif %}">1 an</a>
+</div></div>
+
+<div class="stats-grid" style="grid-template-columns:repeat(2,1fr);">
+<div class="stat-card" style="border-left:4px solid var(--orange);border-radius:0 var(--radius) var(--radius) 0;">
+<div class="stat-label">Volume total ({{ period }} derniers jours)</div>
+<div class="stat-value" style="color:var(--orange);">{{ total_period|intcomma }} <span style="font-size:12px;">FCFA</span></div>
+</div>
+<div class="stat-card" style="border-left:4px solid var(--blue);border-radius:0 var(--radius) var(--radius) 0;">
+<div class="stat-label">Nombre de transactions</div>
+<div class="stat-value" style="color:var(--blue);">{{ txn_count }}</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+<div class="dash-card">
+<div class="dash-card-title">Évolution quotidienne</div>
+<canvas id="dailyChart" height="250"></canvas>
+</div>
+<div class="dash-card">
+<div class="dash-card-title">Répartition par type</div>
+<div style="margin-top:8px;">
+{% for bt in by_type %}
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border2);">
+<div>
+<span class="status-badge st-{% if bt.type == 'sale' %}delivered{% elif bt.type == 'commission' %}confirmed{% elif bt.type == 'subscription' %}shipped{% elif bt.type == 'boost' %}processing{% elif bt.type == 'payout' %}pending{% else %}cancelled{% endif %}">{{ bt.type|title }}</span>
+<span style="font-size:11px;color:var(--text3);margin-left:6px;">{{ bt.count }} opérations</span>
+</div>
+<strong style="font-size:14px;">{{ bt.total|intcomma }} F</strong>
+</div>
+{% empty %}
+<p style="color:var(--text3);text-align:center;padding:2rem;">Aucune donnée</p>
+{% endfor %}
+</div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}<script>
+new Chart(document.getElementById('dailyChart'),{type:'bar',data:{labels:{{ days_json|safe }},datasets:[{label:'Montant (FCFA)',data:{{ values_json|safe }},backgroundColor:'rgba(255,106,0,.15)',borderColor:'#ff6a00',borderWidth:2,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:15}},y:{grid:{color:'#f0f0f0'},ticks:{callback:v=>(v/1000)+'k'}}}}});
+</script>{% endblock %}

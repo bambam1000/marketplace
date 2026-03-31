@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Demande de devis{% endblock %}
+{% block content %}
+<div style="max-width:700px;margin:0 auto;padding:1.5rem;">
+<div style="text-align:center;margin-bottom:2rem;"><h2 style="font-size:20px;">📋 Demande de devis (RFQ)</h2><p style="color:var(--text2);font-size:13px;">Décrivez le produit que vous recherchez et recevez des offres de vendeurs.</p></div>
+<form method="post" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">{% csrf_token %}
+<div class="form-group"><label>Nom du produit recherché *</label><input type="text" name="product_name" class="form-control" placeholder="Ex: T-shirts en coton personnalisés" required></div>
+<div class="form-row"><div class="form-group"><label>Catégorie</label><select name="category" class="form-control"><option value="">— Choisir —</option>{% for cat in categories %}<option value="{{ cat.pk }}">{{ cat.name }}</option>{% endfor %}</select></div><div class="form-group"><label>Quantité souhaitée *</label><input type="number" name="quantity" class="form-control" placeholder="100" required></div></div>
+<div class="form-row"><div class="form-group"><label>Prix cible (FCFA / unité)</label><input type="number" name="target_price" class="form-control" placeholder="5000"></div><div class="form-group"><label>Unité</label><select name="unit" class="form-control"><option>pièce</option><option>kg</option><option>lot</option><option>carton</option><option>palette</option></select></div></div>
+<div class="form-group"><label>Description détaillée *</label><textarea name="description" class="form-control" rows="5" placeholder="Décrivez vos besoins en détail : matériaux, dimensions, couleurs, personnalisation..." required></textarea></div>
+<button type="submit" class="btn btn-orange btn-lg btn-block">Envoyer la demande</button>
+</form>
+</div>
+{% endblock %}

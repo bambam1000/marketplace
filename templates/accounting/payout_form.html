@@ -1,0 +1,30 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Demande de retrait{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>💸 Demander un retrait</h1></div>
+<div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;">
+<div class="dash-card">
+<form method="post">{% csrf_token %}
+<div style="background:#fafafa;border-radius:var(--radius-sm);padding:14px;margin-bottom:1.5rem;font-size:13px;">
+<div style="display:flex;justify-content:space-between;"><span>Solde disponible:</span><strong style="color:var(--green);font-size:18px;">{{ wallet.balance|intcomma }} F</strong></div>
+<div style="font-size:11px;color:var(--text3);margin-top:4px;">Retrait minimum: 5,000 FCFA</div>
+</div>
+<div class="form-group"><label>Montant à retirer (FCFA) *</label><input type="number" name="amount" class="form-control" min="5000" max="{{ wallet.balance }}" required placeholder="Ex: 50000"></div>
+<div class="form-group"><label>Moyen de paiement *</label><select name="payment_method" class="form-control"><option value="momo">📱 MTN Mobile Money</option><option value="om">📱 Orange Money</option><option value="bank">🏦 Virement bancaire</option></select></div>
+<div class="form-group"><label>Détails du compte *</label><textarea name="account_details" class="form-control" rows="3" placeholder="Numéro MoMo/OM, nom du titulaire, ou RIB bancaire..." required></textarea></div>
+<button type="submit" class="btn btn-orange btn-lg btn-block">Soumettre la demande</button>
+</form>
+</div>
+<div>
+<div class="dash-card">
+<h4 style="font-size:13px;margin-bottom:10px;">ℹ️ Informations</h4>
+<div style="font-size:12px;color:var(--text2);line-height:1.8;">
+<p>Les retraits sont traités sous 24-48h ouvrées.</p>
+<p>Retrait minimum: <strong>5,000 F</strong></p>
+<p>Aucun frais de retrait pour MoMo et OM.</p>
+<p>Frais bancaires: 500 F par virement.</p>
+</div>
+</div>
+</div>
+</div>
+{% endblock %}

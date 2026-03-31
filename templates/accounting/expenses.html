@@ -1,0 +1,24 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Dépenses{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>📋 Dépenses de la plateforme</h1></div>
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));">
+{% for ct in cat_totals %}
+<div class="stat-card"><div class="stat-label">{{ ct.category|title }}</div><div class="stat-value" style="font-size:16px;color:var(--red);">{{ ct.total|intcomma }} F</div></div>
+{% endfor %}
+</div>
+<div style="display:grid;grid-template-columns:1fr 380px;gap:12px;">
+<div class="dash-card"><div class="dash-card-title">Historique</div>
+<table class="dash-table"><thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th>Montant</th></tr></thead><tbody>
+{% for e in expenses %}<tr><td style="font-size:12px;">{{ e.date|date:"d/m/Y" }}</td><td><span class="status-badge st-confirmed">{{ e.get_category_display }}</span></td><td>{{ e.description }}</td><td style="font-weight:600;color:var(--red);">{{ e.amount|intcomma }} F</td></tr>{% empty %}<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:2rem;">Aucune dépense</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="dash-card">
+<div class="dash-card-title">Ajouter une dépense</div>
+<form method="post">{% csrf_token %}
+<div class="form-group"><label>Catégorie</label><select name="category" class="form-control">{% for code, label in categories %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select></div>
+<div class="form-group"><label>Description</label><input type="text" name="description" class="form-control" required></div>
+<div class="form-row"><div class="form-group"><label>Montant (F)</label><input type="number" name="amount" class="form-control" required></div><div class="form-group"><label>Date</label><input type="date" name="date" class="form-control" required></div></div>
+<button type="submit" class="btn btn-orange btn-block">Ajouter</button>
+</form></div>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Mes devis soumis{% endblock %}
+{% block dash %}
+<div class="dash-header">
+<h1>💼 Mes devis soumis</h1>
+<p style="color:var(--text3);margin-top:4px;">Gérez vos propositions de devis pour les demandes des acheteurs</p>
+</div>
+
+<!-- Filtres par statut -->
+<div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;">
+<a href="{% url 'orders:my_quotes' %}" class="btn {% if not request.GET.status %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Tous</a>
+<a href="?status=pending" class="btn {% if request.GET.status == 'pending' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">En attente</a>
+<a href="?status=accepted" class="btn {% if request.GET.status == 'accepted' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Acceptés</a>
+<a href="?status=rejected" class="btn {% if request.GET.status == 'rejected' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Rejetés</a>
+</div>
+
+<!-- Stats rapides -->
+<div class="stats-grid" style="margin-bottom:2rem;">
+<div class="stat-card">
+<div class="stat-value">{{ total_quotes }}</div>
+<div class="stat-label">Total devis</div>
+</div>
+<div class="stat-card">
+<div class="stat-value" style="color:var(--orange);">{{ pending_quotes }}</div>
+<div class="stat-label">En attente</div>
+</div>
+<div class="stat-card">
+<div class="stat-value" style="color:var(--green);">{{ accepted_quotes }}</div>
+<div class="stat-label">Acceptés</div>
+</div>
+<div class="stat-card">
+<div class="stat-value" style="color:var(--red);">{{ rejected_quotes }}</div>
+<div class="stat-label">Rejetés</div>
+</div>
+</div>
+
+<!-- Liste des devis -->
+{% if quotes %}
+<div class="dash-card">
+<div class="table-responsive">
+<table class="data-table">
+<thead>
+<tr>
+<th>Demande RFQ</th>
+<th>Acheteur</th>
+<th>Prix unitaire</th>
+<th>Prix total</th>
+<th>Délai</th>
+<th>Statut</th>
+<th>Date</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for quote in quotes %}
+<tr>
+<td>
+<div style="font-weight:600;margin-bottom:4px;">{{ quote.rfq.product_name|truncatewords:8 }}</div>
+<div style="font-size:12px;color:var(--text3);">Qté: {{ quote.rfq.quantity|intcomma }} {{ quote.rfq.unit }}</div>
+</td>
+<td>{{ quote.rfq.buyer.display_name }}</td>
+<td><strong>{{ quote.price_per_unit|intcomma }} F</strong></td>
+<td><strong style="color:var(--orange);">{{ quote.total_price|intcomma }} F</strong></td>
+<td>{{ quote.delivery_time }}</td>
+<td>
+{% if quote.status == 'pending' %}
+<span class="badge" style="background:var(--orange);">En attente</span>
+{% elif quote.status == 'accepted' %}
+<span class="badge" style="background:var(--green);">✓ Accepté</span>
+{% else %}
+<span class="badge" style="background:var(--red);">✗ Rejeté</span>
+{% endif %}
+</td>
+<td>{{ quote.created_at|date:"d/m/Y" }}</td>
+<td>
+<a href="{% url 'orders:rfq_detail' quote.rfq.id %}" class="btn btn-sm btn-outline">Voir RFQ</a>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+{% else %}
+<div class="empty-state">
+<div class="icon">💼</div>
+<h3>Aucun devis soumis</h3>
+<p>Vous n'avez pas encore soumis de devis.</p>
+<a href="{% url 'orders:rfq_list' %}" class="btn btn-orange">Voir les demandes de devis</a>
+</div>
+{% endif %}
+{% endblock %}

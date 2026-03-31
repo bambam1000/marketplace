@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% block title %}Politique de Confidentialité — AfriMarket{% endblock %}
+{% block content %}
+<style>
+.privacy-hero {
+    background: linear-gradient(135deg, var(--orange) 0%, #e67e22 100%);
+    color: white;
+    padding: 4rem 1rem 3rem;
+    margin-bottom: 3rem;
+    text-align: center;
+}
+.privacy-hero h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+.privacy-hero .date {
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+.privacy-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+}
+.privacy-section {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border: 1px solid #f0f0f0;
+    transition: all 0.3s ease;
+}
+.privacy-section:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+.privacy-section h2 {
+    color: var(--orange);
+    font-size: 1.4rem;
+    margin-bottom: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.privacy-section h2 .icon {
+    font-size: 1.6rem;
+}
+.privacy-section p {
+    color: var(--text2);
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+.privacy-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
+}
+.privacy-section ul li {
+    color: var(--text2);
+    padding: 0.6rem 0;
+    padding-left: 1.8rem;
+    position: relative;
+    line-height: 1.6;
+}
+.privacy-section ul li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--orange);
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+.privacy-section ul li strong {
+    color: var(--text1);
+}
+.privacy-highlight {
+    background: linear-gradient(135deg, #fff3e6 0%, #ffe8cc 100%);
+    border-left: 4px solid var(--orange);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 2rem 0;
+}
+.privacy-highlight strong {
+    color: var(--orange);
+}
+.contact-box {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.5rem;
+}
+.contact-item .icon {
+    font-size: 1.5rem;
+}
+.contact-item a {
+    color: var(--orange);
+    font-weight: 500;
+    text-decoration: none;
+}
+.contact-item a:hover {
+    text-decoration: underline;
+}
+.back-button {
+    text-align: center;
+    margin-top: 3rem;
+}
+</style>
+
+<div class="privacy-hero">
+    <div class="container">
+        <h1>🔒 Politique de Confidentialité</h1>
+        <p class="date">Dernière mise à jour : {{ current_date|date:"d F Y" }}</p>
+    </div>
+</div>
+
+<div class="privacy-container">
+    <div class="privacy-section">
+        <h2><span class="icon">📋</span> 1. Collecte des informations</h2>
+        <p>AfriMarket collecte les informations suivantes lors de votre inscription et utilisation de la plateforme :</p>
+        <ul>
+            <li><strong>Informations d'identification :</strong> Nom d'utilisateur, adresse e-mail, numéro de téléphone</li>
+            <li><strong>Informations de profil :</strong> Nom complet, adresse, photo de profil</li>
+            <li><strong>Informations de boutique :</strong> Nom de boutique, description, localisation (latitude/longitude)</li>
+            <li><strong>Informations de paiement :</strong> Numéros de compte Mobile Money, Orange Money, coordonnées bancaires</li>
+            <li><strong>Données de transaction :</strong> Historique des commandes, paiements, boosts publicitaires</li>
+            <li><strong>Données techniques :</strong> Adresse IP, type de navigateur, pages visitées</li>
+        </ul>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">⚙️</span> 2. Utilisation des informations</h2>
+        <p>Nous utilisons vos informations pour :</p>
+        <ul>
+            <li>Gérer votre compte et vous fournir nos services</li>
+            <li>Traiter vos commandes et paiements</li>
+            <li>Faciliter la communication entre acheteurs et vendeurs</li>
+            <li>Afficher votre boutique et produits sur la plateforme</li>
+            <li>Gérer les campagnes publicitaires (boosts Facebook/WhatsApp)</li>
+            <li>Améliorer nos services et personnaliser votre expérience</li>
+            <li>Vous envoyer des notifications importantes sur vos transactions</li>
+            <li>Assurer la sécurité de la plateforme et prévenir la fraude</li>
+        </ul>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">🔗</span> 3. Partage des informations</h2>
+        <p>Vos informations peuvent être partagées dans les cas suivants :</p>
+        <ul>
+            <li><strong>Avec les vendeurs :</strong> Lorsque vous passez commande, vos coordonnées sont partagées avec le vendeur</li>
+            <li><strong>Avec les acheteurs :</strong> Votre boutique et informations de contact sont visibles publiquement</li>
+            <li><strong>Partenaires publicitaires :</strong> Lorsque vous créez un boost, vos données de ciblage sont transmises à Facebook/WhatsApp</li>
+            <li><strong>Prestataires de paiement :</strong> Pour traiter les paiements Mobile Money, Orange Money, virements bancaires</li>
+            <li><strong>Autorités légales :</strong> Si requis par la loi ou pour protéger nos droits</li>
+        </ul>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">🔐</span> 4. Sécurité des données</h2>
+        <p>Nous prenons des mesures de sécurité pour protéger vos informations :</p>
+        <ul>
+            <li>Chiffrement des mots de passe (hash sécurisé)</li>
+            <li>Connexions HTTPS sécurisées</li>
+            <li>Protection contre les accès non autorisés</li>
+            <li>Sauvegardes régulières des données</li>
+            <li>Limitations d'accès aux données sensibles</li>
+        </ul>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">👤</span> 5. Vos droits</h2>
+        <p>Vous disposez des droits suivants concernant vos données personnelles :</p>
+        <ul>
+            <li><strong>Accès :</strong> Consulter toutes vos données dans votre tableau de bord</li>
+            <li><strong>Modification :</strong> Mettre à jour vos informations de profil et boutique</li>
+            <li><strong>Suppression :</strong> Demander la suppression de votre compte en nous contactant</li>
+            <li><strong>Opposition :</strong> Refuser certains traitements de données (marketing par exemple)</li>
+            <li><strong>Portabilité :</strong> Obtenir une copie de vos données dans un format structuré</li>
+        </ul>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">🍪</span> 6. Cookies</h2>
+        <p>AfriMarket utilise des cookies pour :</p>
+        <ul>
+            <li>Maintenir votre session de connexion</li>
+            <li>Mémoriser votre panier d'achat</li>
+            <li>Analyser le trafic et améliorer nos services</li>
+            <li>Personnaliser votre expérience</li>
+        </ul>
+        <p>Vous pouvez désactiver les cookies dans votre navigateur, mais certaines fonctionnalités pourraient ne plus fonctionner.</p>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">💾</span> 7. Conservation des données</h2>
+        <p>Nous conservons vos données personnelles :</p>
+        <ul>
+            <li>Tant que votre compte est actif</li>
+            <li>Pendant la durée légale de conservation des transactions (10 ans)</li>
+            <li>Jusqu'à ce que vous demandiez la suppression de votre compte</li>
+        </ul>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">📝</span> 8. Modifications de la politique</h2>
+        <p>Nous nous réservons le droit de modifier cette politique de confidentialité à tout moment. Les modifications seront publiées sur cette page avec une nouvelle date de mise à jour. Nous vous encourageons à consulter régulièrement cette page.</p>
+    </div>
+
+    <div class="privacy-section">
+        <h2><span class="icon">📞</span> 9. Contact</h2>
+        <p>Pour toute question concernant cette politique de confidentialité ou l'utilisation de vos données, contactez-nous :</p>
+        <div class="contact-box">
+            <div class="contact-item">
+                <span class="icon">📧</span>
+                <div>
+                    <div style="font-size:12px;color:var(--text3);">Email</div>
+                    <a href="mailto:privacy@afrimarket.com">privacy@afrimarket.com</a>
+                </div>
+            </div>
+            <div class="contact-item">
+                <span class="icon">📱</span>
+                <div>
+                    <div style="font-size:12px;color:var(--text3);">Téléphone</div>
+                    <span style="color:var(--text2);">+237 6XX XX XX XX</span>
+                </div>
+            </div>
+            <div class="contact-item">
+                <span class="icon">📍</span>
+                <div>
+                    <div style="font-size:12px;color:var(--text3);">Adresse</div>
+                    <span style="color:var(--text2);">Douala, Cameroun</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="privacy-highlight">
+        <p style="margin:0;font-size:15px;"><strong>⚠️ Note importante :</strong> En utilisant AfriMarket, vous acceptez cette politique de confidentialité et le traitement de vos données personnelles tel que décrit ci-dessus.</p>
+    </div>
+
+    <div class="back-button">
+        <a href="{% url 'home' %}" class="btn btn-orange" style="padding:0.8rem 2rem;">← Retour à l'accueil</a>
+    </div>
+</div>
+{% endblock %}

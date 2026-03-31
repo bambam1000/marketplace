@@ -1,0 +1,231 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Point de Vente{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1>🏪 Point de Vente (POS)</h1>
+        <p>Gestion de caisse et ventes directes</p>
+    </div>
+    {% if active_session %}
+    <a href="{% url 'pos:interface' %}" class="btn btn-orange">🛒 Ouvrir la caisse</a>
+    {% else %}
+    <a href="{% url 'pos:open_session' %}" class="btn btn-orange">🔓 Ouvrir une session</a>
+    {% endif %}
+</div>
+
+<!-- Session active -->
+{% if active_session %}
+<div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; padding: 1.5rem; color: white; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h3 style="color: white; margin: 0 0 0.5rem 0;">✅ Session active</h3>
+            <div style="font-size: 14px; opacity: 0.9;">
+                Session: <strong>{{ active_session.session_number }}</strong> |
+                Ouverte: {{ active_session.opened_at|date:"H:i" }} |
+                Fond de caisse: {{ active_session.opening_cash|intcomma }} F
+            </div>
+            <div style="margin-top: 0.5rem; font-size: 18px; font-weight: 700;">
+                {{ active_session.sales_count }} vente{{ active_session.sales_count|pluralize:"s" }} -
+                {{ active_session.total_sales|intcomma }} F
+            </div>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{% url 'pos:interface' %}" class="btn" style="background: white; color: #059669; font-weight: 600;">
+                🛒 Caisse
+            </a>
+            <a href="{% url 'pos:close_session' active_session.id %}" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white;">
+                🔒 Fermer
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Stats du jour -->
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">💰</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ today_stats.total_revenue|floatformat:0|intcomma }} F</div>
+            <div class="stat-label">Chiffre d'affaires du jour</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">🛒</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ today_stats.sales_count }}</div>
+            <div class="stat-label">Ventes aujourd'hui</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">📊</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ today_stats.average_sale|floatformat:0|intcomma }} F</div>
+            <div class="stat-label">Panier moyen</div>
+        </div>
+    </div>
+</div>
+
+<!-- Sessions récentes -->
+<div class="card">
+    <div class="card-header">
+        <h3>📋 Sessions récentes</h3>
+        <a href="{% url 'pos:sales_report' %}" class="btn btn-sm">📈 Rapports complets</a>
+    </div>
+    <div class="card-body">
+        {% if recent_sessions %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>N° Session</th>
+                    <th>Caissier</th>
+                    <th>Ouverture</th>
+                    <th>Fermeture</th>
+                    <th>Ventes</th>
+                    <th>Total</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in recent_sessions %}
+                <tr>
+                    <td><strong>{{ session.session_number }}</strong></td>
+                    <td>{{ session.cashier.display_name }}</td>
+                    <td>{{ session.opened_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if session.closed_at %}
+                        {{ session.closed_at|date:"d/m/Y H:i" }}
+                        {% else %}
+                        <span class="badge badge-success">En cours</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ session.sales_count }}</td>
+                    <td><strong>{{ session.total_sales|floatformat:0|intcomma }} F</strong></td>
+                    <td>
+                        {% if session.status == 'open' %}
+                        <span class="badge badge-success">✓ Ouverte</span>
+                        {% else %}
+                        <span class="badge badge-secondary">🔒 Fermée</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if session.status == 'open' %}
+                        <a href="{% url 'pos:close_session' session.id %}" class="btn btn-sm">🔒 Fermer</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: #6b7280;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏪</div>
+            <p>Aucune session pour le moment.</p>
+            <a href="{% url 'pos:open_session' %}" class="btn btn-primary" style="margin-top: 1rem;">Ouvrir votre première session</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #111827;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-secondary {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+</style>
+{% endblock %}

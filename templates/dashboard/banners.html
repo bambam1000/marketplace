@@ -1,0 +1,61 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Bannières{% endblock %}
+{% block dash %}
+<div class="dash-header">
+<h1>Bannières de la page d'accueil</h1>
+<a href="{% url 'dashboard:banner_add' %}" class="btn btn-orange">+ Ajouter une bannière</a>
+</div>
+
+<div class="dash-card">
+<table class="dash-table">
+<thead>
+<tr>
+<th>Aperçu</th>
+<th>Titre</th>
+<th>Sous-titre</th>
+<th>Ordre</th>
+<th>Statut</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+{% for b in banners %}
+<tr>
+<td>
+<div style="width:120px;height:60px;border-radius:6px;overflow:hidden;background:#f5f5f5;">
+{% if b.image %}<img src="{{ b.image.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:11px;">Pas d'image</div>{% endif %}
+</div>
+</td>
+<td><strong>{{ b.title }}</strong></td>
+<td style="color:var(--text3);font-size:12px;">{{ b.subtitle|truncatechars:50 }}</td>
+<td>{{ b.order }}</td>
+<td>
+{% if b.is_active %}
+<span class="status-badge st-delivered">Actif</span>
+{% else %}
+<span class="status-badge st-cancelled">Inactif</span>
+{% endif %}
+</td>
+<td>
+<div style="display:flex;gap:6px;">
+<a href="{% url 'dashboard:banner_edit' pk=b.pk %}" class="btn btn-sm btn-outline">Modifier</a>
+<form method="post" action="{% url 'dashboard:banner_delete' pk=b.pk %}" style="display:inline;" onsubmit="return confirm('Supprimer cette bannière ?');">
+{% csrf_token %}
+<button type="submit" class="btn btn-sm btn-red">Supprimer</button>
+</form>
+</div>
+</td>
+</tr>
+{% empty %}
+<tr><td colspan="6" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">🖼️</div><div style="color:var(--text3);font-size:14px;">Aucune bannière</div><div style="color:var(--text3);font-size:12px;margin-top:4px;">Cliquez sur "Ajouter" pour en créer une.</div></td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<div class="dash-card" style="background:var(--orange-light);border-color:rgba(255,106,0,.15);">
+<p style="font-size:13px;color:var(--text2);">
+<strong>Conseil :</strong> Les bannières s'affichent en slider sur la page d'accueil. Utilisez des images de <strong>1200x400px</strong> minimum pour un meilleur rendu. L'ordre d&eacute;termine la position dans le slider.
+</p>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Portefeuille{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>👛 Mon Portefeuille</h1><a href="{% url 'accounting:payout_request' %}" class="btn btn-sm btn-orange">💸 Demander un retrait</a></div>
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+<div class="stat-card" style="border-color:var(--green);"><div class="stat-label">Solde disponible</div><div class="stat-value" style="color:var(--green);">{{ wallet.balance|intcomma }} <span style="font-size:12px;">F</span></div></div>
+<div class="stat-card"><div class="stat-label">En attente de versement</div><div class="stat-value" style="color:var(--yellow);">{{ wallet.pending_balance|intcomma }} <span style="font-size:12px;">F</span></div></div>
+<div class="stat-card"><div class="stat-label">Total gagné</div><div class="stat-value">{{ wallet.total_earned|intcomma }} <span style="font-size:12px;">F</span></div></div>
+<div class="stat-card"><div class="stat-label">Total retiré</div><div class="stat-value">{{ wallet.total_withdrawn|intcomma }} <span style="font-size:12px;">F</span></div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+<div class="dash-card"><div class="dash-card-title">Dernières transactions</div>
+<table class="dash-table"><thead><tr><th>Type</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+{% for t in transactions %}<tr><td><span class="status-badge st-{% if t.type == 'sale' %}delivered{% elif t.type == 'payout' %}pending{% else %}confirmed{% endif %}">{{ t.get_type_display }}</span></td><td style="font-weight:600;">{{ t.amount|intcomma }} F</td><td><span class="status-badge st-{{ t.status }}">{{ t.get_status_display }}</span></td><td style="font-size:11px;">{{ t.created_at|date:"d/m/Y" }}</td></tr>{% empty %}<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:1.5rem;">Aucune transaction</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="dash-card"><div class="dash-card-title">Demandes de retrait</div>
+<table class="dash-table"><thead><tr><th>Montant</th><th>Moyen</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+{% for p in payouts %}<tr><td style="font-weight:600;color:var(--red);">{{ p.amount|intcomma }} F</td><td>{{ p.get_payment_method_display }}</td><td><span class="status-badge st-{{ p.status }}">{{ p.get_status_display }}</span></td><td style="font-size:11px;">{{ p.created_at|date:"d/m/Y" }}</td></tr>{% empty %}<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:1.5rem;">Aucun retrait</td></tr>{% endfor %}
+</tbody></table></div>
+</div>
+{% endblock %}

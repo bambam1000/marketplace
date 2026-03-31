@@ -1,0 +1,25 @@
+Bonjour {{ recipient_name }},
+
+Vous avez reçu un nouveau message sur AfriMarket.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+De : {{ sender_name }}
+
+Message :
+{{ message_content }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pour répondre à ce message, visitez :
+{{ conversation_url }}
+
+Ou accédez à tous vos messages depuis votre tableau de bord :
+{{ site_url }}/messages/
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AfriMarket - La Marketplace Africaine
+Douala, Cameroun
+
+Cet email a été envoyé automatiquement. Merci de ne pas y répondre directement.

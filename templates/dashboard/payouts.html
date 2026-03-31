@@ -1,0 +1,15 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Versements{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>💸 Gestion des versements</h1></div>
+<div class="dash-card"><table class="dash-table"><thead><tr><th>Vendeur</th><th>Montant</th><th>Moyen</th><th>Détails</th><th>Statut</th><th>Date</th><th></th></tr></thead><tbody>
+{% for p in payouts %}<tr>
+<td style="font-weight:600;">{{ p.user.display_name }}</td>
+<td style="font-weight:700;color:var(--red);">{{ p.amount|intcomma }} F</td>
+<td>{{ p.get_payment_method_display }}</td>
+<td style="font-size:11px;max-width:200px;">{{ p.account_details|truncatechars:50 }}</td>
+<td><span class="status-badge st-{{ p.status }}">{{ p.get_status_display }}</span></td>
+<td style="font-size:12px;">{{ p.created_at|date:"d/m/Y" }}</td>
+<td>{% if p.status == 'pending' %}<form method="post" action="{% url 'dashboard:process_payout' p.pk %}" style="display:flex;gap:4px;">{% csrf_token %}<button name="action" value="approve" class="btn btn-sm btn-green">✓ Approuver</button><button name="action" value="reject" class="btn btn-sm btn-outline" style="color:var(--red);">✗ Rejeter</button></form>{% elif p.processed_at %}<span style="font-size:11px;color:var(--text3);">{{ p.processed_at|date:"d/m/Y" }}</span>{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="7" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">💸</div><div style="color:var(--text3);font-size:14px;">Aucun versement</div></td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

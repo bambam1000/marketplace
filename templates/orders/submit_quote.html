@@ -1,0 +1,75 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Soumettre un devis{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › <a href="{% url 'orders:rfq_list' %}">Demandes de devis</a> › <a href="{% url 'orders:rfq_detail' rfq.id %}">{{ rfq.product_name|truncatewords:5 }}</a> › Soumettre un devis</div>
+<div style="max-width:800px;margin:0 auto;padding:1.5rem;">
+<div style="text-align:center;margin-bottom:2rem;">
+<h2 style="font-size:20px;">💼 Soumettre un devis</h2>
+<p style="color:var(--text2);font-size:13px;">Proposez votre offre pour cette demande de devis</p>
+</div>
+
+<!-- Info RFQ -->
+<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:2rem;">
+<h3 style="font-size:16px;margin-bottom:12px;">📋 Demande de devis</h3>
+<div style="font-size:14px;margin-bottom:8px;"><strong>{{ rfq.product_name }}</strong></div>
+<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">{{ rfq.description }}</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:13px;">
+<div><strong>Quantité :</strong> {{ rfq.quantity|intcomma }} {{ rfq.unit }}</div>
+{% if rfq.target_price %}<div><strong>Prix cible :</strong> {{ rfq.target_price|intcomma }} F</div>{% endif %}
+<div><strong>Demandeur :</strong> {{ rfq.buyer.display_name }}</div>
+</div>
+</div>
+
+<!-- Formulaire -->
+<form method="post" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
+{% csrf_token %}
+<div class="form-group">
+<label>Prix par {{ rfq.unit }} (FCFA) *</label>
+<input type="number" name="price_per_unit" id="price_per_unit" class="form-control" placeholder="Ex: 5000" required oninput="calculateTotal()">
+</div>
+
+<div class="form-group">
+<label>Prix total (calculé automatiquement)</label>
+<div id="total_price" style="font-size:24px;font-weight:700;color:var(--orange);padding:12px;background:var(--bg2);border-radius:var(--radius);text-align:center;">0 FCFA</div>
+<small style="color:var(--text3);">{{ rfq.quantity|intcomma }} {{ rfq.unit }} × Prix unitaire</small>
+</div>
+
+<div class="form-row">
+<div class="form-group">
+<label>Délai de livraison *</label>
+<input type="text" name="delivery_time" class="form-control" placeholder="Ex: 7-10 jours" required>
+</div>
+<div class="form-group">
+<label>Conditions de paiement *</label>
+<select name="payment_terms" class="form-control" required>
+<option>50% à la commande, 50% à la livraison</option>
+<option>30% à la commande, 70% à la livraison</option>
+<option>Paiement complet à la commande</option>
+<option>Paiement à la livraison</option>
+<option>Autres (à préciser dans la description)</option>
+</select>
+</div>
+</div>
+
+<div class="form-group">
+<label>Description de votre offre *</label>
+<textarea name="description" class="form-control" rows="5" placeholder="Décrivez votre offre en détail : qualité du produit, garanties, service après-vente, avantages..." required></textarea>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+<a href="{% url 'orders:rfq_detail' rfq.id %}" class="btn btn-outline btn-lg">Annuler</a>
+<button type="submit" class="btn btn-orange btn-lg">Soumettre le devis</button>
+</div>
+</form>
+</div>
+
+<script>
+function calculateTotal() {
+  const pricePerUnit = parseFloat(document.getElementById('price_per_unit').value) || 0;
+  const quantity = {{ rfq.quantity }};
+  const total = pricePerUnit * quantity;
+
+  document.getElementById('total_price').textContent = total.toLocaleString('fr-FR') + ' FCFA';
+}
+</script>
+{% endblock %}

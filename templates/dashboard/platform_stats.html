@@ -1,0 +1,31 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Stats Plateforme{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>🌐 Statistiques de la plateforme</h1></div>
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+<div class="stat-card"><div class="stat-label">Utilisateurs</div><div class="stat-value">{{ total_users }}</div></div>
+<div class="stat-card"><div class="stat-label">Abonnements actifs</div><div class="stat-value" style="color:var(--green);">{{ active_subscriptions }}</div></div>
+<div class="stat-card"><div class="stat-label">Total Commandes</div><div class="stat-value">{{ total_orders }}</div></div>
+<div class="stat-card"><div class="stat-label">GMV (Vol. marchandises)</div><div class="stat-value" style="color:var(--orange);">{{ gmv|intcomma }} <span style="font-size:12px;">F</span></div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+<div class="dash-card">
+<div class="dash-card-title">💰 Revenus plateforme</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+<div style="background:var(--orange-light);border-radius:var(--radius-sm);padding:12px;"><div style="font-size:11px;color:var(--orange);">Commissions</div><div style="font-size:18px;font-weight:700;">{{ total_commissions|intcomma }} F</div></div>
+<div style="background:var(--blue-bg);border-radius:var(--radius-sm);padding:12px;"><div style="font-size:11px;color:var(--blue);">Abonnements</div><div style="font-size:18px;font-weight:700;">{{ total_sub_revenue|intcomma }} F</div></div>
+<div style="background:var(--green-bg);border-radius:var(--radius-sm);padding:12px;"><div style="font-size:11px;color:var(--green);">Boosts</div><div style="font-size:18px;font-weight:700;">{{ total_boost_revenue|intcomma }} F</div></div>
+<div style="background:#f5f3ff;border-radius:var(--radius-sm);padding:12px;"><div style="font-size:11px;color:var(--purple);">Bénéfice net</div><div style="font-size:18px;font-weight:700;">{{ net_revenue|intcomma }} F</div></div>
+</div>
+</div>
+<div class="dash-card">
+<div class="dash-card-title">📊 Charges</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+<div style="background:var(--red-bg);border-radius:var(--radius-sm);padding:12px;"><div style="font-size:11px;color:var(--red);">Dépenses</div><div style="font-size:18px;font-weight:700;">{{ total_expenses|intcomma }} F</div></div>
+<div style="background:var(--yellow-bg);border-radius:var(--radius-sm);padding:12px;"><div style="font-size:11px;color:var(--yellow);">À verser (vendeurs)</div><div style="font-size:18px;font-weight:700;">—</div></div>
+</div>
+<a href="{% url 'accounting:expenses' %}" class="btn btn-outline btn-sm btn-block" style="margin-top:12px;">Gérer les dépenses →</a>
+<a href="{% url 'accounting:report' %}" class="btn btn-outline btn-sm btn-block" style="margin-top:6px;">Voir les rapports →</a>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Codes Promo{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1>🎫 Codes Promo</h1>
+        <p>Gérez vos codes de réduction</p>
+    </div>
+    <a href="{% url 'marketing:promo_code_create' %}" class="btn btn-primary">+ Créer un code promo</a>
+</div>
+
+<div class="stats-mini" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+    <div class="stat-mini-card">
+        <div class="stat-mini-label">Total</div>
+        <div class="stat-mini-value">{{ promo_codes.count }}</div>
+    </div>
+    <div class="stat-mini-card">
+        <div class="stat-mini-label">Actifs</div>
+        <div class="stat-mini-value" style="color: #059669;">{{ active_count }}</div>
+    </div>
+    <div class="stat-mini-card">
+        <div class="stat-mini-label">Inactifs</div>
+        <div class="stat-mini-value" style="color: #6b7280;">{{ promo_codes.count|add:"-"|add:active_count }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>Type</th>
+                <th>Réduction</th>
+                <th>Utilisations</th>
+                <th>Valide du</th>
+                <th>Valide jusqu'au</th>
+                <th>Statut</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for promo in promo_codes %}
+            <tr>
+                <td><strong>{{ promo.code }}</strong></td>
+                <td>{{ promo.get_discount_type_display }}</td>
+                <td>
+                    {% if promo.discount_type == 'percentage' %}
+                    <span class="badge" style="background: #dbeafe; color: #1e40af;">{{ promo.discount_value }}%</span>
+                    {% else %}
+                    <span class="badge" style="background: #dcfce7; color: #166534;">{{ promo.discount_value|floatformat:0|intcomma }} F</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {{ promo.usage_count }}
+                    {% if promo.usage_limit %}
+                    <span style="color: #6b7280;">/ {{ promo.usage_limit }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ promo.valid_from|date:"d/m/Y H:i" }}</td>
+                <td>{{ promo.valid_to|date:"d/m/Y H:i" }}</td>
+                <td>
+                    {% if promo.is_valid %}
+                    <span class="badge badge-success">✓ Valide</span>
+                    {% elif not promo.is_active %}
+                    <span class="badge" style="background: #fee2e2; color: #991b1b;">Inactif</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Expiré</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="{% url 'marketing:promo_code_edit' promo.pk %}" class="btn btn-sm">✏️</a>
+                        <a href="{% url 'marketing:promo_code_toggle' promo.pk %}" class="btn btn-sm"
+                           onclick="return confirm('Voulez-vous {{ promo.is_active|yesno:'désactiver,activer' }} ce code ?')">
+                            {% if promo.is_active %}⏸️{% else %}▶️{% endif %}
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 3rem; color: #6b7280;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎫</div>
+                    <p>Aucun code promo pour le moment.</p>
+                    <a href="{% url 'marketing:promo_code_create' %}" class="btn btn-primary" style="margin-top: 1rem;">Créer votre premier code promo</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+.stat-mini-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-mini-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.stat-mini-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #111827;
+}
+</style>
+{% endblock %}

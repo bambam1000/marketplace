@@ -1,0 +1,303 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Booster: {{ product.name }}{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>🚀 Booster votre produit</h1><a href="{% url 'dashboard:products' %}" class="btn btn-sm btn-outline">← Retour</a></div>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1.5rem;">
+<!-- Product Preview -->
+<div class="dash-card">
+<h3 style="font-size:16px;margin-bottom:16px;font-weight:600;">Produit à booster</h3>
+<div style="background:#f9fafb;border-radius:var(--radius);padding:16px;">
+<div style="width:100%;aspect-ratio:1;background:#fff;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:3rem;overflow:hidden;margin-bottom:12px;">
+{% if product.image %}<img src="{{ product.image.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}🛍️{% endif %}
+</div>
+<div style="font-weight:600;font-size:15px;margin-bottom:8px;">{{ product.name }}</div>
+<div style="font-size:20px;font-weight:700;color:var(--orange);margin-bottom:8px;">{{ product.price|intcomma }} FCFA</div>
+<div style="display:flex;gap:12px;font-size:12px;color:var(--text3);">
+<span>📦 {{ product.orders_count }} ventes</span>
+<span>👁️ {{ product.views_count }} vues</span>
+</div>
+</div>
+
+<div style="background:var(--orange-light);border:1px solid rgba(255,106,0,.2);border-radius:var(--radius);padding:12px;margin-top:16px;">
+<div style="font-size:12px;color:var(--text2);line-height:1.6;">
+<strong>💡 Astuce :</strong> Les produits boostés obtiennent en moyenne 10x plus de visibilité et génèrent 5x plus de ventes.
+</div>
+</div>
+</div>
+
+<!-- Boost Configuration -->
+<div class="dash-card">
+<h3 style="font-size:16px;margin-bottom:16px;font-weight:600;">Choisissez votre plateforme</h3>
+<form method="post" id="boostForm">{% csrf_token %}
+
+<!-- Platform Selection -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+<!-- AfriMarket -->
+<label class="platform-card" data-platform="internal">
+<input type="radio" name="platform" value="internal" checked style="display:none;">
+<div class="platform-card-inner">
+<div class="platform-icon" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">🏠</div>
+<div class="platform-name">AfriMarket</div>
+<div class="platform-desc">Page d'accueil</div>
+<div class="platform-reach">📊 Portée locale</div>
+</div>
+</label>
+
+<!-- Facebook Ads -->
+<label class="platform-card" data-platform="facebook">
+<input type="radio" name="platform" value="facebook" style="display:none;">
+<div class="platform-card-inner">
+<div class="platform-icon" style="background:#1877f2;">📘</div>
+<div class="platform-name">Facebook Ads</div>
+<div class="platform-desc">Publicité ciblée</div>
+<div class="platform-reach">🌍 2M+ utilisateurs</div>
+</div>
+</label>
+
+<!-- WhatsApp Business -->
+<label class="platform-card" data-platform="whatsapp">
+<input type="radio" name="platform" value="whatsapp" style="display:none;">
+<div class="platform-card-inner">
+<div class="platform-icon" style="background:#25d366;">💬</div>
+<div class="platform-name">WhatsApp</div>
+<div class="platform-desc">Status & Catalogue</div>
+<div class="platform-reach">📱 1.5M+ utilisateurs</div>
+</div>
+</label>
+</div>
+
+<!-- Platform Details -->
+<div id="platformDetails" style="background:#f9fafb;border-radius:var(--radius);padding:20px;margin-bottom:24px;">
+<div id="detailInternal" class="platform-detail active">
+<h4 style="font-size:14px;font-weight:600;margin-bottom:12px;">🏠 Boost AfriMarket</h4>
+<ul style="font-size:13px;color:var(--text2);line-height:1.8;margin:0;padding-left:20px;">
+<li>Apparition en haut de la page d'accueil</li>
+<li>Badge "Produit vedette" ⭐</li>
+<li>Priorité dans les résultats de recherche</li>
+<li>Recommandations personnalisées</li>
+</ul>
+</div>
+
+<div id="detailFacebook" class="platform-detail">
+<h4 style="font-size:14px;font-weight:600;margin-bottom:12px;">📘 Facebook Ads Professional</h4>
+<ul style="font-size:13px;color:var(--text2);line-height:1.8;margin:0;padding-left:20px;">
+<li><strong>Ciblage avancé :</strong> Âge, localisation, intérêts, comportements</li>
+<li><strong>Formats variés :</strong> Photo, carrousel, vidéo, collection</li>
+<li><strong>Analytics détaillés :</strong> Impressions, clics, conversions, ROI</li>
+<li><strong>Remarketing :</strong> Reciblage des visiteurs du site</li>
+<li><strong>A/B Testing :</strong> Optimisation automatique des créatives</li>
+</ul>
+<div style="background:#fff;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-top:12px;">
+<div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Requis pour Facebook Ads :</div>
+<div style="font-size:13px;"><input type="text" name="fb_page_id" placeholder="ID de votre Page Facebook" class="form-control" style="font-size:13px;"></div>
+</div>
+</div>
+
+<div id="detailWhatsapp" class="platform-detail">
+<h4 style="font-size:14px;font-weight:600;margin-bottom:12px;">💬 WhatsApp Business Campaign</h4>
+<ul style="font-size:13px;color:var(--text2);line-height:1.8;margin:0;padding-left:20px;">
+<li><strong>Catalogue produit :</strong> Affichage dans le catalogue WhatsApp Business</li>
+<li><strong>Status sponsorisé :</strong> Publication en story pour vos contacts</li>
+<li><strong>Messages broadcast :</strong> Envoi ciblé à vos clients</li>
+<li><strong>Click-to-WhatsApp :</strong> Bouton direct vers votre chat</li>
+<li><strong>Analytics :</strong> Taux d'ouverture, clics, conversations</li>
+</ul>
+<div style="background:#fff;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px;margin-top:12px;">
+<div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Requis pour WhatsApp :</div>
+<div style="font-size:13px;"><input type="tel" name="whatsapp_number" placeholder="Numéro WhatsApp Business (ex: +237677123456)" class="form-control" style="font-size:13px;"></div>
+</div>
+</div>
+</div>
+
+<!-- Budget & Duration -->
+<div class="form-row">
+<div class="form-group">
+<label style="font-weight:600;margin-bottom:8px;">💰 Budget publicitaire</label>
+<select name="budget" id="budgetSelect" class="form-control" onchange="updateEstimates()">
+<option value="5000">5,000 FCFA</option>
+<option value="10000">10,000 FCFA</option>
+<option value="25000" selected>25,000 FCFA</option>
+<option value="50000">50,000 FCFA</option>
+<option value="100000">100,000 FCFA</option>
+<option value="custom">Budget personnalisé</option>
+</select>
+<input type="number" id="customBudget" name="custom_budget" placeholder="Montant personnalisé" class="form-control" style="display:none;margin-top:8px;" min="5000">
+</div>
+
+<div class="form-group">
+<label style="font-weight:600;margin-bottom:8px;">📅 Durée de la campagne</label>
+<select name="duration" id="durationSelect" class="form-control" onchange="updateEstimates()">
+<option value="3">3 jours</option>
+<option value="7" selected>7 jours</option>
+<option value="14">14 jours</option>
+<option value="30">30 jours</option>
+</select>
+</div>
+</div>
+
+<!-- Targeting (for Facebook/WhatsApp) -->
+<div id="targetingSection" style="display:none;margin-bottom:24px;">
+<label style="font-weight:600;margin-bottom:8px;display:block;">🎯 Ciblage de l'audience</label>
+<div class="form-row">
+<div class="form-group">
+<label style="font-size:13px;">Ville</label>
+<select name="target_city" class="form-control">
+<option value="">Toutes les villes</option>
+<option value="Douala">Douala</option>
+<option value="Yaoundé">Yaoundé</option>
+<option value="Bafoussam">Bafoussam</option>
+<option value="Garoua">Garoua</option>
+<option value="Bamenda">Bamenda</option>
+</select>
+</div>
+<div class="form-group">
+<label style="font-size:13px;">Âge</label>
+<select name="target_age" class="form-control">
+<option value="">Tous les âges</option>
+<option value="18-24">18-24 ans</option>
+<option value="25-34">25-34 ans</option>
+<option value="35-44">35-44 ans</option>
+<option value="45+">45+ ans</option>
+</select>
+</div>
+</div>
+</div>
+
+<!-- Estimates -->
+<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:var(--radius);padding:20px;margin-bottom:24px;color:#fff;">
+<div style="font-size:14px;font-weight:600;margin-bottom:16px;opacity:.9;">📊 Résultats estimés</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+<div>
+<div style="font-size:24px;font-weight:700;" id="estViews">2,500</div>
+<div style="font-size:12px;opacity:.8;">Vues estimées</div>
+</div>
+<div>
+<div style="font-size:24px;font-weight:700;" id="estClicks">250</div>
+<div style="font-size:12px;opacity:.8;">Clics estimés</div>
+</div>
+<div>
+<div style="font-size:24px;font-weight:700;" id="estOrders">12</div>
+<div style="font-size:12px;opacity:.8;">Ventes potentielles</div>
+</div>
+</div>
+</div>
+
+<!-- Submit -->
+<button type="submit" class="btn btn-orange btn-lg btn-block" style="height:56px;font-size:16px;font-weight:600;">
+🚀 Lancer la campagne maintenant
+</button>
+
+<p style="font-size:12px;color:var(--text3);text-align:center;margin-top:12px;">
+En cliquant sur "Lancer", vous acceptez que le montant soit débité de votre portefeuille.
+</p>
+</form>
+</div>
+</div>
+
+<style>
+.platform-card {
+cursor: pointer;
+display: block;
+}
+.platform-card-inner {
+background: #fff;
+border: 2px solid var(--border2);
+border-radius: var(--radius);
+padding: 16px;
+text-align: center;
+transition: all 0.3s ease;
+}
+.platform-card:hover .platform-card-inner {
+transform: translateY(-4px);
+box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+.platform-card input:checked + .platform-card-inner {
+border-color: var(--orange);
+background: var(--orange-light);
+box-shadow: 0 0 0 3px rgba(255,106,0,0.1);
+}
+.platform-icon {
+width: 48px;
+height: 48px;
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 24px;
+margin: 0 auto 12px;
+}
+.platform-name {
+font-weight: 600;
+font-size: 14px;
+margin-bottom: 4px;
+}
+.platform-desc {
+font-size: 12px;
+color: var(--text3);
+margin-bottom: 8px;
+}
+.platform-reach {
+font-size: 11px;
+color: var(--text2);
+background: var(--bg2);
+padding: 4px 8px;
+border-radius: 12px;
+display: inline-block;
+}
+.platform-detail {
+display: none;
+}
+.platform-detail.active {
+display: block;
+}
+</style>
+
+<script>
+// Platform switching
+document.querySelectorAll('.platform-card').forEach(card => {
+card.addEventListener('click', function() {
+const platform = this.dataset.platform;
+document.querySelectorAll('.platform-detail').forEach(d => d.classList.remove('active'));
+document.getElementById('detail' + platform.charAt(0).toUpperCase() + platform.slice(1)).classList.add('active');
+
+// Show/hide targeting section
+document.getElementById('targetingSection').style.display =
+(platform === 'facebook' || platform === 'whatsapp') ? 'block' : 'none';
+
+updateEstimates();
+});
+});
+
+// Budget custom
+document.getElementById('budgetSelect').addEventListener('change', function() {
+document.getElementById('customBudget').style.display =
+this.value === 'custom' ? 'block' : 'none';
+});
+
+// Update estimates
+function updateEstimates() {
+const platform = document.querySelector('input[name="platform"]:checked').value;
+const budgetSelect = document.getElementById('budgetSelect').value;
+const budget = budgetSelect === 'custom' ?
+(document.getElementById('customBudget').value || 25000) :
+parseInt(budgetSelect);
+const duration = parseInt(document.getElementById('durationSelect').value);
+
+let multiplier = 1;
+if (platform === 'facebook') multiplier = 1.5;
+if (platform === 'whatsapp') multiplier = 1.2;
+
+const views = Math.floor((budget / 10) * duration * multiplier);
+const clicks = Math.floor(views * 0.1);
+const orders = Math.floor(clicks * 0.05);
+
+document.getElementById('estViews').textContent = views.toLocaleString();
+document.getElementById('estClicks').textContent = clicks.toLocaleString();
+document.getElementById('estOrders').textContent = orders;
+}
+
+// Initialize
+updateEstimates();
+</script>
+{% endblock %}

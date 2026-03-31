@@ -1,0 +1,64 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Demandes de devis{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Demandes de devis</div>
+<div style="max-width:1200px;margin:0 auto;padding:1.5rem;">
+<div style="margin-bottom:2rem;">
+<h2 style="font-size:22px;margin-bottom:8px;">📋 Demandes de devis ouvertes</h2>
+<p style="color:var(--text3);font-size:14px;">Consultez les demandes de devis des acheteurs et proposez vos offres</p>
+</div>
+
+<!-- Filtres -->
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;margin-bottom:1.5rem;">
+<form method="get" style="display:flex;gap:10px;flex-wrap:wrap;">
+<input type="text" name="q" value="{{ request.GET.q }}" placeholder="Rechercher un produit..." class="form-control" style="flex:1;min-width:250px;">
+<select name="category" class="form-control" style="max-width:200px;" onchange="this.form.submit()">
+<option value="">Toutes catégories</option>
+{% for cat in categories %}
+<option value="{{ cat.pk }}" {% if request.GET.category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+{% endfor %}
+</select>
+<button type="submit" class="btn btn-orange">🔍 Filtrer</button>
+</form>
+</div>
+
+<!-- Liste des RFQ -->
+{% if rfqs %}
+<div style="display:grid;gap:1rem;">
+{% for rfq in rfqs %}
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;transition:var(--transition);cursor:pointer;" onmouseover="this.style.borderColor='var(--orange)'" onmouseout="this.style.borderColor='var(--border2)'" onclick="window.location='{% url 'orders:rfq_detail' rfq.id %}'">
+<div style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:start;">
+<div>
+<h3 style="font-size:16px;margin-bottom:8px;color:var(--text1);">{{ rfq.product_name }}</h3>
+<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6;">{{ rfq.description|truncatewords:30 }}</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+<span><strong>📦 Quantité :</strong> {{ rfq.quantity|intcomma }} {{ rfq.unit }}</span>
+{% if rfq.target_price %}
+<span><strong>💰 Prix cible :</strong> {{ rfq.target_price|intcomma }} FCFA/{{ rfq.unit }}</span>
+{% endif %}
+{% if rfq.category %}
+<span><strong>🏷️ Catégorie :</strong> {{ rfq.category.name }}</span>
+{% endif %}
+<span><strong>📅 Publié :</strong> {{ rfq.created_at|date:"d/m/Y" }}</span>
+</div>
+</div>
+<div style="text-align:center;">
+<div style="background:var(--bg2);padding:12px;border-radius:var(--radius);margin-bottom:10px;">
+<div style="font-size:24px;font-weight:700;color:var(--orange);">{{ rfq.quote_cnt }}</div>
+<div style="font-size:11px;color:var(--text3);">Devis reçus</div>
+</div>
+<a href="{% url 'orders:rfq_detail' rfq.id %}" class="btn btn-orange btn-sm" onclick="event.stopPropagation()">Voir détails →</a>
+</div>
+</div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:4rem;">
+<div class="icon">📋</div>
+<h3>Aucune demande de devis</h3>
+<p style="margin:8px 0 20px;">Aucune demande de devis disponible pour le moment.</p>
+</div>
+{% endif %}
+</div>
+{% endblock %}

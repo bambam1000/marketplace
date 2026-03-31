@@ -1,0 +1,107 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}{{ rfq.product_name }}{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › <a href="{% url 'orders:rfq_list' %}">Demandes de devis</a> › {{ rfq.product_name|truncatewords:8 }}</div>
+<div style="max-width:1000px;margin:0 auto;padding:1.5rem;">
+
+<!-- Info RFQ -->
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;">
+<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:1rem;">
+<div style="flex:1;">
+<h1 style="font-size:22px;margin-bottom:8px;">{{ rfq.product_name }}</h1>
+<div style="display:flex;gap:12px;font-size:13px;color:var(--text3);">
+<span>Publié le {{ rfq.created_at|date:"d/m/Y" }}</span>
+<span>•</span>
+<span>{{ rfq.quote_count }} devis reçu{{ rfq.quote_count|pluralize }}</span>
+</div>
+</div>
+<div style="background:{% if rfq.status == 'open' %}var(--green){% elif rfq.status == 'quoted' %}var(--orange){% elif rfq.status == 'accepted' %}var(--blue){% else %}var(--text3){% endif %};color:white;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;">{{ rfq.get_status_display }}</div>
+</div>
+
+<div style="font-size:14px;color:var(--text2);margin-bottom:1.5rem;line-height:1.7;">{{ rfq.description|linebreaksbr }}</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:1rem;background:var(--bg2);border-radius:var(--radius);">
+<div>
+<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">QUANTITÉ</div>
+<div style="font-size:16px;font-weight:600;">{{ rfq.quantity|intcomma }} {{ rfq.unit }}</div>
+</div>
+{% if rfq.target_price %}
+<div>
+<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">PRIX CIBLE</div>
+<div style="font-size:16px;font-weight:600;color:var(--orange);">{{ rfq.target_price|intcomma }} F/{{ rfq.unit }}</div>
+</div>
+{% endif %}
+{% if rfq.category %}
+<div>
+<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">CATÉGORIE</div>
+<div style="font-size:16px;font-weight:600;">{{ rfq.category.name }}</div>
+</div>
+{% endif %}
+<div>
+<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">DEMANDEUR</div>
+<div style="font-size:16px;font-weight:600;">{{ rfq.buyer.display_name }}</div>
+</div>
+</div>
+
+{% if user.is_authenticated and user.store and rfq.status == 'open' %}
+<div style="margin-top:1.5rem;">
+{% if user_quote %}
+<div style="background:var(--bg2);padding:1rem;border-radius:var(--radius);border:1px solid var(--orange);">
+<strong>✓ Vous avez déjà soumis un devis pour cette demande</strong> ({{ user_quote.price_per_unit|intcomma }} FCFA/{{ rfq.unit }})
+</div>
+{% else %}
+<a href="{% url 'orders:submit_quote' rfq.id %}" class="btn btn-orange btn-lg">💼 Soumettre un devis</a>
+{% endif %}
+</div>
+{% endif %}
+</div>
+
+<!-- Devis reçus -->
+{% if quotes %}
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
+<h3 style="font-size:18px;margin-bottom:1.5rem;">💼 Devis proposés ({{ quotes|length }})</h3>
+
+<div style="display:grid;gap:1rem;">
+{% for quote in quotes %}
+<div style="border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;{% if quote.status == 'accepted' %}background:#f0fdf4;border-color:var(--green);{% elif quote.status == 'rejected' %}background:#fef2f2;border-color:var(--red);opacity:0.7;{% endif %}">
+<div style="display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:start;">
+<div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+<div style="font-weight:600;font-size:15px;">{{ quote.store.name }}</div>
+{% if quote.store.is_verified %}<span class="verified-badge">✓ Vérifié</span>{% endif %}
+{% if quote.status == 'accepted' %}<span style="background:var(--green);color:white;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:600;">✓ ACCEPTÉ</span>{% endif %}
+{% if quote.status == 'rejected' %}<span style="background:var(--red);color:white;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:600;">✗ REJETÉ</span>{% endif %}
+</div>
+<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">{{ quote.description|truncatewords:50 }}</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:13px;">
+<div><strong>💰 Prix unitaire :</strong> {{ quote.price_per_unit|intcomma }} F</div>
+<div><strong>💵 Prix total :</strong> {{ quote.total_price|intcomma }} F</div>
+<div><strong>🚚 Livraison :</strong> {{ quote.delivery_time }}</div>
+<div><strong>💳 Paiement :</strong> {{ quote.payment_terms|truncatewords:5 }}</div>
+</div>
+</div>
+<div style="text-align:center;">
+<div style="font-size:24px;font-weight:700;color:var(--orange);margin-bottom:8px;">{{ quote.price_per_unit|intcomma }} F</div>
+<div style="font-size:11px;color:var(--text3);margin-bottom:12px;">par {{ rfq.unit }}</div>
+{% if user == rfq.buyer and quote.status == 'pending' %}
+<div style="display:grid;gap:6px;">
+<form method="post" action="{% url 'orders:accept_quote' quote.id %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm" style="background:var(--green);color:white;width:100%;">✓ Accepter</button></form>
+<form method="post" action="{% url 'orders:reject_quote' quote.id %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm btn-outline" style="width:100%;">✗ Rejeter</button></form>
+</div>
+{% endif %}
+</div>
+</div>
+</div>
+{% endfor %}
+</div>
+</div>
+{% else %}
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:2rem;text-align:center;">
+<div style="font-size:48px;margin-bottom:12px;">📭</div>
+<h3 style="font-size:16px;color:var(--text2);">Aucun devis reçu pour le moment</h3>
+<p style="font-size:13px;color:var(--text3);">Les vendeurs peuvent soumettre leurs offres</p>
+</div>
+{% endif %}
+
+</div>
+{% endblock %}

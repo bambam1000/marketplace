@@ -1,0 +1,19 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Transactions{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>🔄 Transactions</h1><div style="display:flex;gap:4px;">{% for code, label in type_choices %}<a href="?type={{ code }}" class="btn btn-sm btn-outline">{{ label }}</a>{% endfor %}<a href="{% url 'accounting:transactions' %}" class="btn btn-sm btn-outline">Toutes</a></div></div>
+<div class="dash-card"><table class="dash-table"><thead><tr><th>ID</th>{% if is_admin %}<th>Utilisateur</th>{% endif %}<th>Type</th><th>Montant</th><th>Commission</th><th>Net</th><th>Moyen</th><th>Référence</th><th>Statut</th><th>Date</th></tr></thead><tbody>
+{% for t in transactions %}<tr>
+<td style="font-size:10px;font-family:monospace;">{{ t.transaction_id }}</td>
+{% if is_admin %}<td>{{ t.user.display_name }}</td>{% endif %}
+<td><span class="status-badge st-{% if t.type == 'sale' %}delivered{% elif t.type == 'commission' %}confirmed{% elif t.type == 'payout' %}pending{% else %}processing{% endif %}">{{ t.get_type_display }}</span></td>
+<td style="font-weight:600;">{{ t.amount|intcomma }} F</td>
+<td style="color:var(--red);">{% if t.commission_amount %}-{{ t.commission_amount|intcomma }} F{% else %}—{% endif %}</td>
+<td style="font-weight:600;color:var(--green);">{{ t.net_amount|intcomma }} F</td>
+<td style="font-size:12px;">{{ t.payment_method|default:"—" }}</td>
+<td style="font-size:11px;color:var(--text3);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ t.reference|default:"—" }}</td>
+<td><span class="status-badge st-{{ t.status }}">{{ t.get_status_display }}</span></td>
+<td style="font-size:11px;color:var(--text3);">{{ t.created_at|date:"d/m/Y H:i" }}</td>
+</tr>{% empty %}<tr><td colspan="{% if is_admin %}10{% else %}9{% endif %}" style="text-align:center;color:var(--text3);padding:2rem;">Aucune transaction</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

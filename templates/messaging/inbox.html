@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<div class="section">
+<h2 style="font-size:18px;margin-bottom:1rem;">💬 Messages</h2>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);min-height:400px;">
+{% for c in conversations %}
+<a href="{% url 'messaging:conversation' c.pk %}" style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border2);transition:var(--transition);{% if c.unread_count > 0 %}background:rgba(255,106,0,0.05);{% endif %}" onmouseover="this.style.background='var(--orange-light)'" onmouseout="this.style.background='{% if c.unread_count > 0 %}rgba(255,106,0,0.05){% endif %}'">
+<div class="msg-avatar">{% if c.buyer == request.user %}{{ c.seller.initials }}{% else %}{{ c.buyer.initials }}{% endif %}</div>
+<div style="flex:1;min-width:0;">
+<div style="font-weight:{% if c.unread_count > 0 %}700{% else %}600{% endif %};font-size:13px;display:flex;align-items:center;gap:8px;">
+{% if c.buyer == request.user %}{{ c.seller.display_name }}{% else %}{{ c.buyer.display_name }}{% endif %}
+{% if c.unread_count > 0 %}<span style="background:var(--orange);color:white;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700;">{{ c.unread_count }}</span>{% endif %}
+</div>
+{% if c.last_message %}<div style="font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;{% if c.unread_count > 0 %}font-weight:600;color:var(--text1);{% endif %}">{{ c.last_message.content|truncatechars:60 }}</div>{% endif %}
+</div>
+<div style="font-size:11px;color:var(--text3);">{{ c.updated_at|timesince }}</div>
+</a>
+{% empty %}<div class="empty-state"><div class="icon">💬</div><h3>Aucune conversation</h3><p>Contactez un vendeur pour démarrer.</p></div>{% endfor %}
+</div>
+</div>
+{% endblock %}

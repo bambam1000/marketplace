@@ -1,0 +1,79 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Gestion des catégories{% endblock %}
+
+{% block content %}
+<div class="dash-content">
+    <div class="dash-header">
+        <div>
+            <h1>Catégories</h1>
+            <p>Gérez les catégories de produits de la plateforme</p>
+        </div>
+        <a href="{% url 'dashboard:category_add' %}" class="btn btn-orange">
+            <i class="fa-solid fa-plus"></i> Nouvelle catégorie
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Liste des catégories</h3>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Icône</th>
+                        <th>Nom</th>
+                        <th>Slug</th>
+                        <th>Parent</th>
+                        <th>Ordre</th>
+                        <th>Produits</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in categories %}
+                    <tr>
+                        <td style="font-size:24px;">{{ category.icon }}</td>
+                        <td>
+                            <strong>{{ category.name }}</strong>
+                            {% if category.description %}
+                            <div style="font-size:12px;color:var(--text3);margin-top:4px;">{{ category.description|truncatewords:10 }}</div>
+                            {% endif %}
+                        </td>
+                        <td><code style="font-size:12px;color:var(--text3);">{{ category.slug }}</code></td>
+                        <td>
+                            {% if category.parent %}
+                            <span style="font-size:12px;">{{ category.parent.icon }} {{ category.parent.name }}</span>
+                            {% else %}
+                            <span style="color:var(--text3);font-size:12px;">—</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge">{{ category.order }}</span></td>
+                        <td>{{ category.products.count }}</td>
+                        <td>
+                            <div style="display:flex;gap:8px;">
+                                <a href="{% url 'dashboard:category_edit' pk=category.pk %}" class="btn-icon" title="Modifier">
+                                    <i class="fa-solid fa-edit"></i>
+                                </a>
+                                <a href="{% url 'dashboard:category_delete' pk=category.pk %}" class="btn-icon" style="color:var(--danger);" title="Supprimer">
+                                    <i class="fa-solid fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align:center;padding:40px;color:var(--text3);">
+                            <i class="fa-solid fa-inbox" style="font-size:48px;opacity:0.3;"></i>
+                            <p style="margin-top:16px;">Aucune catégorie trouvée</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

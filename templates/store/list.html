@@ -1,0 +1,57 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Tous les vendeurs — AfriMarket{% endblock %}
+{% block content %}
+<div class="section">
+<div class="section-head" style="margin-bottom:1.5rem;">
+<h2>Tous les vendeurs ({{ total }})</h2>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1.2rem;">
+<form method="get" style="display:flex;gap:8px;flex:1;min-width:250px;">
+<input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un vendeur ou une ville..." class="form-control" style="max-width:350px;">
+<button type="submit" class="btn btn-orange">Rechercher</button>
+{% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+{% if verified_filter %}<input type="hidden" name="verified" value="1">{% endif %}
+</form>
+<div style="display:flex;gap:6px;">
+{% if verified_filter %}
+<a href="?q={{ search_query }}&sort={{ sort }}" class="btn btn-sm btn-orange">Verifies seulement ✕</a>
+{% else %}
+<a href="?q={{ search_query }}&sort={{ sort }}&verified=1" class="btn btn-sm btn-outline">Verifies seulement</a>
+{% endif %}
+<select onchange="window.location='?q={{ search_query }}&sort='+this.value+'{% if verified_filter %}&verified=1{% endif %}'" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:var(--font);">
+<option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>Plus recents</option>
+<option value="name" {% if sort == 'name' %}selected{% endif %}>Nom A-Z</option>
+<option value="products" {% if sort == 'products' %}selected{% endif %}>Plus de produits</option>
+</select>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+{% for s in stores %}
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;transition:var(--transition);">
+{% if s.banner %}
+<div style="height:90px;background:url('{{ s.banner.url }}') center/cover;"></div>
+{% else %}
+<div style="height:90px;background:linear-gradient(135deg,#1a1a2e,#16213e);"></div>
+{% endif %}
+<div style="padding:1rem;text-align:center;margin-top:-30px;">
+<div style="width:56px;height:56px;border-radius:50%;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:var(--orange);margin:0 auto .5rem;border:3px solid var(--white);overflow:hidden;">
+{% if s.logo %}<img src="{{ s.logo.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}{{ s.name|truncatechars:2 }}{% endif %}
+</div>
+<div style="font-weight:600;font-size:14px;">{{ s.name }}</div>
+{% if s.is_verified %}<div class="verified-badge" style="justify-content:center;margin-top:3px;">✓ Verifie</div>{% endif %}
+<div style="font-size:12px;color:var(--text3);margin-top:4px;">{{ s.city }}, {{ s.country }}</div>
+<div style="display:flex;justify-content:center;gap:1rem;margin-top:10px;font-size:12px;color:var(--text2);">
+<span><strong>{{ s.nb_products }}</strong> produits</span>
+<span>{{ s.rating }}</span>
+</div>
+<a href="{% url 'store:detail' slug=s.slug %}" class="btn btn-outline btn-sm btn-block" style="margin-top:10px;">Visiter la boutique</a>
+</div>
+</div>
+{% empty %}
+<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3);">
+<p>Aucun vendeur trouve.</p>
+</div>
+{% endfor %}
+</div>
+</div>
+{% endblock %}

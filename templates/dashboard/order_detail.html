@@ -1,0 +1,15 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Commande {{ order.order_number }}{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>{{ order.order_number }}</h1><a href="{% url 'dashboard:orders' %}" class="btn btn-sm btn-outline">← Retour</a></div>
+<div style="display:grid;grid-template-columns:1fr 320px;gap:12px;">
+<div>
+<div class="dash-card"><div class="dash-card-title">Articles</div><table class="dash-table"><thead><tr><th>Produit</th><th>Qté</th><th>Prix</th><th>Total</th></tr></thead><tbody>{% for i in order.items.all %}<tr><td>{{ i.product.name }}</td><td>{{ i.quantity }}</td><td>{{ i.price|intcomma }} F</td><td style="font-weight:600;">{{ i.subtotal|intcomma }} F</td></tr>{% endfor %}<tr><td colspan="3" style="text-align:right;font-weight:700;">Total</td><td style="font-weight:700;color:var(--red);font-size:16px;">{{ order.total_amount|intcomma }} FCFA</td></tr></tbody></table></div>
+<div class="dash-card"><div class="dash-card-title">Modifier le statut</div><form method="post" style="display:flex;gap:8px;">{% csrf_token %}<select name="status" class="form-control" style="width:auto;">{% for code, label in order.STATUS_CHOICES %}<option value="{{ code }}" {% if order.status == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn btn-orange btn-sm">Mettre à jour</button></form></div>
+</div>
+<div>
+<div class="dash-card"><h4 style="font-size:13px;margin-bottom:8px;">Client</h4><p style="font-size:13px;line-height:1.8;">{{ order.shipping_name }}<br>📞 {{ order.shipping_phone }}<br>📍 {{ order.shipping_address }}, {{ order.shipping_city }}</p></div>
+<div class="dash-card"><h4 style="font-size:13px;margin-bottom:8px;">Paiement</h4><p style="font-size:13px;">{{ order.get_payment_method_display }}</p><span class="status-badge {% if order.is_paid %}st-delivered{% else %}st-pending{% endif %}">{% if order.is_paid %}✓ Payée{% else %}⏳ Non payée{% endif %}</span></div>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,306 @@
+{% load static %}{% load humanize %}<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>{% block title %}Dashboard{% endblock %} — AfriMarket</title><link rel="stylesheet" href="{% static 'css/style.css' %}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#E8E8E8;color:#000;}
+
+/* Layout - Exact Skillset style */
+.dash-layout{display:flex;height:100vh;overflow:hidden;}
+.dash-sidebar{width:215px;flex-shrink:0;background:#FFFFFF;display:flex;flex-direction:column;box-shadow:2px 0 8px rgba(0,0,0,0.04);}
+.dash-content-wrapper{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#E8E8E8;}
+
+/* Top Navbar - Light gray like Skillset */
+.dash-navbar{background:#E8E8E8;padding:24px 32px 20px;display:flex;align-items:center;justify-content:space-between;}
+.dash-navbar-left{display:flex;align-items:center;gap:24px;}
+.dash-page-title{font-size:32px;font-weight:700;color:#000;margin:0;}
+.dash-navbar-search{position:relative;}
+.dash-navbar-search input{padding:12px 20px 12px 44px;border:none;border-radius:50px;font-size:14px;width:280px;transition:all 0.2s;background:#FFF;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+.dash-navbar-search input::placeholder{color:#999;}
+.dash-navbar-search input:focus{outline:none;box-shadow:0 2px 12px rgba(0,0,0,0.1);}
+.dash-navbar-search i{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#999;font-size:14px;}
+.dash-navbar-right{display:flex;align-items:center;gap:16px;}
+.dash-navbar-icon{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;color:#666;transition:all .2s;position:relative;cursor:pointer;text-decoration:none;background:#FFF;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+.dash-navbar-icon:hover{background:#F5F5F5;}
+.dash-navbar-icon .badge{position:absolute;top:8px;right:8px;background:#FF5252;color:#FFF;font-size:9px;padding:2px 5px;border-radius:10px;font-weight:700;min-width:16px;text-align:center;}
+.dash-user-menu{display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px;border-radius:50%;transition:all .2s;position:relative;}
+.dash-user-avatar{width:44px;height:44px;border-radius:50%;background:#C85A54;color:#FFF;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px;overflow:hidden;}
+.dash-user-avatar img{width:100%;height:100%;object-fit:cover;}
+.dash-user-info{display:none;}
+.dash-user-dropdown{position:absolute;top:calc(100% + 12px);right:0;background:#FFF;border:none;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);min-width:200px;opacity:0;visibility:hidden;transform:translateY(-10px);transition:all .2s ease;z-index:1000;}
+.dash-user-menu:hover .dash-user-dropdown{opacity:1;visibility:visible;transform:translateY(0);}
+.dash-user-dropdown a{display:flex;align-items:center;gap:12px;padding:12px 16px;color:#333;text-decoration:none;font-size:14px;transition:all .15s;}
+.dash-user-dropdown a:hover{background:#F5F5F5;}
+.dash-user-dropdown a:first-child{border-radius:12px 12px 0 0;}
+.dash-user-dropdown a:last-child{border-radius:0 0 12px 12px;}
+.dash-user-dropdown a i{width:18px;text-align:center;color:#666;}
+
+/* Main Content */
+.dash-main-content{flex:1;padding:24px 32px 32px;overflow-y:auto;background:#E8E8E8;}
+.dash-footer{display:none;}
+
+/* Sidebar - Exactly like Skillset */
+.dash-sidebar-logo{padding:28px 24px;font-size:26px;font-weight:700;color:#000;letter-spacing:-0.5px;}
+.dash-sidebar-logo span{color:#F97316;}
+.dash-sidebar-label{display:none;}
+.dash-nav{padding:12px 16px;flex:1;}
+.dash-nav a,.nav-menu-toggle{display:flex;align-items:center;padding:12px 16px;color:#666;text-decoration:none;font-size:15px;font-weight:500;transition:all .2s;border-radius:10px;margin-bottom:4px;border:none;background:none;width:100%;text-align:left;}
+.dash-nav a:hover,.nav-menu-toggle:hover{background:#F5F5F5;color:#000;}
+.dash-nav a.active{background:#000;color:#FFF;}
+.dash-nav .nav-icon{font-size:20px;margin-right:14px;width:24px;text-align:center;}
+.nav-menu-toggle{cursor:pointer;user-select:none;justify-content:space-between;}
+.nav-menu-toggle i{font-size:10px;transition:transform .2s;color:#999;}
+.nav-menu-toggle.active{background:#F5F5F5;color:#000;}
+.nav-menu-toggle.active i{transform:rotate(90deg);}
+.nav-submenu{max-height:0;overflow:hidden;transition:max-height .3s ease;padding-left:4px;}
+.nav-submenu.active{max-height:500px;}
+.nav-submenu a{padding:10px 16px 10px 54px !important;font-size:14px;margin-bottom:2px;}
+
+/* Upgrade Button in Sidebar */
+.sidebar-upgrade{margin:16px;padding:20px 18px;background:linear-gradient(135deg,#2D2D2D 0%,#1A1A1A 100%);border-radius:16px;color:#FFF;}
+.sidebar-upgrade h4{font-size:15px;font-weight:700;margin-bottom:8px;}
+.sidebar-upgrade p{font-size:12px;color:#BBB;margin-bottom:14px;line-height:1.4;}
+.sidebar-upgrade .btn{background:#FFF;color:#000;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;width:100%;text-align:center;border:none;cursor:pointer;}
+
+/* Dashboard Stat Cards - Like Skillset */
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:24px;}
+.stat-card{background:#FFF;border-radius:20px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.04);transition:all .2s;}
+.stat-card.dark{background:#2D2D2D;color:#FFF;}
+.stat-card h3{font-size:14px;color:#999;font-weight:500;margin-bottom:12px;}
+.stat-card.dark h3{color:#BBB;}
+.stat-card .value{font-size:32px;font-weight:700;margin-bottom:8px;color:#000;}
+.stat-card.dark .value{color:#FFF;}
+.stat-card .change{display:flex;align-items:center;gap:6px;font-size:13px;color:#10B981;}
+.stat-card .change.negative{color:#EF4444;}
+.stat-card .change i{font-size:10px;}
+.stat-card .change-text{color:#999;margin-left:4px;}
+
+/* Dashboard Grid Layout */
+.dash-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;margin-bottom:20px;}
+.dash-chart-card{background:#FFF;border-radius:20px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
+.dash-chart-card h3{font-size:18px;font-weight:700;margin-bottom:20px;color:#000;}
+
+/* Tables - Skillset style */
+.dash-table-wrapper{background:#FFF;border-radius:20px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-top:20px;}
+.dash-table-wrapper h3{font-size:18px;font-weight:700;margin-bottom:20px;color:#000;}
+.dash-table{width:100%;border-collapse:collapse;}
+.dash-table thead th{padding:14px 16px;text-align:left;font-size:13px;font-weight:600;color:#999;border-bottom:1px solid #F0F0F0;}
+.dash-table tbody td{padding:16px;font-size:14px;color:#333;border-bottom:1px solid #F5F5F5;}
+.dash-table tbody tr:last-child td{border-bottom:none;}
+.dash-table tbody tr:hover{background:#FAFAFA;}
+
+/* Buttons */
+.btn{padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:8px;text-decoration:none;}
+.btn-primary{background:#000;color:#FFF;}
+.btn-primary:hover{background:#333;}
+
+/* Status Badge */
+.status-badge{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;display:inline-block;}
+.status-badge.paid{background:#E8F5E9;color:#2E7D32;}
+
+/* Alerts */
+.alert{padding:14px 18px;border-radius:12px;font-size:14px;margin-bottom:16px;}
+.alert-success{background:#D1FAE5;color:#065F46;}
+.alert-error{background:#FEE2E2;color:#991B1B;}
+.alert-info{background:#DBEAFE;color:#1E40AF;}
+</style>
+</head><body>
+<div class="dash-layout">
+<aside class="dash-sidebar">
+<div class="dash-sidebar-logo">Afri<span>Market</span></div>
+<div class="dash-sidebar-label">Principal</div>
+<nav class="dash-nav">
+<a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"><span class="nav-icon">📊</span> Vue d'ensemble</a>
+<a href="{% url 'dashboard:orders' %}" class="{% if 'order' in request.resolver_match.url_name and 'rfq' not in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">📦</span> Commandes</a>
+<div class="nav-menu-toggle" onclick="toggleMenu(this)">
+<div><span class="nav-icon">📋</span> Devis RFQ</div>
+<i class="fa-solid fa-chevron-right"></i>
+</div>
+<div class="nav-submenu">
+<a href="{% url 'orders:rfq_list' %}" class="{% if request.resolver_match.url_name == 'rfq_list' %}active{% endif %}"><span class="nav-icon">📄</span> Demandes ouvertes</a>
+<a href="{% url 'orders:my_quotes' %}" class="{% if request.resolver_match.url_name == 'my_quotes' %}active{% endif %}"><span class="nav-icon">💼</span> Mes devis soumis</a>
+</div>
+<a href="{% url 'dashboard:products' %}" class="{% if 'product' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">🏷️</span> Produits</a>
+<a href="{% url 'dashboard:customers' %}" class="{% if request.resolver_match.url_name == 'customers' %}active{% endif %}"><span class="nav-icon">👥</span> Clients</a>
+</nav>
+{% if request.user.is_seller %}
+<div class="dash-sidebar-label">Vendeur</div>
+<nav class="dash-nav">
+<a href="{% url 'dashboard:store' %}" class="{% if request.resolver_match.url_name == 'store' %}active{% endif %}"><span class="nav-icon">🏪</span> Ma Boutique</a>
+<div class="nav-menu-toggle" onclick="toggleMenu(this)">
+<div><span class="nav-icon">💰</span> Finances</div>
+<i class="fa-solid fa-chevron-right"></i>
+</div>
+<div class="nav-submenu">
+<a href="{% url 'billing:my_subscription' %}"><span class="nav-icon">💎</span> Mon Abonnement</a>
+<a href="{% url 'billing:payment_config' %}"><span class="nav-icon">💳</span> Config. Paiement</a>
+<a href="{% url 'billing:my_boosts' %}"><span class="nav-icon">🚀</span> Mes Boosts</a>
+<a href="{% url 'accounting:wallet' %}"><span class="nav-icon">👛</span> Portefeuille</a>
+</div>
+<div class="nav-menu-toggle" onclick="toggleMenu(this)">
+<div><span class="nav-icon">📣</span> Marketing</div>
+<i class="fa-solid fa-chevron-right"></i>
+</div>
+<div class="nav-submenu">
+<a href="{% url 'marketing:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
+<a href="{% url 'marketing:promo_codes' %}"><span class="nav-icon">🎫</span> Codes Promo</a>
+<a href="{% url 'marketing:campaigns' %}"><span class="nav-icon">🎯</span> Campagnes</a>
+<a href="{% url 'marketing:analytics' %}"><span class="nav-icon">📈</span> Analytics</a>
+<a href="{% url 'marketing:loyalty' %}"><span class="nav-icon">⭐</span> Fidélité</a>
+</div>
+<div class="nav-menu-toggle" onclick="toggleMenu(this)">
+<div><span class="nav-icon">🧾</span> Facturation</div>
+<i class="fa-solid fa-chevron-right"></i>
+</div>
+<div class="nav-submenu">
+<a href="{% url 'invoicing:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
+<a href="{% url 'invoicing:invoices' %}"><span class="nav-icon">📄</span> Toutes les factures</a>
+<a href="{% url 'invoicing:invoice_create' %}"><span class="nav-icon">➕</span> Créer facture</a>
+<a href="{% url 'invoicing:settings' %}"><span class="nav-icon">⚙️</span> Paramètres</a>
+</div>
+<div class="nav-menu-toggle" onclick="toggleMenu(this)">
+<div><span class="nav-icon">📈</span> Comptabilité</div>
+<i class="fa-solid fa-chevron-right"></i>
+</div>
+<div class="nav-submenu">
+<a href="{% url 'accounting:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
+<a href="{% url 'accounting:transactions' %}"><span class="nav-icon">🔄</span> Transactions</a>
+<a href="{% url 'accounting:report' %}"><span class="nav-icon">📑</span> Rapports</a>
+</div>
+<div class="nav-menu-toggle" onclick="toggleMenu(this)">
+<div><span class="nav-icon">🏪</span> Point de Vente</div>
+<i class="fa-solid fa-chevron-right"></i>
+</div>
+<div class="nav-submenu">
+<a href="{% url 'pos:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
+<a href="{% url 'pos:interface' %}"><span class="nav-icon">🛒</span> Caisse</a>
+<a href="{% url 'pos:sales_report' %}"><span class="nav-icon">📈</span> Rapports</a>
+</div>
+</nav>
+{% endif %}
+{% if request.user.is_superuser or request.user.role == 'admin' %}
+<div class="dash-sidebar-label">Administration</div>
+<nav class="dash-nav">
+<div class="nav-menu-toggle" onclick="toggleMenu(this)">
+<div><span class="nav-icon">⚙️</span> Gestion</div>
+<i class="fa-solid fa-chevron-right"></i>
+</div>
+<div class="nav-submenu">
+<a href="{% url 'dashboard:users' %}" class="{% if request.resolver_match.url_name == 'users' %}active{% endif %}"><span class="nav-icon">👤</span> Utilisateurs</a>
+<a href="{% url 'dashboard:sellers' %}" class="{% if request.resolver_match.url_name == 'sellers' %}active{% endif %}"><span class="nav-icon">🏪</span> Vendeurs</a>
+<a href="{% url 'dashboard:payouts' %}" class="{% if request.resolver_match.url_name == 'payouts' %}active{% endif %}"><span class="nav-icon">💸</span> Versements</a>
+<a href="{% url 'accounting:expenses' %}"><span class="nav-icon">📋</span> Dépenses</a>
+<a href="{% url 'dashboard:categories' %}" class="{% if 'categor' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">📂</span> Catégories</a>
+<a href="{% url 'dashboard:banners' %}" class="{% if 'banner' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">🖼️</span> Bannières</a>
+<a href="{% url 'dashboard:platform_stats' %}" class="{% if request.resolver_match.url_name == 'platform_stats' %}active{% endif %}"><span class="nav-icon">🌐</span> Stats Plateforme</a>
+</div>
+</nav>
+{% endif %}
+<div class="sidebar-upgrade">
+<h4>Upgrade To Pro</h4>
+<p>Get access to additional features and content</p>
+<button class="btn">Upgrade</button>
+</div>
+<nav class="dash-nav" style="padding-top:8px;flex:0;">
+<a href="{% url 'accounts:profile' %}"><span class="nav-icon">⚙️</span> Settings</a>
+<a href="#"><span class="nav-icon">💬</span> Help Center</a>
+<a href="{% url 'accounts:logout' %}"><span class="nav-icon">🚪</span> Log out</a>
+</nav>
+</aside>
+<div class="dash-content-wrapper">
+<div class="dash-navbar">
+<div class="dash-navbar-left">
+<h1 class="dash-page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+</div>
+<div class="dash-navbar-right">
+<div class="dash-navbar-search">
+<i class="fa-solid fa-magnifying-glass"></i>
+<input type="text" placeholder="Search...">
+</div>
+<div class="dash-navbar-icon" style="position:relative;cursor:pointer;" id="languageSelector">
+<i class="fa-solid fa-globe"></i>
+<div class="dash-user-dropdown" style="min-width:150px;">
+<form action="{% url 'set_language' %}" method="post" style="margin:0;">
+{% csrf_token %}
+<input name="next" type="hidden" value="{{ request.path }}">
+<button type="submit" name="language" value="fr" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text1);font-size:13px;transition:background .2s;{% if LANGUAGE_CODE == 'fr' %}background:var(--bg2);font-weight:600;{% endif %}" onmouseover="this.style.background='var(--bg2)'" onmouseout="{% if LANGUAGE_CODE != 'fr' %}this.style.background='white'{% endif %}">
+<span style="font-size:18px;">🇫🇷</span> Français
+</button>
+<button type="submit" name="language" value="en" style="width:100%;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--text1);font-size:13px;transition:background .2s;{% if LANGUAGE_CODE == 'en' %}background:var(--bg2);font-weight:600;{% endif %}" onmouseover="this.style.background='var(--bg2)'" onmouseout="{% if LANGUAGE_CODE != 'en' %}this.style.background='white'{% endif %}">
+<span style="font-size:18px;">🇬🇧</span> English
+</button>
+</form>
+</div>
+</div>
+<a href="{% url 'messaging:inbox' %}" class="dash-navbar-icon" id="messagesIcon" title="Messages">
+<i class="fa-regular fa-comment-dots"></i>
+{% if unread_messages_count > 0 %}<span class="badge" id="messagesBadge">{{ unread_messages_count }}</span>{% endif %}
+</a>
+<a href="#" class="dash-navbar-icon" title="Notifications">
+<i class="fa-regular fa-bell"></i>
+<span class="badge">5</span>
+</a>
+<div class="dash-user-menu">
+<div class="dash-user-avatar">{{ user.display_name|truncatechars:3 }}</div>
+<div class="dash-user-info">
+<div class="dash-user-name">{{ user.display_name }}</div>
+<div class="dash-user-role">{% if user.is_superuser %}Admin{% elif user.is_seller %}Vendeur{% else %}Client{% endif %}</div>
+</div>
+<i class="fa-solid fa-chevron-down" style="font-size:10px;color:var(--text3);"></i>
+<div class="dash-user-dropdown">
+<a href="{% url 'accounts:profile' %}"><i class="fa-solid fa-user"></i> Mon Profil</a>
+<a href="{% url 'home' %}"><i class="fa-solid fa-globe"></i> Voir le site</a>
+<a href="{% url 'messaging:inbox' %}"><i class="fa-solid fa-envelope"></i> Messages</a>
+<div style="border-top:1px solid var(--border2);margin:4px 0;"></div>
+<a href="{% url 'accounts:logout' %}" style="color:var(--red);"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+</div>
+</div>
+</div>
+</div>
+<div class="dash-main-content">
+{% if messages %}{% for msg in messages %}<div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
+{% block dash %}{% endblock %}
+</div>
+<div class="dash-footer">
+<p>© 2026 AfriMarket — Tableau de bord vendeur • <a href="{% url 'faq' %}">Aide</a> • <a href="{% url 'contact' %}">Support</a> • <a href="#">Conditions</a></p>
+</div>
+</div>
+</div>
+<script>
+function toggleMenu(el) {
+  el.classList.toggle('active');
+  var submenu = el.nextElementSibling;
+  submenu.classList.toggle('active');
+}
+
+// Mise à jour du compteur de messages non lus en temps réel
+function updateUnreadCount() {
+  fetch('/messages/api/unread-count/')
+    .then(response => response.json())
+    .then(data => {
+      const badge = document.getElementById('messagesBadge');
+      const icon = document.getElementById('messagesIcon');
+
+      if (data.unread_count > 0) {
+        if (badge) {
+          badge.textContent = data.unread_count;
+        } else {
+          // Créer le badge s'il n'existe pas
+          const newBadge = document.createElement('span');
+          newBadge.className = 'badge';
+          newBadge.id = 'messagesBadge';
+          newBadge.textContent = data.unread_count;
+          icon.appendChild(newBadge);
+        }
+      } else {
+        // Supprimer le badge s'il n'y a pas de messages
+        if (badge) {
+          badge.remove();
+        }
+      }
+    })
+    .catch(error => console.error('Erreur lors de la récupération des messages:', error));
+}
+
+// Vérifier les nouveaux messages toutes les 5 secondes
+setInterval(updateUnreadCount, 5000);
+</script>
+{% block extra_js %}{% endblock %}</body></html>

@@ -1,0 +1,108 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Recherche: {{ query }}{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Recherche › {{ query }}</div>
+<div class="section" style="padding-top:0;">
+
+<!-- Filtres de type de recherche -->
+<div style="display:flex;gap:12px;margin-bottom:1.5rem;background:white;padding:12px;border-radius:var(--radius);border:1px solid var(--border2);">
+<a href="?q={{ query }}&type=all" class="btn {% if search_type == 'all' %}btn-orange{% else %}btn-outline{% endif %}" style="font-size:13px;">
+Tout ({{ total_products|add:total_stores }})
+</a>
+<a href="?q={{ query }}&type=products" class="btn {% if search_type == 'products' %}btn-orange{% else %}btn-outline{% endif %}" style="font-size:13px;">
+🏷️ Produits ({{ total_products }})
+</a>
+<a href="?q={{ query }}&type=stores" class="btn {% if search_type == 'stores' %}btn-orange{% else %}btn-outline{% endif %}" style="font-size:13px;">
+🏪 Boutiques ({{ total_stores }})
+</a>
+</div>
+
+<!-- Résultats des boutiques -->
+{% if stores and search_type in 'all,stores' %}
+<div style="margin-bottom:2.5rem;">
+<h2 style="font-size:18px;margin-bottom:1rem;display:flex;align-items:center;gap:8px;">
+<span>🏪</span> Boutiques
+<span style="color:var(--text3);font-size:13px;font-weight:400;">({{ stores|length }} résultats)</span>
+</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">
+{% for store in stores %}
+<a href="{% url 'store:detail' slug=store.slug %}" class="store-card" style="background:white;border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;transition:var(--transition);text-decoration:none;">
+<div style="display:flex;align-items:start;gap:1rem;">
+{% if store.logo %}
+<img src="{{ store.logo.url }}" alt="{{ store.name }}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;">
+{% else %}
+<div style="width:60px;height:60px;border-radius:8px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:24px;">🏪</div>
+{% endif %}
+<div style="flex:1;min-width:0;">
+<div style="font-weight:600;font-size:15px;color:var(--text1);margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+{{ store.name|truncatechars:30 }}
+{% if store.is_verified %}<span style="color:var(--blue);font-size:14px;" title="Boutique vérifiée">✓</span>{% endif %}
+</div>
+<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">
+📍 {{ store.city }}
+</div>
+{% if store.description %}
+<div style="font-size:12px;color:var(--text2);line-height:1.4;">
+{{ store.description|truncatechars:80 }}
+</div>
+{% endif %}
+</div>
+</div>
+<div style="display:flex;gap:1rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border2);font-size:12px;color:var(--text3);">
+<span>📦 {{ store.products.count }} produits</span>
+<span>⭐ {{ store.response_rate }}%</span>
+</div>
+</a>
+{% endfor %}
+</div>
+</div>
+{% endif %}
+
+<!-- Résultats des produits -->
+{% if search_type in 'all,products' %}
+<div>
+<h2 style="font-size:18px;margin-bottom:1rem;display:flex;align-items:center;gap:8px;">
+<span>🏷️</span> Produits
+<span style="color:var(--text3);font-size:13px;font-weight:400;">({{ products|length }} résultats)</span>
+</h2>
+<div class="products-grid">
+{% for p in products %}
+{% include 'includes/product_card.html' with product=p %}
+{% empty %}
+{% if search_type == 'products' %}
+<div class="empty-state" style="grid-column:1/-1;">
+<div class="icon">🔍</div>
+<h3>Aucun produit trouvé pour "{{ query }}"</h3>
+<p>Vérifiez l'orthographe ou essayez d'autres termes.</p>
+<a href="{% url 'catalog:product_list' %}" class="btn btn-orange" style="margin-top:12px;">Voir tous les produits</a>
+</div>
+{% endif %}
+{% endfor %}
+</div>
+</div>
+{% endif %}
+
+<!-- Aucun résultat global -->
+{% if not products and not stores %}
+<div class="empty-state">
+<div class="icon">🔍</div>
+<h3>Aucun résultat pour "{{ query }}"</h3>
+<p>Essayez avec d'autres mots-clés ou parcourez nos catégories.</p>
+<div style="display:flex;gap:12px;justify-content:center;margin-top:1.5rem;">
+<a href="{% url 'catalog:product_list' %}" class="btn btn-orange">Voir les produits</a>
+<a href="{% url 'store:list' %}" class="btn btn-outline">Voir les boutiques</a>
+</div>
+</div>
+{% endif %}
+
+</div>
+
+<style>
+.store-card:hover {
+background:var(--bg2);
+border-color:var(--orange);
+transform:translateY(-2px);
+box-shadow:0 4px 12px rgba(255,106,0,0.15);
+}
+</style>
+{% endblock %}

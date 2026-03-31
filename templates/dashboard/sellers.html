@@ -1,0 +1,16 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Vendeurs{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>🏪 Gestion des vendeurs</h1></div>
+<div class="dash-card"><table class="dash-table"><thead><tr><th>Boutique</th><th>Propriétaire</th><th>Ville</th><th>Produits</th><th>Ventes</th><th>Vérifié</th><th>Depuis</th><th></th></tr></thead><tbody>
+{% for s in sellers %}<tr>
+<td style="font-weight:600;">{{ s.name }}</td>
+<td>{{ s.owner.display_name }}<br><span style="font-size:11px;color:var(--text3);">{{ s.owner.email }}</span></td>
+<td>{{ s.city }}</td>
+<td>{{ s.product_count }}</td>
+<td>{{ s.total_sales }}</td>
+<td>{% if s.is_verified %}<span style="color:var(--green);font-weight:600;">✓ Vérifié</span>{% else %}<span style="color:var(--text3);">Non</span>{% endif %}</td>
+<td style="font-size:12px;">{{ s.year_established }}</td>
+<td><a href="{% url 'dashboard:verify_seller' s.pk %}" class="btn btn-sm {% if s.is_verified %}btn-outline{% else %}btn-green{% endif %}">{% if s.is_verified %}Retirer badge{% else %}Vérifier{% endif %}</a></td>
+</tr>{% empty %}<tr><td colspan="8" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">🏪</div><div style="color:var(--text3);font-size:14px;">Aucun vendeur</div></td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

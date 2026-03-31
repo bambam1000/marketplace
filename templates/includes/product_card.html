@@ -1,0 +1,27 @@
+{% load humanize %}
+<a href="{{ product.get_absolute_url }}" class="product-card" style="--i:{{ forloop.counter }}">
+<div class="product-img">
+{% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}">{% else %}🛍️{% endif %}
+<div class="product-badges">
+{% if product.discount_percent %}<span class="pbadge pbadge-red">-{{ product.discount_percent }}%</span>{% endif %}
+{% if product.is_flash_deal %}<span class="pbadge pbadge-orange">⚡ Flash</span>{% endif %}
+{% if product.store.is_verified %}<span class="pbadge pbadge-green">✓</span>{% endif %}
+</div>
+<div class="product-actions-overlay">
+<form method="post" action="{% url 'cart:add' product.id %}">{% csrf_token %}<button class="action-btn" title="Ajouter au panier">🛒</button></form>
+</div>
+</div>
+<div class="product-body">
+<div class="product-title">{{ product.name }}</div>
+<div class="product-prices">
+<span class="product-price">{{ product.price|intcomma }} F</span>
+{% if product.old_price %}<span class="product-price-old">{{ product.old_price|intcomma }} F</span>{% endif %}
+</div>
+{% if product.min_order > 1 %}<div style="font-size:11px;color:var(--text3);margin-top:3px;">Min. {{ product.min_order }} pièces</div>{% endif %}
+<div class="product-meta">
+<span class="product-rating">{% if product.avg_rating %}★ {{ product.avg_rating }}{% else %}☆{% endif %} ({{ product.review_count }})</span>
+<span>{{ product.orders_count }} vendus</span>
+</div>
+<div class="product-store-info">🏪 {{ product.store.name }}</div>
+</div>
+</a>

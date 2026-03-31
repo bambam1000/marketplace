@@ -1,0 +1,309 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Programme Fidélité{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <h1>⭐ Programme de Fidélité</h1>
+    <p>Récompensez vos clients les plus fidèles</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);">🥉</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ tier_breakdown|length }}</div>
+            <div class="stat-label">Membres totaux</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);">⭐</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_points|default:0|intcomma }}</div>
+            <div class="stat-label">Points distribués</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📊</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.avg_points|default:0|floatformat:0 }}</div>
+            <div class="stat-label">Points moyens</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">💰</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_spent|default:0|floatformat:0|intcomma }} F</div>
+            <div class="stat-label">Dépenses totales</div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3>📊 Répartition par niveau</h3>
+    </div>
+    <div class="card-body">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
+            {% for tier_stat in tier_breakdown %}
+            <div class="tier-card tier-{{ tier_stat.tier }}">
+                <div class="tier-icon">
+                    {% if tier_stat.tier == 'bronze' %}🥉
+                    {% elif tier_stat.tier == 'silver' %}🥈
+                    {% elif tier_stat.tier == 'gold' %}🥇
+                    {% else %}💎{% endif %}
+                </div>
+                <div class="tier-name">
+                    {% if tier_stat.tier == 'bronze' %}Bronze
+                    {% elif tier_stat.tier == 'silver' %}Argent
+                    {% elif tier_stat.tier == 'gold' %}Or
+                    {% else %}Platine{% endif %}
+                </div>
+                <div class="tier-count">{{ tier_stat.count }} membre{{ tier_stat.count|pluralize }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>👥 Membres du programme</h3>
+    </div>
+    <div class="card-body">
+        {% if members %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Niveau</th>
+                    <th>Points</th>
+                    <th>Commandes</th>
+                    <th>Dépenses totales</th>
+                    <th>Réduction</th>
+                    <th>Membre depuis</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in members %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="user-avatar">{{ member.user.initials }}</div>
+                            <div>
+                                <div style="font-weight: 500;">{{ member.user.display_name }}</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">{{ member.user.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="tier-badge tier-badge-{{ member.tier }}">
+                            {% if member.tier == 'bronze' %}🥉 Bronze
+                            {% elif member.tier == 'silver' %}🥈 Argent
+                            {% elif member.tier == 'gold' %}🥇 Or
+                            {% else %}💎 Platine{% endif %}
+                        </span>
+                    </td>
+                    <td><strong>{{ member.points|intcomma }}</strong> pts</td>
+                    <td>{{ member.total_orders }}</td>
+                    <td>{{ member.total_spent|floatformat:0|intcomma }} F</td>
+                    <td><span class="badge badge-success">-{{ member.discount_rate }}%</span></td>
+                    <td>{{ member.joined_at|date:"d/m/Y" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">Aucun membre dans le programme de fidélité.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card" style="margin-top: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="card-body">
+        <h3 style="color: white; margin-bottom: 1rem;">ℹ️ Comment fonctionne le programme ?</h3>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            <li style="margin-bottom: 0.75rem;">✨ <strong>1 point = 1000 F CFA dépensés</strong></li>
+            <li style="margin-bottom: 0.75rem;">🥉 <strong>Bronze (0-1999 pts)</strong> : 0% de réduction</li>
+            <li style="margin-bottom: 0.75rem;">🥈 <strong>Argent (2000-4999 pts)</strong> : 5% de réduction</li>
+            <li style="margin-bottom: 0.75rem;">🥇 <strong>Or (5000-9999 pts)</strong> : 10% de réduction</li>
+            <li>💎 <strong>Platine (10000+ pts)</strong> : 15% de réduction</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #111827;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.tier-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.tier-card.tier-bronze {
+    background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
+    color: white;
+}
+
+.tier-card.tier-silver {
+    background: linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%);
+    color: white;
+}
+
+.tier-card.tier-gold {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #92400e;
+}
+
+.tier-card.tier-platinum {
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    color: #3730a3;
+}
+
+.tier-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.tier-name {
+    font-size: 1.125rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.tier-count {
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+.tier-badge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.tier-badge-bronze {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tier-badge-silver {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.tier-badge-gold {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tier-badge-platinum {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.875rem;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.text-muted {
+    color: #6b7280;
+}
+</style>
+{% endblock %}

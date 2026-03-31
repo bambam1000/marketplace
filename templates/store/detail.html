@@ -1,0 +1,109 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}{{ store.name }}{% endblock %}
+{% block extra_css %}
+{% endblock %}
+{% block content %}
+<div class="section">
+<div class="store-header" {% if store.banner %}style="background-image:linear-gradient(rgba(26,26,46,0.85), rgba(26,26,46,0.85)), url('{{ store.banner.url }}');background-size:cover;background-position:center;"{% endif %}>
+<div class="store-header-inner">
+<div class="store-logo-lg" {% if store.logo %}style="background-image:url('{{ store.logo.url }}');background-size:cover;background-position:center;color:transparent;"{% endif %}>
+{% if not store.logo %}{{ store.name|truncatechars:2 }}{% endif %}
+</div>
+<div><h1 style="color:#fff;">{{ store.name }}</h1>
+{% if store.is_verified %}<span class="verified-badge" style="color:#4ade80;">✓ Vendeur Vérifié</span>{% endif %}
+{% if store.description %}<p style="color:#fff;font-size:14px;margin:8px 0;line-height:1.6;max-width:600px;opacity:0.95;">{{ store.description }}</p>{% endif %}
+<div class="store-badges">
+<span class="store-badge">📍 {{ store.city }}{% if store.address %}, {{ store.address|truncatechars:30 }}{% endif %}</span>
+<span class="store-badge">Depuis {{ store.year_established }}</span>
+{% if store.phone %}<span class="store-badge">📞 {{ store.phone }}</span>{% endif %}
+{% if store.email %}<span class="store-badge">✉️ {{ store.email }}</span>{% endif %}
+</div>
+<div class="store-stats-bar"><span><strong>{{ store.product_count }}</strong> produits</span><span><strong>★ {{ store.rating }}</strong> note</span><span><strong>{{ store.response_rate }}%</strong> réponse</span><span><strong>{{ store.total_sales }}</strong> ventes</span></div>
+</div>
+<div style="margin-left:auto;display:flex;gap:8px;">
+{% if user.is_authenticated and user == store.owner %}
+<a href="{% url 'dashboard:store' %}" class="btn btn-lg" style="background:rgba(255,255,255,.15);color:#fff;">⚙️ Paramètres</a>
+{% else %}
+<a href="{% url 'messaging:new' store.owner.id %}" class="btn btn-lg" style="background:rgba(255,255,255,.15);color:#fff;">💬 Contacter</a>
+{% endif %}
+<button onclick="shareStore()" class="btn btn-lg" style="background:rgba(255,255,255,.15);color:#fff;">🔗 Partager</button>
+</div>
+</div></div>
+<div id="shareTip" style="display:none;align-items:center;gap:8px;background:var(--green-bg);color:var(--green);border:1px solid #a7f3d0;border-radius:var(--radius-sm);padding:10px 16px;margin-top:10px;font-size:13px;font-weight:600;">✓ Lien copié !</div>
+<div class="section-head"><h2>Produits de {{ store.name }} ({{ products|length }})</h2></div>
+<div class="products-grid">{% for p in products %}{% include 'includes/product_card.html' with product=p %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon">📦</div><h3>Aucun produit</h3></div>{% endfor %}</div>
+
+<div style="background:#fff;padding:1.5rem;border-radius:var(--radius);border:1px solid var(--border2);margin-top:2rem;">
+<h3 style="font-size:18px;margin-bottom:1rem;color:var(--text1);">📍 Localisation</h3>
+<div style="width:100%;height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border2);background:#f5f5f5;position:relative;">
+<iframe id="mapFrame" width="100%" height="100%" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="border:0;"></iframe>
+<div id="mapLoader" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+<div style="font-size:24px;margin-bottom:8px;">🗺️</div>
+<p style="font-size:13px;color:var(--text2);">Chargement de la carte...</p>
+</div>
+</div>
+<div style="margin-top:1rem;display:flex;gap:1rem;align-items:center;">
+<p style="font-size:13px;color:var(--text2);margin:0;flex:1;">{{ store.city }}{% if store.address %}, {{ store.address }}{% endif %}</p>
+<a href="https://www.google.com/maps/search/?api=1&query={{ store.city|urlencode }}{% if store.address %},{{ store.address|urlencode }}{% endif %}" target="_blank" class="btn btn-sm" style="background:var(--primary);color:#fff;">Voir sur Google Maps</a>
+</div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function shareStore(){
+  var url=window.location.href;
+  var name='{{ store.name|escapejs }}';
+  if(navigator.share){
+    navigator.share({title:name+' — AfriMarket',text:'Decouvrez la boutique '+name+' sur AfriMarket',url:url});
+  } else {
+    navigator.clipboard.writeText(url).then(function(){
+      var b=document.getElementById('shareTip');
+      b.style.display='flex';
+      setTimeout(function(){b.style.display='none';},2500);
+    });
+  }
+}
+
+// Charger la carte OpenStreetMap via iframe
+window.addEventListener('load', function() {
+  var mapFrame = document.getElementById('mapFrame');
+  var loader = document.getElementById('mapLoader');
+
+  if (!mapFrame) return;
+
+  {% if store.latitude and store.longitude %}
+    // Utiliser les coordonnées GPS du backend
+    var lat = {{ store.latitude }};
+    var lon = {{ store.longitude }};
+    var bbox = (lon - 0.01) + ',' + (lat - 0.01) + ',' + (lon + 0.01) + ',' + (lat + 0.01);
+    mapFrame.src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + lat + ',' + lon;
+    loader.style.display = 'none';
+  {% else %}
+    // Si pas de coordonnées GPS, utiliser l'API de géocodage
+    var address = '{{ store.city }}{% if store.address %}, {{ store.address }}{% endif %}';
+    fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(address) + '&limit=1')
+    .then(response => response.json())
+    .then(data => {
+      if (data.features && data.features.length > 0) {
+        var coords = data.features[0].geometry.coordinates;
+        var lon = coords[0];
+        var lat = coords[1];
+        var bbox = (lon - 0.01) + ',' + (lat - 0.01) + ',' + (lon + 0.01) + ',' + (lat + 0.01);
+        mapFrame.src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox + '&layer=mapnik&marker=' + lat + ',' + lon;
+        loader.style.display = 'none';
+      } else {
+        // Carte par défaut
+        mapFrame.src = 'https://www.openstreetmap.org/export/embed.html?bbox=-20,35,55,-35&layer=mapnik';
+        loader.style.display = 'none';
+      }
+    })
+    .catch(error => {
+      console.error('Erreur:', error);
+      mapFrame.src = 'https://www.openstreetmap.org/export/embed.html?bbox=-20,35,55,-35&layer=mapnik';
+      loader.style.display = 'none';
+    });
+  {% endif %}
+});
+</script>
+{% endblock %}

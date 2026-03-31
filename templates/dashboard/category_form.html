@@ -1,0 +1,73 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="dash-content">
+    <div class="dash-header">
+        <div>
+            <h1>{{ title }}</h1>
+            <p>{% if category %}Modifier les informations de la catégorie{% else %}Créer une nouvelle catégorie{% endif %}</p>
+        </div>
+        <a href="{% url 'dashboard:categories' %}" class="btn btn-outline">
+            <i class="fa-solid fa-arrow-left"></i> Retour
+        </a>
+    </div>
+
+    <div class="card" style="max-width:800px;">
+        <div class="card-header">
+            <h3>Informations de la catégorie</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label>Nom de la catégorie <span style="color:var(--danger);">*</span></label>
+                    <input type="text" name="name" class="form-control" value="{% if category %}{{ category.name }}{% endif %}" required placeholder="Ex: Électronique, Vêtements...">
+                </div>
+
+                <div class="form-group">
+                    <label>Icône (emoji)</label>
+                    <input type="text" name="icon" class="form-control" value="{% if category %}{{ category.icon }}{% else %}📦{% endif %}" placeholder="📦">
+                    <small style="color:var(--text3);font-size:12px;">Utilisez un emoji pour représenter cette catégorie</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="Description de la catégorie (optionnel)">{% if category %}{{ category.description }}{% endif %}</textarea>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label>Catégorie parente</label>
+                        <select name="parent" class="form-control">
+                            <option value="">— Aucune (catégorie principale) —</option>
+                            {% for parent in parent_categories %}
+                            <option value="{{ parent.pk }}" {% if category and category.parent and category.parent.pk == parent.pk %}selected{% endif %}>
+                                {{ parent.icon }} {{ parent.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small style="color:var(--text3);font-size:12px;">Pour créer une sous-catégorie</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ordre d'affichage</label>
+                        <input type="number" name="order" class="form-control" value="{% if category %}{{ category.order }}{% else %}0{% endif %}" min="0" placeholder="0">
+                        <small style="color:var(--text3);font-size:12px;">Plus petit = affiché en premier</small>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:24px;">
+                    <button type="submit" class="btn btn-orange">
+                        <i class="fa-solid fa-save"></i> {% if category %}Enregistrer les modifications{% else %}Créer la catégorie{% endif %}
+                    </button>
+                    <a href="{% url 'dashboard:categories' %}" class="btn btn-outline">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

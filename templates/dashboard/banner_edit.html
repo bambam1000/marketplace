@@ -1,0 +1,86 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{% if banner %}Modifier{% else %}Ajouter{% endif %} une bannière{% endblock %}
+{% block dash %}
+<div class="dash-header">
+<h1>{% if banner %}Modifier la bannière{% else %}Nouvelle bannière{% endif %}</h1>
+<a href="{% url 'dashboard:banners' %}" class="btn btn-outline">Retour</a>
+</div>
+
+<div class="dash-card">
+<form method="post" enctype="multipart/form-data">
+{% csrf_token %}
+
+<div class="form-row">
+<div class="form-group">
+<label>Titre *</label>
+<input type="text" name="title" class="form-control" value="{{ banner.title|default:'' }}" required placeholder="Ex: La Marketplace N°1 d'Afrique Centrale">
+</div>
+<div class="form-group">
+<label>Sous-titre</label>
+<input type="text" name="subtitle" class="form-control" value="{{ banner.subtitle|default:'' }}" placeholder="Ex: Des milliers de produits...">
+</div>
+</div>
+
+<div class="form-group">
+<label>Image de fond *{% if banner.image %} (actuelle ci-dessous){% endif %}</label>
+{% if banner.image %}
+<div style="margin-bottom:8px;border-radius:8px;overflow:hidden;max-width:400px;border:1px solid var(--border2);">
+<img src="{{ banner.image.url }}" style="width:100%;height:auto;">
+</div>
+{% endif %}
+<input type="file" name="image" class="form-control" accept="image/*" {% if not banner %}required{% endif %}>
+<small style="color:var(--text3);">Recommandé : 1200x400px minimum. Formats : JPG, PNG, WebP.</small>
+</div>
+
+<div style="background:#fafafa;border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+<h4 style="font-size:14px;margin-bottom:10px;">Bouton principal</h4>
+<div class="form-row">
+<div class="form-group">
+<label>Texte du bouton</label>
+<input type="text" name="button_text" class="form-control" value="{{ banner.button_text|default:'' }}" placeholder="Ex: Explorer les produits">
+</div>
+<div class="form-group">
+<label>Lien (URL)</label>
+<input type="text" name="button_url" class="form-control" value="{{ banner.button_url|default:'' }}" placeholder="Ex: /boutique/">
+</div>
+</div>
+</div>
+
+<div style="background:#fafafa;border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;">
+<h4 style="font-size:14px;margin-bottom:10px;">Bouton secondaire (optionnel)</h4>
+<div class="form-row">
+<div class="form-group">
+<label>Texte du bouton</label>
+<input type="text" name="button2_text" class="form-control" value="{{ banner.button2_text|default:'' }}" placeholder="Ex: Demander un devis">
+</div>
+<div class="form-group">
+<label>Lien (URL)</label>
+<input type="text" name="button2_url" class="form-control" value="{{ banner.button2_url|default:'' }}" placeholder="Ex: /commandes/devis/">
+</div>
+</div>
+</div>
+
+<div class="form-row">
+<div class="form-group">
+<label>Ordre d'affichage</label>
+<input type="number" name="order" class="form-control" value="{{ banner.order|default:'0' }}" min="0">
+<small style="color:var(--text3);">Les bannières avec un ordre plus petit s'affichent en premier.</small>
+</div>
+<div class="form-group">
+<label>Statut</label>
+<div style="margin-top:8px;">
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+<input type="checkbox" name="is_active" {% if banner.is_active or not banner %}checked{% endif %} style="accent-color:var(--orange);width:18px;height:18px;">
+Bannière active (visible sur le site)
+</label>
+</div>
+</div>
+</div>
+
+<div style="display:flex;gap:10px;margin-top:1rem;">
+<button type="submit" class="btn btn-orange btn-lg">{% if banner %}Enregistrer{% else %}Créer la bannière{% endif %}</button>
+<a href="{% url 'dashboard:banners' %}" class="btn btn-outline btn-lg">Annuler</a>
+</div>
+</form>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Mes demandes de devis{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Mes demandes de devis</div>
+<div style="max-width:1200px;margin:0 auto;padding:1.5rem;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
+<div>
+<h2 style="font-size:22px;margin-bottom:8px;">📋 Mes demandes de devis</h2>
+<p style="color:var(--text3);font-size:14px;">Gérez vos demandes et consultez les devis reçus</p>
+</div>
+<a href="{% url 'orders:create_rfq' %}" class="btn btn-orange">+ Nouvelle demande</a>
+</div>
+
+<!-- Filtres par statut -->
+<div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;">
+<a href="{% url 'orders:my_rfqs' %}" class="btn {% if not request.GET.status %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Toutes</a>
+<a href="?status=open" class="btn {% if request.GET.status == 'open' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Ouvertes</a>
+<a href="?status=quoted" class="btn {% if request.GET.status == 'quoted' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Devis reçus</a>
+<a href="?status=accepted" class="btn {% if request.GET.status == 'accepted' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Acceptées</a>
+<a href="?status=closed" class="btn {% if request.GET.status == 'closed' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Fermées</a>
+</div>
+
+<!-- Liste des RFQ -->
+{% if rfqs %}
+<div style="display:grid;gap:1rem;">
+{% for rfq in rfqs %}
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
+<div style="display:grid;grid-template-columns:1fr auto;gap:1.5rem;align-items:start;">
+<div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+<h3 style="font-size:16px;margin:0;">{{ rfq.product_name }}</h3>
+<div style="background:{% if rfq.status == 'open' %}var(--green){% elif rfq.status == 'quoted' %}var(--orange){% elif rfq.status == 'accepted' %}var(--blue){% else %}var(--text3){% endif %};color:white;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">{{ rfq.get_status_display }}</div>
+</div>
+<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">{{ rfq.description|truncatewords:40 }}</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text3);">
+<span>📦 {{ rfq.quantity|intcomma }} {{ rfq.unit }}</span>
+{% if rfq.target_price %}<span>💰 {{ rfq.target_price|intcomma }} F/{{ rfq.unit }}</span>{% endif %}
+<span>📅 {{ rfq.created_at|date:"d/m/Y" }}</span>
+{% if rfq.category %}<span>🏷️ {{ rfq.category.name }}</span>{% endif %}
+</div>
+</div>
+<div style="text-align:center;">
+<div style="background:var(--bg2);padding:16px;border-radius:var(--radius);margin-bottom:12px;min-width:120px;">
+<div style="font-size:28px;font-weight:700;color:var(--orange);">{{ rfq.quote_cnt }}</div>
+<div style="font-size:11px;color:var(--text3);">Devis reçus</div>
+</div>
+<a href="{% url 'orders:rfq_detail' rfq.id %}" class="btn btn-orange btn-sm btn-block">Voir les devis →</a>
+</div>
+</div>
+
+<!-- Aperçu des devis si disponible -->
+{% if rfq.quote_cnt > 0 and rfq.status != 'closed' %}
+<div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border2);">
+<div style="font-size:12px;color:var(--text3);margin-bottom:8px;">MEILLEURS DEVIS</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+{% for quote in rfq.quotes.all|slice:":3" %}
+<div style="background:var(--bg2);padding:10px;border-radius:var(--radius);font-size:12px;">
+<div style="font-weight:600;margin-bottom:4px;">{{ quote.store.name }}</div>
+<div style="color:var(--orange);font-weight:700;font-size:14px;">{{ quote.price_per_unit|intcomma }} F/{{ rfq.unit }}</div>
+<div style="color:var(--text3);font-size:11px;">Total: {{ quote.total_price|intcomma }} F</div>
+</div>
+{% endfor %}
+</div>
+</div>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:4rem;">
+<div class="icon">📋</div>
+<h3>Aucune demande de devis</h3>
+<p style="margin:8px 0 20px;">Vous n'avez pas encore créé de demande de devis.</p>
+<a href="{% url 'orders:create_rfq' %}" class="btn btn-orange">Créer une demande</a>
+</div>
+{% endif %}
+</div>
+{% endblock %}

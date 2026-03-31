@@ -1,0 +1,160 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}{% if promo_code %}Modifier{% else %}Créer{% endif %} Code Promo{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <h1>🎫 {% if promo_code %}Modifier{% else %}Créer{% endif %} un Code Promo</h1>
+</div>
+
+<div class="card" style="max-width: 800px;">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="code">Code Promo *</label>
+                <input type="text" id="code" name="code" class="form-control"
+                       value="{% if promo_code %}{{ promo_code.code }}{% endif %}"
+                       required style="text-transform: uppercase;">
+                <small class="form-text">Ex: PROMO20, NOEL2024, BIENVENUE</small>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="2">{% if promo_code %}{{ promo_code.description }}{% endif %}</textarea>
+            </div>
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="discount_type">Type de réduction *</label>
+                    <select id="discount_type" name="discount_type" class="form-control" required onchange="updateDiscountLabel()">
+                        <option value="percentage" {% if promo_code and promo_code.discount_type == 'percentage' %}selected{% endif %}>Pourcentage</option>
+                        <option value="fixed" {% if promo_code and promo_code.discount_type == 'fixed' %}selected{% endif %}>Montant fixe</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="discount_value"><span id="discount_label">Valeur</span> *</label>
+                    <input type="number" id="discount_value" name="discount_value" class="form-control"
+                           value="{% if promo_code %}{{ promo_code.discount_value }}{% endif %}"
+                           step="0.01" required>
+                </div>
+            </div>
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="min_purchase_amount">Montant minimum d'achat (F CFA)</label>
+                    <input type="number" id="min_purchase_amount" name="min_purchase_amount" class="form-control"
+                           value="{% if promo_code %}{{ promo_code.min_purchase_amount }}{% else %}0{% endif %}" step="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="max_discount_amount">Réduction maximum (F CFA)</label>
+                    <input type="number" id="max_discount_amount" name="max_discount_amount" class="form-control"
+                           value="{% if promo_code %}{{ promo_code.max_discount_amount }}{% endif %}" step="1">
+                    <small class="form-text">Laisser vide pour illimité</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="usage_limit">Nombre d'utilisations maximum</label>
+                <input type="number" id="usage_limit" name="usage_limit" class="form-control"
+                       value="{% if promo_code %}{{ promo_code.usage_limit }}{% endif %}">
+                <small class="form-text">Laisser vide pour illimité</small>
+            </div>
+
+            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="valid_from">Valide à partir de *</label>
+                    <input type="datetime-local" id="valid_from" name="valid_from" class="form-control"
+                           value="{% if promo_code %}{{ promo_code.valid_from|date:'Y-m-d\TH:i' }}{% endif %}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="valid_to">Valide jusqu'à *</label>
+                    <input type="datetime-local" id="valid_to" name="valid_to" class="form-control"
+                           value="{% if promo_code %}{{ promo_code.valid_to|date:'Y-m-d\TH:i' }}{% endif %}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_active" {% if not promo_code or promo_code.is_active %}checked{% endif %}>
+                    <span>Code actif</span>
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+                <a href="{% url 'marketing:promo_codes' %}" class="btn">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function updateDiscountLabel() {
+    const type = document.getElementById('discount_type').value;
+    const label = document.getElementById('discount_label');
+    if (type === 'percentage') {
+        label.textContent = 'Pourcentage (%)';
+    } else {
+        label.textContent = 'Montant (F CFA)';
+    }
+}
+
+document.getElementById('code').addEventListener('input', function(e) {
+    e.target.value = e.target.value.toUpperCase();
+});
+
+// Init
+updateDiscountLabel();
+</script>
+
+<style>
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #1a56db;
+    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+</style>
+{% endblock %}

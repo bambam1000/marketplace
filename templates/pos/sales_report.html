@@ -1,0 +1,268 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Rapports de ventes POS{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <h1>📊 Rapports de ventes</h1>
+    <a href="{% url 'pos:interface' %}" class="btn btn-orange">🛒 Retour à la caisse</a>
+</div>
+
+<!-- Filtres -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <form method="get" style="display: flex; gap: 1rem; align-items: end;">
+            <div class="form-group" style="margin: 0; flex: 1;">
+                <label>Date de début</label>
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+            </div>
+            <div class="form-group" style="margin: 0; flex: 1;">
+                <label>Date de fin</label>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-primary">🔍 Filtrer</button>
+            <a href="{% url 'pos:sales_report' %}" class="btn btn-outline">✕ Réinitialiser</a>
+        </form>
+    </div>
+</div>
+
+<!-- Statistiques -->
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">💰</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_revenue|floatformat:0|intcomma }} F</div>
+            <div class="stat-label">Chiffre d'affaires</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">🛒</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_sales }}</div>
+            <div class="stat-label">Nombre de ventes</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">💵</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_cash|floatformat:0|intcomma }} F</div>
+            <div class="stat-label">Espèces</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">💳</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ stats.total_card|floatformat:0|intcomma }} F</div>
+            <div class="stat-label">Cartes</div>
+        </div>
+    </div>
+</div>
+
+<!-- Top produits -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h3>🏆 Top 10 Produits</h3>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Produit</th>
+                    <th>Quantité vendue</th>
+                    <th>Chiffre d'affaires</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in top_products %}
+                <tr>
+                    <td><strong>{{ forloop.counter }}</strong></td>
+                    <td>{{ product.product__name }}</td>
+                    <td>{{ product.qty }}</td>
+                    <td><strong>{{ product.revenue|floatformat:0|intcomma }} F</strong></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 2rem; color: #6b7280;">
+                        Aucune vente
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Liste des ventes -->
+<div class="card">
+    <div class="card-header">
+        <h3>📋 Détail des ventes</h3>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>N° Vente</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Articles</th>
+                    <th>Total</th>
+                    <th>Paiement</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td><strong>{{ sale.sale_number }}</strong></td>
+                    <td>{{ sale.completed_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ sale.customer_name|default:"—" }}</td>
+                    <td>{{ sale.items.count }}</td>
+                    <td><strong>{{ sale.total_amount|floatformat:0|intcomma }} F</strong></td>
+                    <td>
+                        {% if sale.cash_amount > 0 %}<span class="badge badge-success">💵 Espèces</span>{% endif %}
+                        {% if sale.card_amount > 0 %}<span class="badge badge-primary">💳 Carte</span>{% endif %}
+                        {% if sale.mobile_money_amount > 0 %}<span class="badge badge-warning">📱 Mobile</span>{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'pos:print_receipt' sale.id %}" class="btn btn-sm" target="_blank">🖨️ Ticket</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: #6b7280;">
+                        Aucune vente pour cette période
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #111827;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--orange);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    padding: 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.875rem;
+}
+
+.table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-block;
+    margin-right: 0.25rem;
+}
+
+.badge-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-primary {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+</style>
+{% endblock %}

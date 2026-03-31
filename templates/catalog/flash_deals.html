@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Flash Deals{% endblock %}
+{% block content %}
+<div class="section">
+<div style="text-align:center;margin-bottom:1.5rem;"><h1 style="font-size:2rem;">⚡ Flash Deals</h1><p style="color:var(--text2);">Offres limitées — Stocks réduits — Dépêchez-vous !</p></div>
+<div class="products-grid">{% for p in products %}{% include 'includes/product_card.html' with product=p %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon">⚡</div><h3>Aucun flash deal actuellement</h3><p>Revenez bientôt !</p></div>{% endfor %}</div>
+</div>
+{% endblock %}

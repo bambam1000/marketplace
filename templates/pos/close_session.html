@@ -1,0 +1,209 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}Fermer la session{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <h1>🔒 Fermeture de session de caisse</h1>
+</div>
+
+<div style="max-width: 800px; margin: 2rem auto;">
+    <!-- Résumé de la session -->
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+            <h3>📊 Résumé de la session</h3>
+        </div>
+        <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                <div>
+                    <div class="info-row">
+                        <span>N° Session:</span>
+                        <strong>{{ session.session_number }}</strong>
+                    </div>
+                    <div class="info-row">
+                        <span>Caissier:</span>
+                        <span>{{ session.cashier.display_name }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Ouverture:</span>
+                        <span>{{ session.opened_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Fond de caisse initial:</span>
+                        <strong>{{ session.opening_cash|intcomma }} F</strong>
+                    </div>
+                </div>
+
+                <div style="background: #f9fafb; padding: 1rem; border-radius: 8px;">
+                    <div class="info-row">
+                        <span>Nombre de ventes:</span>
+                        <strong style="color: #3b82f6;">{{ session.sales_count }}</strong>
+                    </div>
+                    <div class="info-row">
+                        <span>Total des ventes:</span>
+                        <strong style="color: #10b981;">{{ session.total_sales|floatformat:0|intcomma }} F</strong>
+                    </div>
+                    <div class="info-row">
+                        <span>Espèces:</span>
+                        <span>{{ session.total_cash|floatformat:0|intcomma }} F</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Cartes:</span>
+                        <span>{{ session.total_card|floatformat:0|intcomma }} F</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Mobile Money:</span>
+                        <span>{{ session.total_mobile_money|floatformat:0|intcomma }} F</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire de fermeture -->
+    <div class="card">
+        <div class="card-header">
+            <h3>💵 Comptage de caisse</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label>💰 Espèces attendues en caisse</label>
+                    <input type="text" value="{{ session.opening_cash|add:session.total_cash|floatformat:0|intcomma }} F" disabled class="form-control" style="font-size: 18px; font-weight: 700; color: #10b981;">
+                    <small class="form-text">Fond de caisse ({{ session.opening_cash|intcomma }} F) + Ventes espèces ({{ session.total_cash|floatformat:0|intcomma }} F)</small>
+                </div>
+
+                <div class="form-group">
+                    <label>💵 Espèces réellement présentes en caisse *</label>
+                    <input type="number" name="closing_cash" step="1" required autofocus class="form-control" placeholder="Comptez les espèces et entrez le montant total" id="closingCash">
+                    <small class="form-text">Comptez manuellement toutes les espèces dans la caisse</small>
+                </div>
+
+                <div id="differenceAlert" style="display: none; padding: 1rem; border-radius: 8px; margin: 1rem 0;"></div>
+
+                <div class="form-group">
+                    <label>📝 Notes (optionnel)</label>
+                    <textarea name="notes" rows="3" class="form-control" placeholder="Remarques, incidents, etc."></textarea>
+                </div>
+
+                <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
+                    <strong>⚠️ Attention:</strong>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 14px;">
+                        La fermeture de session est définitive. Assurez-vous d'avoir bien compté votre caisse avant de valider.
+                    </p>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                        ✓ Fermer la session
+                    </button>
+                    <a href="{% url 'pos:dashboard' %}" class="btn btn-outline">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--orange);
+}
+
+.form-control:disabled {
+    background: #f9fafb;
+    color: #6b7280;
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+</style>
+
+<script>
+const expectedCash = {{ session.opening_cash|add:session.total_cash|floatformat:0 }};
+
+document.getElementById('closingCash').addEventListener('input', function() {
+    const closingCash = parseFloat(this.value) || 0;
+    const difference = closingCash - expectedCash;
+    const alert = document.getElementById('differenceAlert');
+
+    if (this.value && difference !== 0) {
+        alert.style.display = 'block';
+        if (difference > 0) {
+            alert.style.background = '#d1fae5';
+            alert.style.border = '1px solid #10b981';
+            alert.style.color = '#065f46';
+            alert.innerHTML = `<strong>✓ Excédent:</strong> +${difference.toLocaleString()} F`;
+        } else {
+            alert.style.background = '#fee2e2';
+            alert.style.border = '1px solid #dc2626';
+            alert.style.color = '#991b1b';
+            alert.innerHTML = `<strong>⚠️ Manquant:</strong> ${difference.toLocaleString()} F`;
+        }
+    } else if (this.value && difference === 0) {
+        alert.style.display = 'block';
+        alert.style.background = '#d1fae5';
+        alert.style.border = '1px solid #10b981';
+        alert.style.color = '#065f46';
+        alert.innerHTML = `<strong>✓ Parfait:</strong> La caisse est juste !`;
+    } else {
+        alert.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

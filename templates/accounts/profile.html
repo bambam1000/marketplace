@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Mon Profil{% endblock %}
+{% block content %}
+<div style="max-width:700px;margin:0 auto;padding:1.5rem;">
+<h2 style="font-size:18px;margin-bottom:1rem;">👤 Mon Profil</h2>
+<form method="post" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">{% csrf_token %}
+<div class="form-row"><div class="form-group"><label>Prénom</label><input type="text" name="first_name" value="{{ user.first_name }}" class="form-control"></div><div class="form-group"><label>Nom</label><input type="text" name="last_name" value="{{ user.last_name }}" class="form-control"></div></div>
+<div class="form-row"><div class="form-group"><label>Téléphone</label><input type="tel" name="phone" value="{{ user.phone }}" class="form-control"></div><div class="form-group"><label>Ville</label><input type="text" name="city" value="{{ user.city }}" class="form-control"></div></div>
+<div class="form-group"><label>Adresse</label><textarea name="address" class="form-control" rows="2">{{ user.address }}</textarea></div>
+<button type="submit" class="btn btn-orange">Enregistrer</button>
+</form>
+</div>
+{% endblock %}

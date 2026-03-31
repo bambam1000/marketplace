@@ -1,0 +1,40 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Abonnements{% endblock %}
+{% block content %}
+<div style="background:linear-gradient(135deg,#ff6a00,#ff8533);padding:3rem 2rem;text-align:center;color:#fff;">
+<h1 style="font-size:2rem;color:#fff;">💎 Choisissez votre plan</h1>
+<p style="opacity:.9;max-width:500px;margin:8px auto 0;">AfriMarket n'est pas gratuit — choisissez le plan adapté à vos ambitions.</p>
+</div>
+<div class="section" style="max-width:1100px;">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.2rem;">
+{% for plan in plans %}
+<div style="background:var(--white);border:{% if plan.is_popular %}2px solid var(--orange){% else %}1px solid var(--border2){% endif %};border-radius:12px;padding:1.8rem;position:relative;{% if plan.is_popular %}box-shadow:0 8px 32px rgba(255,106,0,.12);{% endif %}">
+{% if plan.is_popular %}<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--orange);color:#fff;padding:3px 14px;border-radius:50px;font-size:11px;font-weight:700;">POPULAIRE</div>{% endif %}
+<div style="text-align:center;">
+<div style="font-size:1.5rem;margin-bottom:4px;">{% if plan.badge_level == 'basic' %}🥉{% elif plan.badge_level == 'silver' %}🥈{% elif plan.badge_level == 'gold' %}🥇{% else %}💎{% endif %}</div>
+<h3 style="font-size:18px;">{{ plan.name }}</h3>
+<div style="margin:12px 0;"><span style="font-size:32px;font-weight:700;color:var(--orange);">{{ plan.price_monthly|intcomma }}</span><span style="font-size:14px;color:var(--text3);"> F/mois</span></div>
+{% if plan.price_yearly %}<div style="font-size:12px;color:var(--green);font-weight:600;">ou {{ plan.price_yearly|intcomma }} F/an (économisez {{ plan.yearly_savings|intcomma }} F)</div>{% endif %}
+</div>
+<div style="margin:1.2rem 0;font-size:13px;line-height:2.2;">
+<div>🏷️ <strong>{{ plan.max_products }}</strong> produits max</div>
+<div>📷 {{ plan.max_images_per_product }} images/produit</div>
+<div>💰 Commission: <strong>{{ plan.commission_rate }}%</strong></div>
+{% if plan.can_flash_deal %}<div style="color:var(--green);">⚡ Flash Deals</div>{% else %}<div style="color:var(--text3);text-decoration:line-through;">⚡ Flash Deals</div>{% endif %}
+{% if plan.can_boost %}<div style="color:var(--green);">🚀 Boost produits ({{ plan.boost_credits_monthly }} crédits/mois)</div>{% else %}<div style="color:var(--text3);text-decoration:line-through;">🚀 Boost produits</div>{% endif %}
+{% if plan.can_analytics %}<div style="color:var(--green);">📊 Analytics avancés</div>{% else %}<div style="color:var(--text3);text-decoration:line-through;">📊 Analytics avancés</div>{% endif %}
+{% if plan.can_priority_support %}<div style="color:var(--green);">🎯 Support prioritaire</div>{% else %}<div style="color:var(--text3);text-decoration:line-through;">🎯 Support prioritaire</div>{% endif %}
+{% if plan.can_custom_store %}<div style="color:var(--green);">🎨 Boutique personnalisée</div>{% else %}<div style="color:var(--text3);text-decoration:line-through;">🎨 Boutique personnalisée</div>{% endif %}
+{% if plan.featured_products %}<div style="color:var(--green);">⭐ {{ plan.featured_products }} produits vedettes</div>{% endif %}
+{% for f in plan.feature_list %}<div style="color:var(--green);">✓ {{ f }}</div>{% endfor %}
+</div>
+{% if current_sub and current_sub.plan == plan %}
+<div class="btn btn-outline btn-block" style="pointer-events:none;">✓ Plan actuel</div>
+{% else %}
+<a href="{% url 'billing:subscribe' plan_slug=plan.slug %}" class="btn {% if plan.is_popular %}btn-orange{% else %}btn-outline{% endif %} btn-lg btn-block">Choisir ce plan</a>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+</div>
+{% endblock %}

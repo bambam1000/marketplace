@@ -1,0 +1,34 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Comptabilité{% endblock %}
+{% block dash %}
+<div class="dash-header"><h1>📈 {% if is_admin %}Comptabilité Plateforme{% else %}Ma Comptabilité{% endif %}</h1></div>
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">{% if is_admin %}Revenus totaux{% else %}Total gagné{% endif %}</div><div class="stat-value" style="color:var(--green);">{{ total_revenue|intcomma }} <span style="font-size:12px;">F</span></div></div>
+<div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Commissions</div><div class="stat-value" style="color:var(--orange);">{{ total_commissions|intcomma }} <span style="font-size:12px;">F</span></div></div>
+<div class="stat-card"><div class="stat-icon">💸</div><div class="stat-label">Versements</div><div class="stat-value">{{ total_payouts|intcomma }} <span style="font-size:12px;">F</span></div></div>
+<div class="stat-card"><div class="stat-icon">{% if is_admin %}📋{% else %}👛{% endif %}</div><div class="stat-label">{% if is_admin %}Bénéfice net{% else %}Solde disponible{% endif %}</div><div class="stat-value" style="color:{% if net_profit > 0 %}var(--green){% else %}var(--red){% endif %};">{{ net_profit|intcomma }} <span style="font-size:12px;">F</span></div></div>
+</div>
+{% if is_admin %}
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+<div class="stat-card"><div class="stat-label">Revenus abonnements</div><div class="stat-value" style="font-size:18px;color:var(--blue);">{{ total_subscriptions|intcomma }} F</div></div>
+<div class="stat-card"><div class="stat-label">Revenus boosts</div><div class="stat-value" style="font-size:18px;color:var(--purple);">{{ total_boosts|intcomma }} F</div></div>
+<div class="stat-card"><div class="stat-label">Versements en attente</div><div class="stat-value" style="font-size:18px;color:var(--yellow);">{{ pending_payouts }}</div></div>
+</div>
+{% endif %}
+<div style="display:grid;grid-template-columns:3fr 2fr;gap:12px;">
+<div class="dash-card"><div class="dash-card-title">Évolution des revenus</div><div style="position:relative;height:220px;"><canvas id="revChart"></canvas></div></div>
+<div class="dash-card"><div class="dash-card-title">Transactions récentes <a href="{% url 'accounting:transactions' %}" style="font-size:12px;color:var(--orange);">Tout voir →</a></div>
+<table class="dash-table"><thead><tr><th>Type</th><th>Montant</th><th>Date</th></tr></thead><tbody>
+{% for t in recent_transactions %}<tr><td><span class="status-badge st-{% if t.type == 'sale' %}delivered{% elif t.type == 'commission' %}confirmed{% elif t.type == 'subscription' %}shipped{% elif t.type == 'boost' %}processing{% elif t.type == 'payout' %}pending{% else %}cancelled{% endif %}">{{ t.get_type_display }}</span></td><td style="font-weight:600;">{{ t.amount|intcomma }} F</td><td style="font-size:11px;color:var(--text3);">{{ t.created_at|date:"d/m" }}</td></tr>{% empty %}<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:1.5rem;">Aucune transaction</td></tr>{% endfor %}
+</tbody></table></div>
+</div>
+<div style="display:flex;gap:8px;margin-top:1rem;">
+<a href="{% url 'accounting:transactions' %}" class="btn btn-outline">🔄 Transactions</a>
+<a href="{% url 'accounting:report' %}" class="btn btn-outline">📑 Rapports</a>
+{% if not is_admin %}<a href="{% url 'accounting:wallet' %}" class="btn btn-outline">👛 Portefeuille</a><a href="{% url 'accounting:payout_request' %}" class="btn btn-orange">💸 Demander un retrait</a>{% endif %}
+{% if is_admin %}<a href="{% url 'accounting:expenses' %}" class="btn btn-outline">📋 Dépenses</a><a href="{% url 'dashboard:payouts' %}" class="btn btn-orange">💸 Gérer les versements</a>{% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}<script>
+new Chart(document.getElementById('revChart'),{type:'line',data:{labels:{{ months_json|safe }},datasets:[{label:'Revenus',data:{{ amounts_json|safe }},borderColor:'#ff6a00',backgroundColor:'rgba(255,106,0,.08)',fill:true,tension:.4,borderWidth:2,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#f0f0f0'},ticks:{callback:v=>(v/1000)+'k'}}}}});
+</script>{% endblock %}

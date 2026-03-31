@@ -1,0 +1,316 @@
+{% extends 'dashboard/base.html' %}
+{% load humanize %}
+
+{% block title %}{{ campaign.name }}{% endblock %}
+
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1>🎯 {{ campaign.name }}</h1>
+        <p>{{ campaign.get_campaign_type_display }} • {{ campaign.get_status_display }}</p>
+    </div>
+    <a href="{% url 'marketing:campaign_edit' campaign.pk %}" class="btn btn-primary">✏️ Modifier</a>
+</div>
+
+{% if campaign.banner %}
+<div style="margin-bottom: 2rem;">
+    <img src="{{ campaign.banner.url }}" alt="{{ campaign.name }}" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px;">
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">👁️</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ campaign.views_count|intcomma }}</div>
+            <div class="stat-label">Vues</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">👆</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ campaign.clicks_count|intcomma }}</div>
+            <div class="stat-label">Clics</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">✅</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ campaign.conversions_count }}</div>
+            <div class="stat-label">Conversions</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #ffa751 0%, #ffe259 100%);">💰</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ campaign.revenue_generated|floatformat:0|intcomma }} F</div>
+            <div class="stat-label">Revenus</div>
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+    <div>
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h3>📊 Performance</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div>
+                        <div class="metric-label">Taux de conversion</div>
+                        <div class="metric-value">{{ campaign.conversion_rate }}%</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" style="width: {{ campaign.conversion_rate }}%;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="metric-label">ROI</div>
+                        <div class="metric-value" style="color: {% if campaign.roi > 0 %}#059669{% else %}#dc2626{% endif %}">
+                            {{ campaign.roi }}%
+                        </div>
+                        <small class="text-muted">
+                            Budget: {{ campaign.budget|floatformat:0|intcomma }} F CFA
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>📝 Description</h3>
+            </div>
+            <div class="card-body">
+                <p style="white-space: pre-wrap;">{{ campaign.description }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h3>ℹ️ Informations</h3>
+            </div>
+            <div class="card-body">
+                <div class="info-row">
+                    <span class="info-label">Statut</span>
+                    <span class="campaign-status campaign-status-{{ campaign.status }}">
+                        {{ campaign.get_status_display }}
+                    </span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span>{{ campaign.get_campaign_type_display }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Début</span>
+                    <span>{{ campaign.start_date|date:"d/m/Y à H:i" }}</span>
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">Fin</span>
+                    <span>{{ campaign.end_date|date:"d/m/Y à H:i" }}</span>
+                </div>
+
+                {% if campaign.promo_code %}
+                <div class="info-row">
+                    <span class="info-label">Code promo</span>
+                    <span><strong>{{ campaign.promo_code.code }}</strong></span>
+                </div>
+                {% endif %}
+
+                <div class="info-row">
+                    <span class="info-label">Créée le</span>
+                    <span>{{ campaign.created_at|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+        </div>
+
+        {% if campaign.target_products.exists %}
+        <div class="card">
+            <div class="card-header">
+                <h3>🏷️ Produits ({{ campaign.target_products.count }})</h3>
+            </div>
+            <div class="card-body">
+                <div style="max-height: 300px; overflow-y: auto;">
+                    {% for product in campaign.target_products.all %}
+                    <div class="product-item">
+                        {% if product.image %}
+                        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+                        {% else %}
+                        <div class="product-placeholder">📦</div>
+                        {% endif %}
+                        <div>
+                            <div style="font-weight: 500;">{{ product.name }}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280;">{{ product.price|floatformat:0|intcomma }} F</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #111827;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.metric-value {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.metric-bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.metric-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1a56db, #7c3aed);
+    transition: width 0.3s ease;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.campaign-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.campaign-status-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.campaign-status-draft {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.campaign-status-scheduled {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.product-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.product-item:hover {
+    background: #f9fafb;
+}
+
+.product-item img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.product-placeholder {
+    width: 48px;
+    height: 48px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.text-muted {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
