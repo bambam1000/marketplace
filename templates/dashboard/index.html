@@ -2,106 +2,237 @@
 {% block title %}Vue d'ensemble{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 {% block dash %}
-<!-- Stats Cards - Skillset style -->
+
+<!-- Welcome Banner -->
+<div style="margin-bottom:24px;padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%);border-radius:var(--dash-radius);color:#fff;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-40px;right:-20px;width:200px;height:200px;background:radial-gradient(circle,rgba(255,106,0,.2),transparent 70%);pointer-events:none;"></div>
+    <div style="position:absolute;bottom:-60px;right:80px;width:160px;height:160px;background:radial-gradient(circle,rgba(59,130,246,.15),transparent 70%);pointer-events:none;"></div>
+    <div style="position:relative;z-index:1;">
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.02em;">Bienvenue, {{ user.display_name }} 👋</h2>
+        <p style="font-size:13.5px;color:rgba(255,255,255,.6);max-width:500px;line-height:1.5;">Voici un aperçu de votre activité. {% if is_admin %}Vous gérez la plateforme en tant qu'administrateur.{% elif is_seller %}Votre boutique se porte bien.{% else %}Suivez vos commandes et votre activité.{% endif %}</p>
+    </div>
+</div>
+
+<!-- Stats Cards -->
 <div class="dash-stats">
     <div class="stat-card dark">
-        <h3>Total Revenue</h3>
-        <div class="value">{{ total_revenue|intcomma }} F</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <h3>Chiffre d'affaires</h3>
+                <div class="value">{{ total_revenue|intcomma }} F</div>
+            </div>
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,106,0,.2);display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-chart-line" style="color:#ff8533;font-size:18px;"></i>
+            </div>
+        </div>
         <div class="change">
             <i class="fa-solid fa-arrow-trend-up"></i> 4.2%
-            <span class="change-text">from last month</span>
+            <span class="change-text">vs mois dernier</span>
         </div>
     </div>
     <div class="stat-card">
-        <h3>Active Users</h3>
-        <div class="value">{{ total_orders }}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <h3>Commandes totales</h3>
+                <div class="value">{{ total_orders }}</div>
+            </div>
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(59,130,246,.08);display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-shopping-bag" style="color:var(--dash-blue);font-size:18px;"></i>
+            </div>
+        </div>
         <div class="change">
             <i class="fa-solid fa-arrow-trend-up"></i> 1.7%
-            <span class="change-text">from last month</span>
+            <span class="change-text">vs mois dernier</span>
         </div>
     </div>
     <div class="stat-card">
-        <h3>New Users</h3>
-        <div class="value">{{ new_users_30d|default:"0" }}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <h3>{% if is_admin %}Nouveaux utilisateurs{% else %}Produits{% endif %}</h3>
+                <div class="value">{% if is_admin %}{{ new_users_30d|default:"0" }}{% else %}{{ products_count }}{% endif %}</div>
+            </div>
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(16,185,129,.08);display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid {% if is_admin %}fa-user-plus{% else %}fa-box{% endif %}" style="color:var(--dash-green);font-size:18px;"></i>
+            </div>
+        </div>
         <div class="change negative">
             <i class="fa-solid fa-arrow-trend-down"></i> 2.9%
-            <span class="change-text">from last month</span>
+            <span class="change-text">vs mois dernier</span>
         </div>
     </div>
     <div class="stat-card">
-        <h3>Total Mentors</h3>
-        <div class="value">{{ products_count }}</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <h3>En attente</h3>
+                <div class="value">{{ pending_orders }}</div>
+            </div>
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(245,158,11,.08);display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-clock" style="color:var(--dash-yellow);font-size:18px;"></i>
+            </div>
+        </div>
         <div class="change">
             <i class="fa-solid fa-arrow-trend-up"></i> 0.9%
-            <span class="change-text">from last month</span>
+            <span class="change-text">vs mois dernier</span>
         </div>
     </div>
 </div>
 
-<!-- Main Grid Layout -->
+<!-- Quick Metrics Row -->
+<div class="quick-metrics">
+    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
+        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Aujourd'hui</div>
+        <div style="font-size:20px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ today_orders }}</div>
+        <div style="font-size:11px;color:var(--dash-text3);margin-top:2px;">commande{{ today_orders|pluralize:"s" }}</div>
+    </div>
+    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
+        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Rev. aujourd'hui</div>
+        <div style="font-size:20px;font-weight:800;color:var(--dash-accent);letter-spacing:-.02em;">{{ today_revenue|intcomma }} F</div>
+    </div>
+    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
+        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Ce mois</div>
+        <div style="font-size:20px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ this_month_revenue|intcomma }} F</div>
+    </div>
+    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
+        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Stock faible</div>
+        <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;{% if low_stock > 0 %}color:var(--dash-red);{% else %}color:var(--dash-green);{% endif %}">{{ low_stock }}</div>
+        <div style="font-size:11px;color:var(--dash-text3);margin-top:2px;">produit{{ low_stock|pluralize:"s" }}</div>
+    </div>
+    {% if is_admin %}
+    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
+        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Avis & Note</div>
+        <div style="font-size:20px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ total_reviews }}</div>
+        <div style="font-size:11px;color:var(--dash-yellow);margin-top:2px;"><i class="fa-solid fa-star"></i> {{ avg_rating }}/5</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Main Grid: Chart + Side Panel -->
 <div class="dash-grid">
     <!-- Revenue Chart -->
     <div class="dash-chart-card">
-        <h3>Total Revenue</h3>
-        <div style="height:320px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div>
+                <h3 style="margin:0;">Revenus</h3>
+                <p style="font-size:12px;color:var(--dash-text3);margin-top:2px;">Évolution sur 6 mois</p>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--dash-text3);padding:4px 10px;background:var(--dash-bg);border-radius:50px;font-weight:500;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:var(--dash-accent);"></span> Revenus
+                </span>
+            </div>
+        </div>
+        <div style="height:300px;position:relative;">
             <canvas id="revChart"></canvas>
         </div>
     </div>
 
-    <!-- Calendar Widget -->
-    <div class="dash-chart-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-            <h3 style="margin:0;">September 2024</h3>
-            <div style="display:flex;gap:8px;">
-                <button style="border:none;background:#F5F5F5;width:32px;height:32px;border-radius:8px;cursor:pointer;"><i class="fa-solid fa-chevron-left"></i></button>
-                <button style="border:none;background:#F5F5F5;width:32px;height:32px;border-radius:8px;cursor:pointer;"><i class="fa-solid fa-chevron-right"></i></button>
-            </div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;margin-bottom:12px;">
-            <div style="font-size:12px;color:#999;font-weight:600;">Tue</div>
-            <div style="font-size:12px;color:#999;font-weight:600;">Wed</div>
-            <div style="font-size:12px;color:#999;font-weight:600;">Thu</div>
-            <div style="font-size:12px;color:#999;font-weight:600;">Fri</div>
-            <div style="font-size:12px;color:#999;font-weight:600;">Sat</div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;">
-            <div style="padding:12px 0;border-radius:12px;font-size:15px;font-weight:500;">17</div>
-            <div style="padding:12px 0;border-radius:12px;font-size:15px;font-weight:500;">18</div>
-            <div style="padding:12px 0;border-radius:12px;background:#5A5A5A;color:#FFF;font-size:15px;font-weight:600;">19</div>
-            <div style="padding:12px 0;border-radius:12px;font-size:15px;font-weight:500;">20</div>
-            <div style="padding:12px 0;border-radius:12px;font-size:15px;font-weight:500;">21</div>
-        </div>
-        <div style="margin-top:24px;padding-top:24px;border-top:1px solid #F0F0F0;">
-            <h4 style="font-size:16px;margin-bottom:12px;">Community growth</h4>
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-arrow-trend-up" style="color:#10B981;font-size:12px;"></i>
-                    <span style="font-size:13px;color:#10B981;font-weight:600;">0.9%</span>
-                    <span style="font-size:13px;color:#999;">from last month</span>
+    <!-- Side Panel -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        {% if is_admin %}
+        <!-- Admin Quick Stats -->
+        <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius);padding:22px;box-shadow:var(--dash-shadow);">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--dash-text);letter-spacing:-.02em;">Plateforme</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="padding:12px;background:var(--dash-bg);border-radius:var(--dash-radius-sm);text-align:center;">
+                    <div style="font-size:20px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ total_users }}</div>
+                    <div style="font-size:11px;color:var(--dash-text3);margin-top:2px;">Utilisateurs</div>
                 </div>
-                <div style="position:relative;width:80px;height:80px;">
-                    <svg viewBox="0 0 36 36" style="transform:rotate(-90deg);">
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#F0F0F0" stroke-width="3"/>
-                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#000" stroke-width="3" stroke-dasharray="65, 100"/>
-                    </svg>
-                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:18px;font-weight:700;">65%</div>
+                <div style="padding:12px;background:var(--dash-bg);border-radius:var(--dash-radius-sm);text-align:center;">
+                    <div style="font-size:20px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ total_sellers }}</div>
+                    <div style="font-size:11px;color:var(--dash-text3);margin-top:2px;">Vendeurs</div>
+                </div>
+                <div style="padding:12px;background:var(--dash-bg);border-radius:var(--dash-radius-sm);text-align:center;">
+                    <div style="font-size:20px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ total_stores }}</div>
+                    <div style="font-size:11px;color:var(--dash-text3);margin-top:2px;">Boutiques</div>
+                </div>
+                <div style="padding:12px;background:var(--dash-bg);border-radius:var(--dash-radius-sm);text-align:center;">
+                    <div style="font-size:20px;font-weight:800;color:var(--dash-green);letter-spacing:-.02em;">{{ verified_stores }}</div>
+                    <div style="font-size:11px;color:var(--dash-text3);margin-top:2px;">Vérifiées</div>
                 </div>
             </div>
         </div>
+        {% endif %}
+
+        <!-- Performance Summary -->
+        <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius);padding:22px;box-shadow:var(--dash-shadow);flex:1;">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--dash-text);letter-spacing:-.02em;">Performance</h3>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:rgba(16,185,129,.08);display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-star" style="color:var(--dash-green);font-size:14px;"></i></div>
+                        <div>
+                            <div style="font-size:13px;font-weight:600;color:var(--dash-text);">Note moyenne</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">{{ total_reviews }} avis</div>
+                        </div>
+                    </div>
+                    <div style="font-size:18px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ avg_rating }}</div>
+                </div>
+                <div style="height:1px;background:var(--dash-border);"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:rgba(59,130,246,.08);display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-box" style="color:var(--dash-blue);font-size:14px;"></i></div>
+                        <div>
+                            <div style="font-size:13px;font-weight:600;color:var(--dash-text);">Produits</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">en catalogue</div>
+                        </div>
+                    </div>
+                    <div style="font-size:18px;font-weight:800;color:var(--dash-text);letter-spacing:-.02em;">{{ products_count }}</div>
+                </div>
+                {% if is_seller %}
+                <div style="height:1px;background:var(--dash-border);"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:rgba(139,92,246,.08);display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-wallet" style="color:var(--dash-purple);font-size:14px;"></i></div>
+                        <div>
+                            <div style="font-size:13px;font-weight:600;color:var(--dash-text);">En attente</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">versement</div>
+                        </div>
+                    </div>
+                    <div style="font-size:18px;font-weight:800;color:var(--dash-purple);letter-spacing:-.02em;">{{ pending_payout|intcomma }} F</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if top_products %}
+        <!-- Top Products -->
+        <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius);padding:22px;box-shadow:var(--dash-shadow);">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--dash-text);letter-spacing:-.02em;">Top Produits</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                {% for tp in top_products %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;{% if not forloop.last %}border-bottom:1px solid rgba(0,0,0,.03);{% endif %}">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:28px;height:28px;border-radius:8px;background:var(--dash-bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--dash-text3);">{{ forloop.counter }}</div>
+                        <span style="font-size:13px;font-weight:500;color:var(--dash-text);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ tp.product__name }}</span>
+                    </div>
+                    <span style="font-size:12px;font-weight:700;color:var(--dash-accent);">{{ tp.rev|intcomma }} F</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
-<!-- Course Purchases Table -->
+<!-- Recent Orders -->
 <div class="dash-table-wrapper">
-    <h3>Course Purchases</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div>
+            <h3 style="margin:0;">Commandes récentes</h3>
+            <p style="font-size:12px;color:var(--dash-text3);margin-top:3px;">Les 8 dernières commandes</p>
+        </div>
+        <a href="{% url 'dashboard:orders' %}" class="btn btn-sm btn-outline">Voir tout <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+    </div>
+    <div class="dash-table-responsive">
     <table class="dash-table">
         <thead>
             <tr>
-                <th>Course Name</th>
-                <th>Student Name</th>
-                <th>Student ID</th>
-                <th>Amount</th>
-                <th>Status</th>
+                <th>Commande</th>
+                <th>Client</th>
+                <th>ID Client</th>
+                <th>Montant</th>
+                <th>Statut</th>
+                <th>Date</th>
             </tr>
         </thead>
         <tbody>
@@ -109,87 +240,107 @@
             <tr>
                 <td>
                     <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="width:48px;height:48px;background:#F5F5F5;border-radius:8px;"></div>
-                        <span style="font-weight:600;">Commande #{{ order.order_number }}</span>
+                        <div style="width:40px;height:40px;background:linear-gradient(135deg,var(--dash-bg),#e2e8f0);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                            <i class="fa-solid fa-receipt" style="color:var(--dash-text3);font-size:14px;"></i>
+                        </div>
+                        <span style="font-weight:600;color:var(--dash-text);">#{{ order.order_number }}</span>
                     </div>
                 </td>
-                <td>{{ order.buyer.display_name }}</td>
-                <td>#{{ order.buyer.id }}</td>
-                <td style="font-weight:600;">{{ order.total_amount|intcomma }} F</td>
-                <td><span class="status-badge paid">Paid</span></td>
+                <td style="font-weight:500;">{{ order.buyer.display_name }}</td>
+                <td style="color:var(--dash-text3);">#{{ order.buyer.id }}</td>
+                <td style="font-weight:700;color:var(--dash-text);">{{ order.total_amount|intcomma }} F</td>
+                <td><span class="status-badge st-{{ order.status }}">{{ order.get_status_display }}</span></td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ order.created_at|date:"d/m/Y" }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" style="text-align:center;padding:40px;color:#999;">Aucune commande récente</td>
+                <td colspan="6" style="text-align:center;padding:48px;">
+                    <div style="font-size:40px;margin-bottom:12px;opacity:.2;">📦</div>
+                    <div style="color:var(--dash-text3);font-size:14px;font-weight:500;">Aucune commande récente</div>
+                    <p style="font-size:12px;color:var(--dash-text3);margin-top:4px;">Les commandes apparaîtront ici</p>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// Revenue Chart - Bar chart like Skillset
-new Chart(document.getElementById('revChart'), {
-    type: 'bar',
-    data: {
-        labels: {{ months_json|safe }},
-        datasets: [{
-            label: 'Revenue',
-            data: {{ revenues_json|safe }},
-            backgroundColor: function(context) {
-                const index = context.dataIndex;
-                return index === 2 ? '#5A5A5A' : '#1A1A1A';
-            },
-            borderRadius: 8,
-            borderSkipped: false,
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: '#000',
-                padding: 12,
-                cornerRadius: 8,
-                titleFont: { size: 13 },
-                bodyFont: { size: 14, weight: 'bold' },
-                callbacks: {
-                    label: function(context) {
-                        return context.parsed.y.toLocaleString('fr') + ' F';
+const ctx = document.getElementById('revChart');
+if (ctx) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ months_json|safe }},
+            datasets: [{
+                label: 'Revenus',
+                data: {{ revenues_json|safe }},
+                backgroundColor: function(context) {
+                    const chart = context.chart;
+                    const {ctx: c, chartArea} = chart;
+                    if (!chartArea) return '#ff6a00';
+                    const gradient = c.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                    gradient.addColorStop(0, 'rgba(255,106,0,.7)');
+                    gradient.addColorStop(1, 'rgba(255,106,0,1)');
+                    return gradient;
+                },
+                borderRadius: { topLeft: 8, topRight: 8 },
+                borderSkipped: false,
+                maxBarThickness: 48,
+                hoverBackgroundColor: '#ff8533',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 800, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    padding: { top: 10, bottom: 10, left: 14, right: 14 },
+                    cornerRadius: 10,
+                    titleFont: { size: 12, weight: '500', family: 'Inter' },
+                    bodyFont: { size: 14, weight: '700', family: 'Inter' },
+                    titleColor: 'rgba(255,255,255,.6)',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(255,255,255,.08)',
+                    borderWidth: 1,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y.toLocaleString('fr') + ' F';
+                        }
                     }
                 }
-            }
-        },
-        scales: {
-            x: {
-                grid: { display: false },
-                border: { display: false },
-                ticks: {
-                    color: '#999',
-                    font: { size: 12 }
-                }
             },
-            y: {
-                border: { display: false },
-                grid: {
-                    color: '#F5F5F5',
-                    drawTicks: false
+            scales: {
+                x: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 12, weight: '500', family: 'Inter' }, padding: 8 }
                 },
-                ticks: {
-                    color: '#999',
-                    font: { size: 12 },
-                    padding: 10,
-                    callback: function(value) {
-                        return value >= 1000 ? (value/1000) + 'K' : value;
+                y: {
+                    border: { display: false },
+                    grid: { color: 'rgba(0,0,0,.04)', drawTicks: false },
+                    ticks: {
+                        color: '#94a3b8',
+                        font: { size: 11, weight: '500', family: 'Inter' },
+                        padding: 12,
+                        callback: function(value) {
+                            if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                            if (value >= 1000) return (value / 1000) + 'K';
+                            return value;
+                        }
                     }
                 }
             }
         }
-    }
-});
+    });
+}
 </script>
 {% endblock %}
