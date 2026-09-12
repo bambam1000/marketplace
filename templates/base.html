@@ -38,7 +38,7 @@
 <a href="{% url 'dashboard:index' %}"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
 <span class="topbar-sep"></span>
 {% endif %}
-<a href="{% url 'accounts:logout' %}"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
+<a href="#" onclick="openLogoutModal();return false;"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</a>
 {% else %}
 <a href="{% url 'accounts:login' %}"><i class="fa-solid fa-right-to-bracket"></i> Connexion</a>
 <span class="topbar-sep"></span>
@@ -140,7 +140,7 @@
 <div class="footer-brand">Afri<span>Market</span></div>
 <p style="font-size:13px;line-height:1.7;max-width:300px;margin-top:.5rem;">La plus grande marketplace B2B et B2C d'Afrique Centrale. Des milliers de produits, des centaines de vendeurs vérifiés.</p>
 <div class="footer-payments" style="margin-top:1rem;">
-<span>📱 MoMo</span><span>📱 OM</span><span>💳 Visa</span><span>💳 Mastercard</span><span>💵 Cash</span>
+<span><i class="fa-solid fa-mobile-screen"></i> MoMo</span><span><i class="fa-solid fa-mobile-screen"></i> OM</span><span><i class="fa-solid fa-credit-card"></i> Visa</span><span><i class="fa-solid fa-credit-card"></i> Mastercard</span><span><i class="fa-solid fa-money-bill"></i> Cash</span>
 </div>
 </div>
 <div>
@@ -173,17 +173,45 @@
 <div>
 <h4>Contact</h4>
 <ul>
-<li><a href="tel:+237677123456">📞 +237 677 123 456</a></li>
-<li><a href="#">💬 WhatsApp</a></li>
-<li><a href="mailto:contact@afrimarketplace.cm">📧 contact@afrimarketplace.cm</a></li>
-<li><a href="#">📍 Bonanjo, Douala, Cameroun</a></li>
+<li><a href="tel:+237677123456"><i class="fa-solid fa-phone"></i> +237 677 123 456</a></li>
+<li><a href="#"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a></li>
+<li><a href="mailto:contact@afrimarketplace.cm"><i class="fa-solid fa-envelope"></i> contact@afrimarketplace.cm</a></li>
+<li><a href="#"><i class="fa-solid fa-location-dot"></i> Bonanjo, Douala, Cameroun</a></li>
 </ul>
 </div>
 </div>
 <div class="footer-bottom">
-<p>© 2026 AfriMarket — La Marketplace Africaine. Fait avec ❤️ au Cameroun par DigiSoft Africa</p>
+<p>© 2026 AfriMarket — La Marketplace Africaine. Fait avec <i class="fa-solid fa-heart" style="color:#e25563;"></i> au Cameroun par DigiSoft Africa</p>
 </div>
 </footer>
+
+<!-- Modale de confirmation de déconnexion -->
+<div id="logoutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;">
+<div style="background:var(--white);border-radius:var(--radius);padding:2rem;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.2);">
+<div style="width:64px;height:64px;background:var(--orange-light);color:var(--orange);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 1rem;"><i class="fa-solid fa-right-from-bracket"></i></div>
+<h3 style="font-size:17px;margin-bottom:8px;">Se déconnecter ?</h3>
+<p style="font-size:13px;color:var(--text3);margin-bottom:1.5rem;">Vous êtes sur le point de quitter votre compte <strong>{{ user.display_name }}</strong>.</p>
+<div style="display:flex;gap:10px;justify-content:center;">
+<button type="button" class="btn btn-outline" onclick="closeLogoutModal()">Annuler</button>
+<a href="{% url 'accounts:logout' %}" class="btn btn-orange"><i class="fa-solid fa-right-from-bracket"></i> Oui, me déconnecter</a>
+</div>
+</div>
+</div>
+
+<script>
+function openLogoutModal() {
+  document.getElementById('logoutModal').style.display = 'flex';
+}
+function closeLogoutModal() {
+  document.getElementById('logoutModal').style.display = 'none';
+}
+document.getElementById('logoutModal').addEventListener('click', function(e) {
+  if (e.target === this) closeLogoutModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeLogoutModal();
+});
+</script>
 
 <script>
 {% if user.is_authenticated %}

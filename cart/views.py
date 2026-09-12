@@ -5,11 +5,12 @@ from django.contrib import messages
 from django.http import JsonResponse
 from catalog.models import Product
 from orders.models import Order, OrderItem
+from .utils import get_cart, save_cart
 
 @require_POST
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
-    cart = request.session.get('cart', {})
+    cart = get_cart(request)
     pid = str(product_id)
     qty = int(request.POST.get('quantity', 1))
     color = request.POST.get('color', '')
@@ -27,8 +28,7 @@ def add_to_cart(request, product_id):
             'color': color,
             'size': size,
         }
-    request.session['cart'] = cart
-    request.session.modified = True
+    save_cart(request, cart)
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'success': True, 'cart_count': sum(i['quantity'] for i in cart.values())})
     messages.success(request, f'"{product.name}" ajouté au panier !')
@@ -36,7 +36,7 @@ def add_to_cart(request, product_id):
 
 def cart_view(request):
     from store.models import Store
-    cart = request.session.get('cart', {})
+    cart = get_cart(request)
     items = []
     subtotal = 0
     for pid, item in cart.items():
@@ -63,20 +63,19 @@ def cart_view(request):
 def update_cart(request):
     pid = request.POST.get('product_id')
     action = request.POST.get('action')
-    cart = request.session.get('cart', {})
+    cart = get_cart(request)
     if pid in cart:
         if action == 'increase': cart[pid]['quantity'] += 1
         elif action == 'decrease':
             cart[pid]['quantity'] -= 1
             if cart[pid]['quantity'] <= 0: del cart[pid]
         elif action == 'remove': del cart[pid]
-    request.session['cart'] = cart
-    request.session.modified = True
+    save_cart(request, cart)
     return redirect('cart:view')
 
 @login_required
 def checkout(request):
-    cart = request.session.get('cart', {})
+    cart = get_cart(request)
     if not cart:
         return redirect('cart:view')
     items = []
@@ -114,8 +113,7 @@ def checkout(request):
                 product.save(update_fields=['orders_count', 'stock'])
             except Product.DoesNotExist:
                 pass
-        request.session['cart'] = {}
-        request.session.modified = True
+        save_cart(request, {})
         messages.success(request, f'Commande {order.order_number} créée !')
         return redirect('orders:success', order_number=order.order_number)
 
