@@ -11,6 +11,7 @@ urlpatterns = [
     path('rfq/liste/', views.rfq_list, name='rfq_list'),
     path('rfq/<int:rfq_id>/', views.rfq_detail, name='rfq_detail'),
     path('rfq/mes-demandes/', views.my_rfqs, name='my_rfqs'),
+    path('rfq/<int:rfq_id>/fermer/', views.close_rfq, name='close_rfq'),
     path('rfq/<int:rfq_id>/devis/', views.submit_quote, name='submit_quote'),
     path('devis/mes-devis/', views.my_quotes, name='my_quotes'),
     path('devis/<int:quote_id>/accepter/', views.accept_quote, name='accept_quote'),

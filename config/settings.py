@@ -2,9 +2,13 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'django-insecure-alibaba-marketplace-key-2026'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+
+# Sécurité : les valeurs sensibles viennent des variables d'environnement.
+# En développement, des valeurs par défaut sont utilisées.
+# En production, définissez DJANGO_SECRET_KEY, DJANGO_DEBUG=False et DJANGO_ALLOWED_HOSTS.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-alibaba-marketplace-key-2026')
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -100,14 +104,25 @@ LOGOUT_REDIRECT_URL = '/'
 BOOST_COMMISSION_RATE = 0.20  # 20% commission for Facebook/WhatsApp boosts
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Pour développement
-# Pour production, utilisez SMTP :
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'votre-email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'votre-mot-de-passe-app'
+# En développement : console. En production : définir DJANGO_EMAIL_BACKEND=smtp et les variables SMTP.
+if os.environ.get('DJANGO_EMAIL_BACKEND', 'console') == 'smtp':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = 'AfriMarket <noreply@afrimarket.com>'
-SITE_URL = 'http://127.0.0.1:8000'  # Changez en production
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AfriMarket <noreply@afrimarket.com>')
+SITE_URL = os.environ.get('SITE_URL', 'http://127.0.0.1:8000')
+
+# Sécurité renforcée en production (DEBUG=False)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True

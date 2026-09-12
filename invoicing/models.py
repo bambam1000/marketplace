@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -127,7 +129,7 @@ class Invoice(models.Model):
         # TVA
         settings = self.store.invoice_settings
         if settings.apply_tva:
-            self.tva_amount = self.subtotal * (settings.tva_rate / 100)
+            self.tva_amount = self.subtotal * (Decimal(str(settings.tva_rate)) / Decimal('100'))
         else:
             self.tva_amount = 0
 
@@ -174,7 +176,7 @@ class InvoiceItem(models.Model):
     def save(self, *args, **kwargs):
         # Calculer le total
         subtotal = self.quantity * self.unit_price
-        discount = subtotal * (self.discount_percent / 100)
+        discount = subtotal * (Decimal(str(self.discount_percent)) / Decimal('100'))
         self.total = subtotal - discount
         super().save(*args, **kwargs)
 

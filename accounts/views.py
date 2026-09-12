@@ -62,7 +62,27 @@ def profile_view(request):
         request.user.city = request.POST.get('city', '')
         request.user.save()
         messages.success(request, 'Profil mis à jour !')
-    return render(request, 'accounts/profile.html')
+
+    from orders.models import Order, RFQ
+    from messaging.models import Message
+    from catalog.models import Wishlist
+    from django.db.models import Sum
+
+    user_orders = Order.objects.filter(buyer=request.user)
+    context = {
+        'recent_orders': user_orders[:5],
+        'orders_count': user_orders.count(),
+        'pending_orders': user_orders.filter(status__in=['pending', 'confirmed', 'processing', 'shipped']).count(),
+        'delivered_orders': user_orders.filter(status='delivered').count(),
+        'total_spent': user_orders.filter(is_paid=True).aggregate(t=Sum('total_amount'))['t'] or 0,
+        'rfqs': RFQ.objects.filter(buyer=request.user)[:5],
+        'rfqs_count': RFQ.objects.filter(buyer=request.user).count(),
+        'wishlist_count': Wishlist.objects.filter(user=request.user).count(),
+        'unread_messages': Message.objects.filter(
+            conversation__buyer=request.user, is_read=False
+        ).exclude(sender=request.user).count(),
+    }
+    return render(request, 'accounts/profile.html', context)
 
 
 def privacy_view(request):

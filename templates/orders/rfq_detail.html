@@ -47,19 +47,20 @@
 <div style="margin-top:1.5rem;">
 {% if user_quote %}
 <div style="background:var(--bg2);padding:1rem;border-radius:var(--radius);border:1px solid var(--orange);">
-<strong>✓ Vous avez déjà soumis un devis pour cette demande</strong> ({{ user_quote.price_per_unit|intcomma }} FCFA/{{ rfq.unit }})
+<strong><i class="fa-solid fa-check"></i> Vous avez déjà soumis un devis pour cette demande</strong> ({{ user_quote.price_per_unit|intcomma }} FCFA/{{ rfq.unit }})
 </div>
 {% else %}
-<a href="{% url 'orders:submit_quote' rfq.id %}" class="btn btn-orange btn-lg">💼 Soumettre un devis</a>
+<a href="{% url 'orders:submit_quote' rfq.id %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-briefcase"></i> Soumettre un devis</a>
 {% endif %}
 </div>
 {% endif %}
 </div>
 
-<!-- Devis reçus -->
+<!-- Devis reçus : visibles uniquement par l'acheteur propriétaire -->
+{% if user == rfq.buyer %}
 {% if quotes %}
 <div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
-<h3 style="font-size:18px;margin-bottom:1.5rem;">💼 Devis proposés ({{ quotes|length }})</h3>
+<h3 style="font-size:18px;margin-bottom:1.5rem;"><i class="fa-solid fa-briefcase"></i> Devis proposés ({{ quotes|length }})</h3>
 
 <div style="display:grid;gap:1rem;">
 {% for quote in quotes %}
@@ -68,16 +69,16 @@
 <div>
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
 <div style="font-weight:600;font-size:15px;">{{ quote.store.name }}</div>
-{% if quote.store.is_verified %}<span class="verified-badge">✓ Vérifié</span>{% endif %}
-{% if quote.status == 'accepted' %}<span style="background:var(--green);color:white;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:600;">✓ ACCEPTÉ</span>{% endif %}
-{% if quote.status == 'rejected' %}<span style="background:var(--red);color:white;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:600;">✗ REJETÉ</span>{% endif %}
+{% if quote.store.is_verified %}<span class="verified-badge"><i class="fa-solid fa-circle-check"></i> Vérifié</span>{% endif %}
+{% if quote.status == 'accepted' %}<span style="background:var(--green);color:white;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:600;"><i class="fa-solid fa-check"></i> ACCEPTÉ</span>{% endif %}
+{% if quote.status == 'rejected' %}<span style="background:var(--red);color:white;padding:4px 8px;border-radius:12px;font-size:11px;font-weight:600;"><i class="fa-solid fa-xmark"></i> REJETÉ</span>{% endif %}
 </div>
 <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">{{ quote.description|truncatewords:50 }}</div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:13px;">
-<div><strong>💰 Prix unitaire :</strong> {{ quote.price_per_unit|intcomma }} F</div>
-<div><strong>💵 Prix total :</strong> {{ quote.total_price|intcomma }} F</div>
-<div><strong>🚚 Livraison :</strong> {{ quote.delivery_time }}</div>
-<div><strong>💳 Paiement :</strong> {{ quote.payment_terms|truncatewords:5 }}</div>
+<div><strong><i class="fa-solid fa-money-bill"></i> Prix unitaire :</strong> {{ quote.price_per_unit|intcomma }} F</div>
+<div><strong><i class="fa-solid fa-sack-dollar"></i> Prix total :</strong> {{ quote.total_price|intcomma }} F</div>
+<div><strong><i class="fa-solid fa-truck"></i> Livraison :</strong> {{ quote.delivery_time }}</div>
+<div><strong><i class="fa-solid fa-credit-card"></i> Paiement :</strong> {{ quote.payment_terms|truncatewords:5 }}</div>
 </div>
 </div>
 <div style="text-align:center;">
@@ -85,8 +86,8 @@
 <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">par {{ rfq.unit }}</div>
 {% if user == rfq.buyer and quote.status == 'pending' %}
 <div style="display:grid;gap:6px;">
-<form method="post" action="{% url 'orders:accept_quote' quote.id %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm" style="background:var(--green);color:white;width:100%;">✓ Accepter</button></form>
-<form method="post" action="{% url 'orders:reject_quote' quote.id %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm btn-outline" style="width:100%;">✗ Rejeter</button></form>
+<form method="post" action="{% url 'orders:accept_quote' quote.id %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm" style="background:var(--green);color:white;width:100%;"><i class="fa-solid fa-check"></i> Accepter</button></form>
+<form method="post" action="{% url 'orders:reject_quote' quote.id %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm btn-outline" style="width:100%;"><i class="fa-solid fa-xmark"></i> Rejeter</button></form>
 </div>
 {% endif %}
 </div>
@@ -97,10 +98,11 @@
 </div>
 {% else %}
 <div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:2rem;text-align:center;">
-<div style="font-size:48px;margin-bottom:12px;">📭</div>
+<div style="font-size:48px;margin-bottom:12px;color:var(--text3);"><i class="fa-solid fa-inbox"></i></div>
 <h3 style="font-size:16px;color:var(--text2);">Aucun devis reçu pour le moment</h3>
-<p style="font-size:13px;color:var(--text3);">Les vendeurs peuvent soumettre leurs offres</p>
+<p style="font-size:13px;color:var(--text3);">Vous serez notifié dès qu'un vendeur soumettra une offre.</p>
 </div>
+{% endif %}
 {% endif %}
 
 </div>

@@ -3,15 +3,15 @@
 {% block content %}
 <div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Contact</div>
 <div class="section" style="padding-top:0;max-width:1000px;">
-<h2 style="font-size:20px;margin-bottom:1.5rem;font-weight:700;">📞 Contactez-nous</h2>
+<h2 style="font-size:20px;margin-bottom:1.5rem;font-weight:700;"><i class="fa-solid fa-phone"></i> Contactez-nous</h2>
 <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:2rem;">
 <div>
 <div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
 <h3 style="font-size:15px;margin-bottom:1.5rem;font-weight:600;">Nos coordonnées</h3>
-<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">📞</div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Téléphone</div><div style="font-size:14px;font-weight:600;">+237 677 123 456</div></div></div>
-<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">💬</div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">WhatsApp</div><div style="font-size:14px;font-weight:600;">+237 677 123 456</div></div></div>
-<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">📧</div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Email</div><div style="font-size:14px;font-weight:600;">contact@afrimarketplace.cm</div></div></div>
-<div style="display:flex;gap:12px;padding:12px 0;"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">📍</div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Adresse</div><div style="font-size:14px;font-weight:600;">Bonanjo, Douala, Cameroun</div></div></div>
+<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-solid fa-phone"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Téléphone</div><div style="font-size:14px;font-weight:600;">+237 677 123 456</div></div></div>
+<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-brands fa-whatsapp"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">WhatsApp</div><div style="font-size:14px;font-weight:600;">+237 677 123 456</div></div></div>
+<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-solid fa-envelope"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Email</div><div style="font-size:14px;font-weight:600;">contact@afrimarketplace.cm</div></div></div>
+<div style="display:flex;gap:12px;padding:12px 0;"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-solid fa-location-dot"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Adresse</div><div style="font-size:14px;font-weight:600;">Bonanjo, Douala, Cameroun</div></div></div>
 <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border2);">
 <p style="font-size:13px;color:var(--text2);line-height:1.7;">Notre équipe est disponible du lundi au samedi de 8h à 18h pour répondre à toutes vos questions.</p>
 </div>
@@ -28,7 +28,7 @@
 <div class="form-group"><label>Sujet <span style="color:var(--red);">*</span></label><select name="subject" class="form-control" required><option value="">Sélectionnez un sujet</option><option>Demande d'information</option><option>Suivi de commande</option><option>Retour / Réclamation</option><option>Problème technique</option><option>Partenariat</option><option>Autre</option></select></div>
 </div>
 <div class="form-group"><label>Votre message <span style="color:var(--red);">*</span></label><textarea name="message" class="form-control" rows="6" required placeholder="Décrivez votre demande en détail..."></textarea></div>
-<button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:8px;">📤 Envoyer le message</button>
+<button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:8px;"><i class="fa-solid fa-paper-plane"></i> Envoyer le message</button>
 <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center;">Nous vous répondrons dans les 24 heures</p>
 </form>
 </div>

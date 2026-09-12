@@ -182,6 +182,25 @@ def reject_quote(request, quote_id):
     messages.success(request, 'Le devis a été rejeté.')
     return redirect('orders:my_rfqs')
 
+# Fermer une RFQ (acheteur)
+@login_required
+def close_rfq(request, rfq_id):
+    """Permet à l'acheteur de fermer sa demande de devis"""
+    rfq = get_object_or_404(RFQ, pk=rfq_id)
+
+    if rfq.buyer != request.user:
+        messages.error(request, 'Vous ne pouvez fermer que vos propres demandes.')
+        return redirect('orders:my_rfqs')
+
+    if rfq.status in ['open', 'quoted']:
+        rfq.status = 'closed'
+        rfq.save()
+        messages.success(request, f'Votre demande "{rfq.product_name}" a été fermée.')
+    else:
+        messages.error(request, 'Cette demande ne peut plus être fermée.')
+
+    return redirect('orders:my_rfqs')
+
 # Mes devis (pour vendeur)
 @login_required
 def my_quotes(request):

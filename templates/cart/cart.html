@@ -3,7 +3,7 @@
 {% block content %}
 <div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Panier</div>
 <div class="cart-container">
-<h2 style="font-size:18px;margin-bottom:1rem;">🛒 Mon Panier ({{ cart_items|length }} article{{ cart_items|length|pluralize:"s" }})</h2>
+<h2 style="font-size:18px;margin-bottom:1rem;"><i class="fa-solid fa-cart-shopping"></i> Mon Panier ({{ cart_items|length }} article{{ cart_items|length|pluralize:"s" }})</h2>
 {% if cart_items %}
 <div class="cart-layout">
 <div class="cart-items-box">
@@ -11,7 +11,7 @@
 {% for item in cart_items %}
 <div class="cart-row-item">
 <div><input type="checkbox" checked></div>
-<div style="display:flex;gap:10px;align-items:center;"><div class="cart-item-img">{% if item.image %}<img src="{{ item.image }}">{% else %}🛍️{% endif %}</div><div><div style="font-weight:500;font-size:13px;">{{ item.name }}</div><div style="font-size:11px;color:var(--text3);">🏪 {{ item.store }}{% if item.color %} · {{ item.color }}{% endif %}{% if item.size %} · {{ item.size }}{% endif %}</div></div></div>
+<div style="display:flex;gap:10px;align-items:center;"><div class="cart-item-img">{% if item.image %}<img src="{{ item.image }}">{% else %}<i class="fa-solid fa-bag-shopping"></i>{% endif %}</div><div><div style="font-weight:500;font-size:13px;">{{ item.name }}</div><div style="font-size:11px;color:var(--text3);"><i class="fa-solid fa-store"></i> {{ item.store }}{% if item.color %} · {{ item.color }}{% endif %}{% if item.size %} · {{ item.size }}{% endif %}</div></div></div>
 <div style="font-weight:600;">{{ item.price|intcomma }} F</div>
 <div style="display:flex;align-items:center;gap:0;">
 <form method="post" action="{% url 'cart:update' %}" style="display:flex;"><input type="hidden" name="product_id" value="{{ item.id }}"><input type="hidden" name="action" value="decrease">{% csrf_token %}<button class="qty-btn2" style="width:28px;height:28px;font-size:13px;">−</button></form>
@@ -19,7 +19,7 @@
 <form method="post" action="{% url 'cart:update' %}" style="display:flex;"><input type="hidden" name="product_id" value="{{ item.id }}"><input type="hidden" name="action" value="increase">{% csrf_token %}<button class="qty-btn2" style="width:28px;height:28px;font-size:13px;">+</button></form>
 </div>
 <div style="font-weight:700;color:var(--red);">{{ item.subtotal|intcomma }} F</div>
-<div><form method="post" action="{% url 'cart:update' %}">{% csrf_token %}<input type="hidden" name="product_id" value="{{ item.id }}"><input type="hidden" name="action" value="remove"><button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;" title="Retirer">🗑️</button></form></div>
+<div><form method="post" action="{% url 'cart:update' %}">{% csrf_token %}<input type="hidden" name="product_id" value="{{ item.id }}"><input type="hidden" name="action" value="remove"><button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;" title="Retirer"><i class="fa-solid fa-trash-can"></i></button></form></div>
 </div>{% endfor %}
 </div>
 <div class="cart-sidebar">
@@ -37,7 +37,7 @@ Commander sur WhatsApp
 </div>
 </div>
 {% else %}
-<div class="empty-state" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:4rem;"><div class="icon">🛒</div><h3>Votre panier est vide</h3><p style="margin:8px 0 20px;">Découvrez nos produits et commencez vos achats.</p><a href="{% url 'catalog:product_list' %}" class="btn btn-orange">Explorer les produits</a></div>
+<div class="empty-state" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:4rem;"><div class="icon"><i class="fa-solid fa-cart-shopping"></i></div><h3>Votre panier est vide</h3><p style="margin:8px 0 20px;">Découvrez nos produits et commencez vos achats.</p><a href="{% url 'catalog:product_list' %}" class="btn btn-orange">Explorer les produits</a></div>
 {% endif %}
 </div>
 {% endblock %}

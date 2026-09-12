@@ -1,13 +1,94 @@
 {% extends 'base.html' %}
-{% block title %}Mon Profil{% endblock %}
+{% load humanize %}
+{% block title %}Mon Compte{% endblock %}
 {% block content %}
-<div style="max-width:700px;margin:0 auto;padding:1.5rem;">
-<h2 style="font-size:18px;margin-bottom:1rem;">👤 Mon Profil</h2>
-<form method="post" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">{% csrf_token %}
+<div style="max-width:1000px;margin:0 auto;padding:1.5rem;">
+
+<!-- En-tête profil -->
+<div style="display:flex;align-items:center;gap:1rem;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.25rem;">
+<div style="width:56px;height:56px;border-radius:50%;background:var(--orange,#ff6a00);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;">{{ user.initials }}</div>
+<div style="flex:1;">
+<div style="font-weight:700;font-size:17px;">{{ user.display_name }}</div>
+<div style="color:var(--gray,#777);font-size:13px;">{{ user.email }} · Membre depuis {{ user.date_joined|date:'F Y' }}</div>
+</div>
+{% if user.is_verified %}<span style="background:#e6f9ed;color:#16a34a;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;"><i class="fa-solid fa-circle-check"></i> Vérifié</span>{% endif %}
+</div>
+
+<!-- Statistiques -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.25rem;">
+<a href="{% url 'orders:list' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
+<div style="font-size:24px;font-weight:700;">{{ orders_count }}</div>
+<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-box"></i> Commandes</div>
+</a>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
+<div style="font-size:24px;font-weight:700;color:#d97706;">{{ pending_orders }}</div>
+<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-clock"></i> En cours</div>
+</div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
+<div style="font-size:24px;font-weight:700;color:#16a34a;">{{ delivered_orders }}</div>
+<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-circle-check"></i> Livrées</div>
+</div>
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
+<div style="font-size:18px;font-weight:700;">{{ total_spent|intcomma }} F</div>
+<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-wallet"></i> Total dépensé</div>
+</div>
+</div>
+
+<!-- Accès rapides -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.25rem;">
+<a href="{% url 'orders:list' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
+<span style="font-size:22px;color:var(--orange,#ff6a00);"><i class="fa-solid fa-box-open"></i></span><span><b>Mes commandes</b><br><small style="color:var(--gray,#777);">Suivre mes achats</small></span>
+</a>
+<a href="{% url 'orders:my_rfqs' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
+<span style="font-size:22px;color:#4f46e5;"><i class="fa-solid fa-file-invoice"></i></span><span><b>Mes demandes de devis</b> <span style="background:#eef2ff;color:#4f46e5;border-radius:10px;padding:1px 7px;font-size:11px;">{{ rfqs_count }}</span><br><small style="color:var(--gray,#777);">RFQ et devis reçus</small></span>
+</a>
+<a href="{% url 'messaging:inbox' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
+<span style="font-size:22px;color:#0891b2;"><i class="fa-solid fa-comments"></i></span><span><b>Messages</b>{% if unread_messages %} <span style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;">{{ unread_messages }}</span>{% endif %}<br><small style="color:var(--gray,#777);">Discussions vendeurs</small></span>
+</a>
+<a href="{% url 'catalog:wishlist' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
+<span style="font-size:22px;color:#db2777;"><i class="fa-solid fa-heart"></i></span><span><b>Mes favoris</b> <span style="background:#fce7f3;color:#db2777;border-radius:10px;padding:1px 7px;font-size:11px;">{{ wishlist_count }}</span><br><small style="color:var(--gray,#777);">Produits sauvegardés</small></span>
+</a>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr;gap:1.25rem;">
+<!-- Commandes récentes -->
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.25rem;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+<h3 style="font-size:15px;margin:0;"><i class="fa-solid fa-clock-rotate-left"></i> Commandes récentes</h3>
+<a href="{% url 'orders:list' %}" style="font-size:13px;">Tout voir →</a>
+</div>
+{% if recent_orders %}
+<table style="width:100%;border-collapse:collapse;font-size:13px;">
+<thead><tr style="text-align:left;color:var(--gray,#777);border-bottom:1px solid var(--border2);">
+<th style="padding:.5rem 0;">N°</th><th>Date</th><th>Total</th><th>Statut</th><th></th>
+</tr></thead>
+<tbody>
+{% for order in recent_orders %}
+<tr style="border-bottom:1px solid var(--border2);">
+<td style="padding:.6rem 0;font-weight:600;">#{{ order.order_number }}</td>
+<td>{{ order.created_at|date:'d/m/Y' }}</td>
+<td>{{ order.total_amount|intcomma }} F</td>
+<td><span style="padding:2px 8px;border-radius:12px;font-size:11px;background:#f3f4f6;">{{ order.get_status_display }}</span></td>
+<td><a href="{% url 'orders:detail' order.order_number %}" style="font-size:12px;">Détails</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p style="color:var(--gray,#777);font-size:13px;margin:0;">Aucune commande pour le moment. <a href="{% url 'catalog:product_list' %}">Découvrir les produits →</a></p>
+{% endif %}
+</div>
+
+<!-- Formulaire profil -->
+<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.25rem;">
+<h3 style="font-size:15px;margin:0 0 .75rem;"><i class="fa-solid fa-user-pen"></i> Mes informations</h3>
+<form method="post">{% csrf_token %}
 <div class="form-row"><div class="form-group"><label>Prénom</label><input type="text" name="first_name" value="{{ user.first_name }}" class="form-control"></div><div class="form-group"><label>Nom</label><input type="text" name="last_name" value="{{ user.last_name }}" class="form-control"></div></div>
 <div class="form-row"><div class="form-group"><label>Téléphone</label><input type="tel" name="phone" value="{{ user.phone }}" class="form-control"></div><div class="form-group"><label>Ville</label><input type="text" name="city" value="{{ user.city }}" class="form-control"></div></div>
-<div class="form-group"><label>Adresse</label><textarea name="address" class="form-control" rows="2">{{ user.address }}</textarea></div>
+<div class="form-group"><label>Adresse de livraison</label><textarea name="address" class="form-control" rows="2">{{ user.address }}</textarea></div>
 <button type="submit" class="btn btn-orange">Enregistrer</button>
 </form>
+</div>
+</div>
 </div>
 {% endblock %}

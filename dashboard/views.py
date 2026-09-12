@@ -13,15 +13,34 @@ import json
 from messaging.models import Conversation, Message
 from django.http import JsonResponse
 from django.utils.text import slugify
+from functools import wraps
+
+
+def seller_or_admin_required(view_func):
+    """Bloque l'accès aux acheteurs : réservé aux vendeurs (avec boutique) et admins."""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        user = request.user
+        is_admin = user.is_superuser or user.role == 'admin'
+        is_seller = user.is_seller and hasattr(user, 'store')
+        if not (is_admin or is_seller):
+            django_messages.error(request, "Accès réservé aux vendeurs et administrateurs.")
+            return redirect('dashboard:index')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 @login_required
 def index(request):
     user = request.user
-    now = timezone.now()
-    today = now.date()
     is_admin = user.is_superuser or user.role == 'admin'
     is_seller = user.is_seller and hasattr(user, 'store')
+    # Les acheteurs n'ont pas accès au dashboard
+    if not (is_admin or is_seller):
+        django_messages.error(request, "Le tableau de bord est réservé aux vendeurs.")
+        return redirect('home')
+    now = timezone.now()
+    today = now.date()
     store = getattr(user, 'store', None) if is_seller else None
 
     # Base querysets
@@ -133,6 +152,7 @@ def index(request):
 
 
 @login_required
+@seller_or_admin_required
 def dash_orders(request):
     if request.user.is_seller and hasattr(request.user, 'store'):
         orders = Order.objects.filter(items__store=request.user.store).distinct()
@@ -150,8 +170,15 @@ def dash_orders(request):
 
 
 @login_required
+@seller_or_admin_required
 def dash_order_detail(request, order_number):
     order = get_object_or_404(Order, order_number=order_number)
+    # Un vendeur ne peut gérer que les commandes contenant ses produits
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin:
+        if not order.items.filter(store=request.user.store).exists():
+            django_messages.error(request, "Cette commande ne concerne pas votre boutique.")
+            return redirect('dashboard:orders')
     if request.method == 'POST':
         new_status = request.POST.get('status')
         if new_status:
@@ -189,6 +216,7 @@ def dash_order_detail(request, order_number):
 
 
 @login_required
+@seller_or_admin_required
 def dash_products(request):
     if request.user.is_seller and hasattr(request.user, 'store'):
         products = request.user.store.products.all()
@@ -203,10 +231,19 @@ def dash_products(request):
 
 
 @login_required
+@seller_or_admin_required
 def dash_product_edit(request, pk=None):
     product = get_object_or_404(Product, pk=pk) if pk else None
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    # Un vendeur ne peut modifier que ses propres produits
+    if product and not is_admin and product.store != request.user.store:
+        django_messages.error(request, "Vous ne pouvez pas modifier ce produit.")
+        return redirect('dashboard:products')
     categories = Category.objects.all()
-    store = getattr(request.user, 'store', None) or Store.objects.first()
+    store = getattr(request.user, 'store', None) or (Store.objects.first() if is_admin else None)
+    if store is None:
+        django_messages.error(request, "Aucune boutique associée.")
+        return redirect('dashboard:index')
     if request.method == 'POST':
         data = {
             'name': request.POST.get('name'),
@@ -242,6 +279,22 @@ def dash_product_edit(request, pk=None):
 
 
 @login_required
+@seller_or_admin_required
+def dash_product_delete(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and product.store != request.user.store:
+        django_messages.error(request, 'Vous ne pouvez pas supprimer ce produit.')
+        return redirect('dashboard:products')
+    if request.method == 'POST':
+        name = product.name
+        product.delete()
+        django_messages.success(request, f'Produit "{name}" supprimé.')
+    return redirect('dashboard:products')
+
+
+@login_required
+@seller_or_admin_required
 def dash_customers(request):
     # Si l'utilisateur est un vendeur, afficher uniquement ses clients
     if request.user.is_seller and hasattr(request.user, 'store'):
@@ -266,6 +319,7 @@ def dash_customers(request):
 
 
 @login_required
+@seller_or_admin_required
 def dash_store(request):
     store = getattr(request.user, 'store', None)
     if not store:

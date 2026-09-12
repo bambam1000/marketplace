@@ -1,14 +1,14 @@
 {% load humanize %}
 <a href="{{ product.get_absolute_url }}" class="product-card" style="--i:{{ forloop.counter }}">
 <div class="product-img">
-{% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}">{% else %}🛍️{% endif %}
+{% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}">{% else %}<i class="fa-solid fa-bag-shopping" style="font-size:2.4rem;color:var(--text3);"></i>{% endif %}
 <div class="product-badges">
 {% if product.discount_percent %}<span class="pbadge pbadge-red">-{{ product.discount_percent }}%</span>{% endif %}
-{% if product.is_flash_deal %}<span class="pbadge pbadge-orange">⚡ Flash</span>{% endif %}
-{% if product.store.is_verified %}<span class="pbadge pbadge-green">✓</span>{% endif %}
+{% if product.is_flash_deal %}<span class="pbadge pbadge-orange"><i class="fa-solid fa-bolt"></i> Flash</span>{% endif %}
+{% if product.store.is_verified %}<span class="pbadge pbadge-green"><i class="fa-solid fa-check"></i></span>{% endif %}
 </div>
 <div class="product-actions-overlay">
-<form method="post" action="{% url 'cart:add' product.id %}">{% csrf_token %}<button class="action-btn" title="Ajouter au panier">🛒</button></form>
+<form method="post" action="{% url 'cart:add' product.id %}">{% csrf_token %}<button class="action-btn" title="Ajouter au panier"><i class="fa-solid fa-cart-plus"></i></button></form>
 </div>
 </div>
 <div class="product-body">
@@ -22,6 +22,6 @@
 <span class="product-rating">{% if product.avg_rating %}★ {{ product.avg_rating }}{% else %}☆{% endif %} ({{ product.review_count }})</span>
 <span>{{ product.orders_count }} vendus</span>
 </div>
-<div class="product-store-info">🏪 {{ product.store.name }}</div>
+<div class="product-store-info"><i class="fa-solid fa-store"></i> {{ product.store.name }}</div>
 </div>
 </a>

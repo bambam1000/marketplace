@@ -8,6 +8,7 @@ urlpatterns = [
     path('produits/', views.dash_products, name='products'),
     path('produits/ajouter/', views.dash_product_edit, name='product_add'),
     path('produits/<int:pk>/', views.dash_product_edit, name='product_edit'),
+    path('produits/<int:pk>/supprimer/', views.dash_product_delete, name='product_delete'),
     path('clients/', views.dash_customers, name='customers'),
     path('boutique/', views.dash_store, name='store'),
     # Admin only
