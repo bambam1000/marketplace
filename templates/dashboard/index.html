@@ -4,11 +4,11 @@
 {% block dash %}
 
 <!-- Welcome Banner -->
-<div style="margin-bottom:24px;padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#334155 100%);border-radius:var(--dash-radius);color:#fff;position:relative;overflow:hidden;">
-    <div style="position:absolute;top:-40px;right:-20px;width:200px;height:200px;background:radial-gradient(circle,rgba(255,106,0,.2),transparent 70%);pointer-events:none;"></div>
-    <div style="position:absolute;bottom:-60px;right:80px;width:160px;height:160px;background:radial-gradient(circle,rgba(59,130,246,.15),transparent 70%);pointer-events:none;"></div>
+<div style="margin-bottom:24px;padding:24px 28px;background:linear-gradient(150deg,#7c2d12 0%,#c2410c 60%,#ff6a00 100%);border-radius:var(--dash-radius);color:#fff;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-40px;right:-20px;width:200px;height:200px;background:radial-gradient(circle,rgba(255,217,179,.25),transparent 70%);pointer-events:none;"></div>
+    <div style="position:absolute;bottom:-60px;right:80px;width:160px;height:160px;background:radial-gradient(circle,rgba(255,255,255,.08),transparent 70%);pointer-events:none;"></div>
     <div style="position:relative;z-index:1;">
-        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.02em;">Bienvenue, {{ user.display_name }} 👋</h2>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-.02em;">Bienvenue, {{ user.display_name }}</h2>
         <p style="font-size:13.5px;color:rgba(255,255,255,.6);max-width:500px;line-height:1.5;">Voici un aperçu de votre activité. {% if is_admin %}Vous gérez la plateforme en tant qu'administrateur.{% elif is_seller %}Votre boutique se porte bien.{% else %}Suivez vos commandes et votre activité.{% endif %}</p>
     </div>
 </div>
@@ -21,8 +21,8 @@
                 <h3>Chiffre d'affaires</h3>
                 <div class="value">{{ total_revenue|intcomma }} F</div>
             </div>
-            <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,106,0,.2);display:flex;align-items:center;justify-content:center;">
-                <i class="fa-solid fa-chart-line" style="color:#ff8533;font-size:18px;"></i>
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(163,230,53,.15);display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-chart-line" style="color:var(--dash-lime);font-size:18px;"></i>
             </div>
         </div>
         <div class="change">
@@ -255,7 +255,7 @@
             {% empty %}
             <tr>
                 <td colspan="6" style="text-align:center;padding:48px;">
-                    <div style="font-size:40px;margin-bottom:12px;opacity:.2;">📦</div>
+                    <div style="font-size:40px;margin-bottom:12px;opacity:.2;"><i class="fa-solid fa-box-open"></i></div>
                     <div style="color:var(--dash-text3);font-size:14px;font-weight:500;">Aucune commande récente</div>
                     <p style="font-size:12px;color:var(--dash-text3);margin-top:4px;">Les commandes apparaîtront ici</p>
                 </td>

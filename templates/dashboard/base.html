@@ -11,33 +11,34 @@
    ═══════════════════════════════════════════ */
 
 :root {
-  --dash-bg: #f0f2f5;
-  --dash-sidebar-bg: #0f172a;
-  --dash-sidebar-hover: rgba(255,255,255,.06);
-  --dash-sidebar-active: rgba(255,106,0,.15);
-  --dash-sidebar-text: rgba(255,255,255,.55);
-  --dash-sidebar-text-active: #fff;
-  --dash-sidebar-w: 260px;
+  --dash-bg: #f3f4f2;
+  --dash-sidebar-bg: #ffffff;
+  --dash-sidebar-hover: #f0f4f1;
+  --dash-sidebar-active: #c2410c;
+  --dash-sidebar-text: #6b7280;
+  --dash-sidebar-text-active: #ffffff;
+  --dash-sidebar-w: 250px;
   --dash-accent: #ff6a00;
   --dash-accent-light: #ff8533;
-  --dash-accent-glow: rgba(255,106,0,.25);
+  --dash-accent-glow: rgba(255,106,0,.18);
+  --dash-lime: #ffd9b3;
   --dash-card: #ffffff;
-  --dash-card-border: rgba(0,0,0,.04);
-  --dash-radius: 16px;
-  --dash-radius-sm: 10px;
-  --dash-radius-xs: 6px;
-  --dash-shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.03);
-  --dash-shadow-lg: 0 4px 24px rgba(0,0,0,.08);
-  --dash-shadow-hover: 0 8px 32px rgba(0,0,0,.1);
-  --dash-text: #0f172a;
-  --dash-text2: #475569;
-  --dash-text3: #94a3b8;
-  --dash-border: #e2e8f0;
-  --dash-green: #10b981;
-  --dash-red: #ef4444;
-  --dash-blue: #3b82f6;
-  --dash-yellow: #f59e0b;
-  --dash-purple: #8b5cf6;
+  --dash-card-border: rgba(0,0,0,.05);
+  --dash-radius: 20px;
+  --dash-radius-sm: 12px;
+  --dash-radius-xs: 8px;
+  --dash-shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px rgba(16,24,40,.04);
+  --dash-shadow-lg: 0 8px 30px rgba(16,24,40,.08);
+  --dash-shadow-hover: 0 12px 32px rgba(16,24,40,.1);
+  --dash-text: #101828;
+  --dash-text2: #475467;
+  --dash-text3: #98a2b3;
+  --dash-border: #eaecf0;
+  --dash-green: #12b76a;
+  --dash-red: #f04438;
+  --dash-blue: #2e90fa;
+  --dash-yellow: #f79009;
+  --dash-purple: #7a5af8;
   --dash-transition: all .2s cubic-bezier(.4,0,.2,1);
 }
 
@@ -59,57 +60,58 @@ body {
   overflow: hidden;
 }
 
-/* ─── Sidebar ─── */
+/* ─── Sidebar (style épuré type Odoo) ─── */
 .dash-sidebar {
   width: var(--dash-sidebar-w);
   flex-shrink: 0;
   background: var(--dash-sidebar-bg);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   z-index: 100;
+  border-right: 1px solid var(--dash-border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--dash-border) transparent;
 }
-.dash-sidebar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 1px;
-  background: linear-gradient(to bottom, rgba(255,255,255,.08), rgba(255,255,255,.02));
-}
+.dash-sidebar::-webkit-scrollbar { width: 4px; }
+.dash-sidebar::-webkit-scrollbar-thumb { background: var(--dash-border); border-radius: 4px; }
 
 .dash-sidebar-logo {
-  padding: 24px 24px 20px;
-  font-size: 22px;
+  padding: 22px 22px 18px;
+  font-size: 19px;
   font-weight: 800;
-  color: #fff;
+  color: var(--dash-text);
   letter-spacing: -.03em;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 10px;
+}
+.dash-sidebar-logo .logo-icon {
+  width: 34px; height: 34px;
+  background: var(--dash-accent);
+  color: #fff;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
 }
 .dash-sidebar-logo span { color: var(--dash-accent); }
 
 .dash-sidebar-label {
-  padding: 20px 24px 8px;
+  padding: 10px 22px 4px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .1em;
-  color: rgba(255,255,255,.25);
+  letter-spacing: .12em;
+  color: var(--dash-text3);
 }
 
 .dash-nav {
-  padding: 4px 12px;
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.1) transparent;
+  padding: 2px 14px;
+  flex: 0 0 auto;
+  overflow: visible;
 }
-.dash-nav::-webkit-scrollbar { width: 4px; }
-.dash-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; }
 
 .dash-nav a, .nav-menu-toggle {
   display: flex;
@@ -120,7 +122,7 @@ body {
   font-size: 13.5px;
   font-weight: 500;
   transition: var(--dash-transition);
-  border-radius: var(--dash-radius-sm);
+  border-radius: 12px;
   margin-bottom: 2px;
   border: none;
   background: none;
@@ -130,31 +132,25 @@ body {
 }
 .dash-nav a:hover, .nav-menu-toggle:hover {
   background: var(--dash-sidebar-hover);
-  color: rgba(255,255,255,.85);
+  color: var(--dash-text);
 }
 .dash-nav a.active {
-  background: var(--dash-sidebar-active);
-  color: var(--dash-accent);
-  font-weight: 600;
-}
-.dash-nav a.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
   background: var(--dash-accent);
-  border-radius: 0 3px 3px 0;
+  color: var(--dash-sidebar-text-active);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(255,106,0,.3);
 }
 .dash-nav .nav-icon {
-  font-size: 17px;
+  font-size: 14px;
   margin-right: 12px;
   width: 22px;
   text-align: center;
   flex-shrink: 0;
+  color: var(--dash-text3);
+  transition: var(--dash-transition);
 }
+.dash-nav a:hover .nav-icon { color: var(--dash-accent); }
+.dash-nav a.active .nav-icon { color: #fff; }
 
 /* Submenu */
 .nav-menu-toggle {
@@ -163,12 +159,13 @@ body {
   justify-content: space-between;
 }
 .nav-menu-toggle > div { display: flex; align-items: center; }
+.nav-menu-toggle > div .nav-icon { color: var(--dash-text3); }
 .nav-menu-toggle i {
   font-size: 9px;
   transition: transform .25s ease;
-  color: rgba(255,255,255,.2);
+  color: var(--dash-text3);
 }
-.nav-menu-toggle.active { background: var(--dash-sidebar-hover); color: rgba(255,255,255,.85); }
+.nav-menu-toggle.active { background: var(--dash-sidebar-hover); color: var(--dash-text); }
 .nav-menu-toggle.active i { transform: rotate(90deg); color: var(--dash-accent); }
 
 .nav-submenu {
@@ -179,7 +176,7 @@ body {
 }
 .nav-submenu.active { max-height: 500px; }
 .nav-submenu a {
-  padding: 8px 14px 8px 48px !important;
+  padding: 8px 14px !important;
   font-size: 13px;
   margin-bottom: 1px;
 }
@@ -188,18 +185,26 @@ body {
 .sidebar-upgrade {
   margin: 12px 14px;
   padding: 20px 18px;
-  background: linear-gradient(135deg, rgba(255,106,0,.15), rgba(255,106,0,.05));
-  border: 1px solid rgba(255,106,0,.15);
+  background: linear-gradient(150deg, #0b3d2e, #0b6e4f);
   border-radius: var(--dash-radius);
   color: #fff;
+  position: relative;
+  overflow: hidden;
 }
-.sidebar-upgrade h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-.sidebar-upgrade p { font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 14px; line-height: 1.5; }
+.sidebar-upgrade::after {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle, rgba(163,230,53,.25), transparent 70%);
+}
+.sidebar-upgrade h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; position: relative; }
+.sidebar-upgrade p { font-size: 12px; color: rgba(255,255,255,.65); margin-bottom: 14px; line-height: 1.5; position: relative; }
 .sidebar-upgrade .btn {
-  background: var(--dash-accent);
-  color: #fff;
+  background: var(--dash-lime);
+  color: #0b3d2e;
   padding: 9px 20px;
-  border-radius: var(--dash-radius-xs);
+  border-radius: 10px;
   font-size: 12px;
   font-weight: 700;
   width: 100%;
@@ -208,10 +213,11 @@ body {
   cursor: pointer;
   transition: var(--dash-transition);
   letter-spacing: .01em;
+  position: relative;
 }
 .sidebar-upgrade .btn:hover {
-  background: var(--dash-accent-light);
-  box-shadow: 0 4px 16px var(--dash-accent-glow);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(163,230,53,.35);
 }
 
 /* ─── Content Wrapper ─── */
@@ -225,14 +231,12 @@ body {
 
 /* ─── Top Navbar ─── */
 .dash-navbar {
-  background: rgba(255,255,255,.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  padding: 16px 32px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--dash-border);
+  padding: 14px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(0,0,0,.05);
   z-index: 50;
   min-height: 68px;
 }
@@ -350,7 +354,9 @@ body {
   flex-shrink: 0;
 }
 .dash-user-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.dash-user-info { display: none; }
+.dash-user-info { display: block; text-align: right; }
+.dash-user-name { font-size: 13px; font-weight: 600; color: var(--dash-text); line-height: 1.2; }
+.dash-user-role { font-size: 11px; color: var(--dash-text3); }
 
 .dash-user-dropdown {
   position: absolute;
@@ -445,14 +451,14 @@ body {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--dash-accent), var(--dash-accent-light));
+  background: linear-gradient(90deg, var(--dash-accent), var(--dash-lime));
   opacity: 0;
   transition: opacity .2s ease;
 }
 .stat-card:hover { box-shadow: var(--dash-shadow-hover); transform: translateY(-2px); }
 .stat-card:hover::before { opacity: 1; }
 .stat-card.dark {
-  background: linear-gradient(135deg, #0f172a, #1e293b);
+  background: linear-gradient(150deg, #7c2d12, #c2410c);
   color: #fff;
   border: none;
 }
@@ -829,76 +835,76 @@ body {
 <button class="dash-sidebar-close" onclick="closeSidebar()" aria-label="Fermer le menu">
 <i class="fa-solid fa-xmark"></i>
 </button>
-<div class="dash-sidebar-logo">Afri<span>Market</span></div>
+<div class="dash-sidebar-logo"><div class="logo-icon"><i class="fa-solid fa-store"></i></div>Afri<span>Market</span></div>
 
 <div class="dash-sidebar-label">Principal</div>
 <nav class="dash-nav">
-<a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"><span class="nav-icon">📊</span> Vue d'ensemble</a>
-<a href="{% url 'dashboard:orders' %}" class="{% if 'order' in request.resolver_match.url_name and 'rfq' not in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">📦</span> Commandes</a>
+<a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Vue d'ensemble</a>
+<a href="{% url 'dashboard:orders' %}" class="{% if 'order' in request.resolver_match.url_name and 'rfq' not in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-box"></i></span> Commandes</a>
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon">📋</span> Devis RFQ</div>
+<div><span class="nav-icon"><i class="fa-solid fa-file-invoice"></i></span> Devis RFQ</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
 <div class="nav-submenu">
-<a href="{% url 'orders:rfq_list' %}" class="{% if request.resolver_match.url_name == 'rfq_list' %}active{% endif %}"><span class="nav-icon">📄</span> Demandes ouvertes</a>
-<a href="{% url 'orders:my_quotes' %}" class="{% if request.resolver_match.url_name == 'my_quotes' %}active{% endif %}"><span class="nav-icon">💼</span> Mes devis soumis</a>
+<a href="{% url 'orders:rfq_list' %}" class="{% if request.resolver_match.url_name == 'rfq_list' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-lines"></i></span> Demandes ouvertes</a>
+<a href="{% url 'orders:my_quotes' %}" class="{% if request.resolver_match.url_name == 'my_quotes' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-briefcase"></i></span> Mes devis soumis</a>
 </div>
-<a href="{% url 'dashboard:products' %}" class="{% if 'product' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">🏷️</span> Produits</a>
-<a href="{% url 'dashboard:customers' %}" class="{% if request.resolver_match.url_name == 'customers' %}active{% endif %}"><span class="nav-icon">👥</span> Clients</a>
+<a href="{% url 'dashboard:products' %}" class="{% if 'product' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-tag"></i></span> Produits</a>
+<a href="{% url 'dashboard:customers' %}" class="{% if request.resolver_match.url_name == 'customers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Clients</a>
 </nav>
 
 {% if request.user.is_seller %}
 <div class="dash-sidebar-label">Vendeur</div>
 <nav class="dash-nav">
-<a href="{% url 'dashboard:store' %}" class="{% if request.resolver_match.url_name == 'store' %}active{% endif %}"><span class="nav-icon">🏪</span> Ma Boutique</a>
+<a href="{% url 'dashboard:store' %}" class="{% if request.resolver_match.url_name == 'store' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-store"></i></span> Ma Boutique</a>
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon">💰</span> Finances</div>
+<div><span class="nav-icon"><i class="fa-solid fa-sack-dollar"></i></span> Finances</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
 <div class="nav-submenu">
-<a href="{% url 'billing:my_subscription' %}"><span class="nav-icon">💎</span> Mon Abonnement</a>
-<a href="{% url 'billing:payment_config' %}"><span class="nav-icon">💳</span> Config. Paiement</a>
-<a href="{% url 'billing:my_boosts' %}"><span class="nav-icon">🚀</span> Mes Boosts</a>
-<a href="{% url 'accounting:wallet' %}"><span class="nav-icon">👛</span> Portefeuille</a>
+<a href="{% url 'billing:my_subscription' %}"><span class="nav-icon"><i class="fa-solid fa-gem"></i></span> Mon Abonnement</a>
+<a href="{% url 'billing:payment_config' %}"><span class="nav-icon"><i class="fa-solid fa-credit-card"></i></span> Config. Paiement</a>
+<a href="{% url 'billing:my_boosts' %}"><span class="nav-icon"><i class="fa-solid fa-rocket"></i></span> Mes Boosts</a>
+<a href="{% url 'accounting:wallet' %}"><span class="nav-icon"><i class="fa-solid fa-wallet"></i></span> Portefeuille</a>
 </div>
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon">📣</span> Marketing</div>
+<div><span class="nav-icon"><i class="fa-solid fa-bullhorn"></i></span> Marketing</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
 <div class="nav-submenu">
-<a href="{% url 'marketing:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
-<a href="{% url 'marketing:promo_codes' %}"><span class="nav-icon">🎫</span> Codes Promo</a>
-<a href="{% url 'marketing:campaigns' %}"><span class="nav-icon">🎯</span> Campagnes</a>
-<a href="{% url 'marketing:analytics' %}"><span class="nav-icon">📈</span> Analytics</a>
-<a href="{% url 'marketing:loyalty' %}"><span class="nav-icon">⭐</span> Fidélité</a>
+<a href="{% url 'marketing:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
+<a href="{% url 'marketing:promo_codes' %}"><span class="nav-icon"><i class="fa-solid fa-ticket"></i></span> Codes Promo</a>
+<a href="{% url 'marketing:campaigns' %}"><span class="nav-icon"><i class="fa-solid fa-bullseye"></i></span> Campagnes</a>
+<a href="{% url 'marketing:analytics' %}"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Analytics</a>
+<a href="{% url 'marketing:loyalty' %}"><span class="nav-icon"><i class="fa-solid fa-star"></i></span> Fidélité</a>
 </div>
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon">🧾</span> Facturation</div>
+<div><span class="nav-icon"><i class="fa-solid fa-receipt"></i></span> Facturation</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
 <div class="nav-submenu">
-<a href="{% url 'invoicing:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
-<a href="{% url 'invoicing:invoices' %}"><span class="nav-icon">📄</span> Toutes les factures</a>
-<a href="{% url 'invoicing:invoice_create' %}"><span class="nav-icon">➕</span> Créer facture</a>
-<a href="{% url 'invoicing:settings' %}"><span class="nav-icon">⚙️</span> Paramètres</a>
+<a href="{% url 'invoicing:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
+<a href="{% url 'invoicing:invoices' %}"><span class="nav-icon"><i class="fa-solid fa-file-lines"></i></span> Toutes les factures</a>
+<a href="{% url 'invoicing:invoice_create' %}"><span class="nav-icon"><i class="fa-solid fa-plus"></i></span> Créer facture</a>
+<a href="{% url 'invoicing:settings' %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>
 </div>
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon">📈</span> Comptabilité</div>
+<div><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Comptabilité</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
 <div class="nav-submenu">
-<a href="{% url 'accounting:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
-<a href="{% url 'accounting:transactions' %}"><span class="nav-icon">🔄</span> Transactions</a>
-<a href="{% url 'accounting:report' %}"><span class="nav-icon">📑</span> Rapports</a>
+<a href="{% url 'accounting:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
+<a href="{% url 'accounting:transactions' %}"><span class="nav-icon"><i class="fa-solid fa-rotate"></i></span> Transactions</a>
+<a href="{% url 'accounting:report' %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span> Rapports</a>
 </div>
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon">🏪</span> Point de Vente</div>
+<div><span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span> Point de Vente</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
 <div class="nav-submenu">
-<a href="{% url 'pos:dashboard' %}"><span class="nav-icon">📊</span> Tableau de bord</a>
-<a href="{% url 'pos:interface' %}"><span class="nav-icon">🛒</span> Caisse</a>
-<a href="{% url 'pos:sales_report' %}"><span class="nav-icon">📈</span> Rapports</a>
+<a href="{% url 'pos:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
+<a href="{% url 'pos:interface' %}"><span class="nav-icon"><i class="fa-solid fa-cart-shopping"></i></span> Caisse</a>
+<a href="{% url 'pos:sales_report' %}"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Rapports</a>
 </div>
 </nav>
 {% endif %}
@@ -907,26 +913,28 @@ body {
 <div class="dash-sidebar-label">Administration</div>
 <nav class="dash-nav">
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon">⚙️</span> Gestion</div>
+<div><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Gestion</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
 <div class="nav-submenu">
-<a href="{% url 'dashboard:users' %}" class="{% if request.resolver_match.url_name == 'users' %}active{% endif %}"><span class="nav-icon">👤</span> Utilisateurs</a>
-<a href="{% url 'dashboard:sellers' %}" class="{% if request.resolver_match.url_name == 'sellers' %}active{% endif %}"><span class="nav-icon">🏪</span> Vendeurs</a>
-<a href="{% url 'dashboard:payouts' %}" class="{% if request.resolver_match.url_name == 'payouts' %}active{% endif %}"><span class="nav-icon">💸</span> Versements</a>
-<a href="{% url 'accounting:expenses' %}"><span class="nav-icon">📋</span> Dépenses</a>
-<a href="{% url 'dashboard:categories' %}" class="{% if 'categor' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">📂</span> Catégories</a>
-<a href="{% url 'dashboard:banners' %}" class="{% if 'banner' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon">🖼️</span> Bannières</a>
-<a href="{% url 'dashboard:platform_stats' %}" class="{% if request.resolver_match.url_name == 'platform_stats' %}active{% endif %}"><span class="nav-icon">🌐</span> Stats Plateforme</a>
+<a href="{% url 'dashboard:users' %}" class="{% if request.resolver_match.url_name == 'users' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-user"></i></span> Utilisateurs</a>
+<a href="{% url 'dashboard:sellers' %}" class="{% if request.resolver_match.url_name == 'sellers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-store"></i></span> Vendeurs</a>
+<a href="{% url 'dashboard:payouts' %}" class="{% if request.resolver_match.url_name == 'payouts' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-money-bill-transfer"></i></span> Versements</a>
+<a href="{% url 'accounting:expenses' %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span> Dépenses</a>
+<a href="{% url 'dashboard:categories' %}" class="{% if 'categor' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-folder-open"></i></span> Catégories</a>
+<a href="{% url 'dashboard:banners' %}" class="{% if 'banner' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-image"></i></span> Bannières</a>
+<a href="{% url 'dashboard:platform_stats' %}" class="{% if request.resolver_match.url_name == 'platform_stats' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-globe"></i></span> Stats Plateforme</a>
 </div>
 </nav>
 {% endif %}
 
-<nav class="dash-nav" style="padding-top:8px;flex:0;">
-<a href="{% url 'accounts:profile' %}"><span class="nav-icon">⚙️</span> Paramètres</a>
-<a href="#"><span class="nav-icon">💬</span> Centre d'aide</a>
-<a href="{% url 'accounts:logout' %}"><span class="nav-icon">🚪</span> Déconnexion</a>
+<div class="dash-sidebar-label">Outils</div>
+<nav class="dash-nav" style="flex:0;">
+<a href="{% url 'accounts:profile' %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>
+<a href="{% url 'faq' %}"><span class="nav-icon"><i class="fa-solid fa-circle-question"></i></span> Centre d'aide</a>
+<a href="{% url 'accounts:logout' %}"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Déconnexion</a>
 </nav>
+
 </aside>
 
 <!-- ═══ Content Area ═══ -->
@@ -936,15 +944,8 @@ body {
 <button class="dash-sidebar-toggle" onclick="toggleSidebar()" aria-label="Menu">
 <i class="fa-solid fa-bars"></i>
 </button>
-<h1 class="dash-page-title">{% block page_title %}Dashboard{% endblock %}</h1>
 </div>
 <div class="dash-navbar-right">
-<div class="dash-navbar-search">
-<i class="fa-solid fa-magnifying-glass"></i>
-<input type="text" placeholder="Rechercher...">
-</div>
-
-<div class="dash-navbar-sep"></div>
 
 <div class="dash-navbar-icon" style="position:relative;" id="languageSelector">
 <i class="fa-solid fa-globe"></i>
@@ -953,10 +954,10 @@ body {
 {% csrf_token %}
 <input name="next" type="hidden" value="{{ request.path }}">
 <button type="submit" name="language" value="fr" class="{% if LANGUAGE_CODE == 'fr' %}active{% endif %}">
-<span style="font-size:16px;">🇫🇷</span> Français
+<span style="font-size:11px;font-weight:700;color:var(--dash-accent);width:18px;text-align:center;">FR</span> Français
 </button>
 <button type="submit" name="language" value="en" class="{% if LANGUAGE_CODE == 'en' %}active{% endif %}">
-<span style="font-size:16px;">🇬🇧</span> English
+<span style="font-size:11px;font-weight:700;color:var(--dash-accent);width:18px;text-align:center;">EN</span> English
 </button>
 </form>
 </div>
@@ -975,10 +976,8 @@ body {
 <div class="dash-navbar-sep"></div>
 
 <div class="dash-user-menu">
-<div class="dash-user-avatar">{{ user.display_name|truncatechars:3 }}</div>
-<div class="dash-user-info">
+<div class="dash-user-info" style="display:block;">
 <div class="dash-user-name">{{ user.display_name }}</div>
-<div class="dash-user-role">{% if user.is_superuser %}Admin{% elif user.is_seller %}Vendeur{% else %}Client{% endif %}</div>
 </div>
 <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--dash-text3);"></i>
 <div class="dash-user-dropdown">

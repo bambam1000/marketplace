@@ -6,7 +6,7 @@
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
 <div>
 <h2 style="font-size:22px;margin-bottom:8px;"><i class="fa-solid fa-file-invoice"></i> Mes demandes de devis</h2>
-<p style="color:var(--text3);font-size:14px;">Gérez vos demandes et consultez les devis reçus</p>
+<p style="color:var(--text3);font-size:14px;">Suivez et gérez vos demandes de devis</p>
 </div>
 <a href="{% url 'orders:create_rfq' %}" class="btn btn-orange">+ Nouvelle demande</a>
 </div>
@@ -15,7 +15,6 @@
 <div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;">
 <a href="{% url 'orders:my_rfqs' %}" class="btn {% if not request.GET.status %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Toutes</a>
 <a href="?status=open" class="btn {% if request.GET.status == 'open' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Ouvertes</a>
-<a href="?status=quoted" class="btn {% if request.GET.status == 'quoted' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Devis reçus</a>
 <a href="?status=accepted" class="btn {% if request.GET.status == 'accepted' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Acceptées</a>
 <a href="?status=closed" class="btn {% if request.GET.status == 'closed' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Fermées</a>
 </div>
