@@ -1,0 +1,160 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Inventaire — Mouvements de stock{% endblock %}
+{% block dash %}
+<style>
+.mv-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.mv-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.mv-filters input, .mv-filters select { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 12px; font-family: inherit; color: var(--dash-text); }
+.mv-filters input:focus, .mv-filters select:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.mv-filters label { font-size: 11px; color: var(--dash-text3); font-weight: 600; }
+.mv-in { color: var(--dash-green); font-weight: 700; }
+.mv-out { color: var(--dash-red); font-weight: 700; }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 480px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dash-border); font-size: 13px; }
+.detail-row:last-child { border-bottom: none; }
+.detail-row .k { color: var(--dash-text3); font-weight: 600; }
+.detail-row .v { font-weight: 600; color: var(--dash-text); text-align: right; }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-boxes-stacked" style="color:var(--dash-accent);"></i> Mouvements de stock</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ total_movements }} mouvement{{ total_movements|pluralize:"s" }} au total</p>
+    </div>
+</div>
+
+<div class="dash-card">
+    <!-- Filtres -->
+    <form method="get" class="mv-toolbar">
+        <div class="mv-filters">
+            <div>
+                <label>Du</label><br>
+                <input type="date" name="from" value="{{ date_from }}">
+            </div>
+            <div>
+                <label>Au</label><br>
+                <input type="date" name="to" value="{{ date_to }}">
+            </div>
+            <div>
+                <label>Type</label><br>
+                <select name="type">
+                    <option value="">Tous</option>
+                    {% for code, label in type_choices %}
+                    <option value="{{ code }}" {% if type_filter == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Produit</label><br>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher...">
+            </div>
+            <div style="align-self:end;">
+                <button type="submit" class="btn btn-orange btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrer</button>
+                <a href="{% url 'dashboard:inventory' %}" class="btn btn-outline btn-sm">Réinitialiser</a>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <a href="{% url 'dashboard:movements_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-file-pdf"></i> PDF</a>
+            <a href="{% url 'dashboard:movements_excel' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+        </div>
+    </form>
+
+    <!-- Tableau des mouvements -->
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Avant</th><th>Après</th><th>Référence</th><th style="text-align:right;">Action</th></tr>
+        </thead>
+        <tbody>
+            {% for m in movements %}
+            <tr>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ m.created_at|date:"d/m/Y H:i" }}</td>
+                <td style="font-weight:600;">{{ m.product.name|truncatechars:30 }}</td>
+                <td><span class="tag {% if m.quantity > 0 %}tag-green{% else %}tag-orange{% endif %}">{{ m.get_movement_type_display }}</span></td>
+                <td class="{% if m.quantity > 0 %}mv-in{% else %}mv-out{% endif %}">{% if m.quantity > 0 %}+{% endif %}{{ m.quantity }}</td>
+                <td>{{ m.stock_before }}</td>
+                <td style="font-weight:700;">{{ m.stock_after }}</td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ m.reference|default:'—' }}</td>
+                <td style="text-align:right;">
+                    <button class="btn btn-sm btn-outline" onclick='openDetailModal({{ m.id }})'><i class="fa-solid fa-eye"></i> Détail</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" style="text-align:center;padding:3rem;">
+                <div style="font-size:36px;opacity:.25;margin-bottom:10px;"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <div style="color:var(--dash-text3);">Aucun mouvement trouvé</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
+        Affichage des {{ movements|length }} derniers mouvements
+    </div>
+</div>
+
+<!-- ═══ Modale Détail ═══ -->
+<div class="dmodal" id="detailModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-circle-info" style="color:var(--dash-accent);"></i> Détail du mouvement</h3>
+            <button type="button" class="dmodal-close" onclick="closeDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="dmodal-body" id="detailBody"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--dash-border);">
+            <a href="#" id="btnPdf" class="btn btn-sm" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-file-pdf"></i> PDF</a>
+            <a href="#" id="btnExcel" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+        </div>
+    </div>
+</div>
+
+<script>
+var MOVEMENTS = {
+{% for m in movements %}
+{{ m.id }}: {
+    date: "{{ m.created_at|date:'d/m/Y H:i' }}",
+    product: "{{ m.product.name|escapejs }}",
+    type: "{{ m.get_movement_type_display }}",
+    quantity: "{{ m.quantity }}",
+    before: {{ m.stock_before }},
+    after: {{ m.stock_after }},
+    reason: "{{ m.reason|escapejs|default:'—' }}",
+    reference: "{{ m.reference|escapejs|default:'—' }}",
+    by: "{% if m.created_by %}{{ m.created_by.display_name|escapejs }}{% else %}—{% endif %}"
+}{% if not forloop.last %},{% endif %}
+{% endfor %}
+};
+
+var URL_PDF = "{% url 'dashboard:movement_pdf' 0 %}".replace('/0/', '/{id}/');
+var URL_EXCEL = "{% url 'dashboard:movement_excel' 0 %}".replace('/0/', '/{id}/');
+
+function openDetailModal(id) {
+    var m = MOVEMENTS[id];
+    if (!m) return;
+    document.getElementById('btnPdf').href = URL_PDF.replace('{id}', id);
+    document.getElementById('btnExcel').href = URL_EXCEL.replace('{id}', id);
+    var qtyClass = m.quantity > 0 ? 'mv-in' : 'mv-out';
+    var qtyLabel = (m.quantity > 0 ? '+' : '') + m.quantity;
+    document.getElementById('detailBody').innerHTML =
+        '<div class="detail-row"><span class="k">Produit</span><span class="v">' + m.product + '</span></div>' +
+        '<div class="detail-row"><span class="k">Type</span><span class="v">' + m.type + '</span></div>' +
+        '<div class="detail-row"><span class="k">Quantité</span><span class="v ' + qtyClass + '">' + qtyLabel + '</span></div>' +
+        '<div class="detail-row"><span class="k">Stock avant</span><span class="v">' + m.before + '</span></div>' +
+        '<div class="detail-row"><span class="k">Stock après</span><span class="v">' + m.after + '</span></div>' +
+        '<div class="detail-row"><span class="k">Motif</span><span class="v">' + m.reason + '</span></div>' +
+        '<div class="detail-row"><span class="k">Référence</span><span class="v">' + m.reference + '</span></div>' +
+        '<div class="detail-row"><span class="k">Effectué par</span><span class="v">' + m.by + '</span></div>' +
+        '<div class="detail-row"><span class="k">Date</span><span class="v">' + m.date + '</span></div>';
+    document.getElementById('detailModal').classList.add('open');
+}
+function closeDetailModal() { document.getElementById('detailModal').classList.remove('open'); }
+document.getElementById('detailModal').addEventListener('click', function(e) { if (e.target === this) closeDetailModal(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDetailModal(); });
+</script>
+{% endblock %}

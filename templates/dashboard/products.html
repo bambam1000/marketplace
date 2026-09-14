@@ -1,8 +1,380 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Produits{% endblock %}
 {% block dash %}
-<div class="dash-header"><div><h1>Produits</h1><p style="font-size:13px;color:var(--text3);">{{ products|length }} produit{{ products|length|pluralize:"s" }}</p></div><a href="{% url 'dashboard:product_add' %}" class="btn btn-orange">+ Ajouter un produit</a></div>
-<div class="dash-card"><div class="dash-table-responsive"><table class="dash-table"><thead><tr><th>Produit</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>Ventes</th><th>Statut</th><th></th></tr></thead><tbody>
-{% for p in products %}<tr><td style="font-weight:500;">{{ p.name|truncatechars:40 }}{% if p.is_featured %} <span class="tag tag-orange">⭐</span>{% endif %}{% if p.is_flash_deal %} <span class="tag tag-orange">⚡</span>{% endif %}</td><td>{{ p.category.name }}</td><td style="font-weight:600;">{{ p.price|intcomma }} F</td><td>{% if p.stock <= 5 %}<span style="color:var(--dash-red);font-weight:600;">{{ p.stock }}</span>{% else %}{{ p.stock }}{% endif %}</td><td>{{ p.orders_count }}</td><td>{% if p.is_active %}<span class="status-badge st-delivered">Actif</span>{% else %}<span class="status-badge st-cancelled">Inactif</span>{% endif %}</td><td><div style="display:flex;gap:4px;"><a href="{% url 'dashboard:product_edit' p.pk %}" class="btn btn-sm btn-outline">Modifier</a><a href="{% url 'billing:boost_product' p.pk %}" class="btn btn-sm btn-outline" style="color:var(--dash-accent);" title="Booster">🚀</a></div></td></tr>{% empty %}<tr><td colspan="7" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">🏷️</div><div style="color:var(--dash-text3);font-size:14px;">Aucun produit</div></td></tr>{% endfor %}
-</tbody></table></div></div>
+<style>
+.prod-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.prod-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.prod-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.prod-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.prod-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.prod-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.prod-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.prod-search { position: relative; }
+.prod-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 260px; font-family: inherit; }
+.prod-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.prod-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+.prod-actions-menu { position: relative; }
+.prod-dropdown { display: none; position: fixed; background: #fff; border: 1px solid var(--dash-border); border-radius: 6px; box-shadow: var(--dash-shadow-lg); min-width: 170px; z-index: 1500; overflow: hidden; }
+.prod-dropdown.open { display: block; }
+.prod-dropdown a, .prod-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; font-size: 13px; color: var(--dash-text2); text-decoration: none; background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.prod-dropdown a:hover, .prod-dropdown button:hover { background: var(--dash-bg); color: var(--dash-text); }
+.prod-dropdown i { width: 16px; text-align: center; color: var(--dash-text3); }
+.dots-btn { background: none; border: none; cursor: pointer; color: var(--dash-text3); padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+.dots-btn:hover { background: var(--dash-bg); color: var(--dash-text); }
+/* Modales */
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.dmodal-close:hover { background: var(--dash-bg); color: var(--dash-text); }
+.dmodal-body { padding: 22px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--dash-border); }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .prod-stats { grid-template-columns: repeat(2, 1fr); } .frow { grid-template-columns: 1fr; } }
+</style>
+
+<!-- ═══ Stats ═══ -->
+<div class="prod-stats">
+    <div class="prod-stat">
+        <div><div class="lbl">Total Produits</div><div class="val">{{ total }}</div><div class="sub">Tous les produits</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-tag"></i></div>
+    </div>
+    <div class="prod-stat">
+        <div><div class="lbl">Actifs</div><div class="val">{{ active }}</div><div class="sub">Visibles en boutique</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-circle-check"></i></div>
+    </div>
+    <div class="prod-stat">
+        <div><div class="lbl">Stock faible</div><div class="val">{{ low }}</div><div class="sub">5 unités ou moins</div></div>
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    </div>
+    <div class="prod-stat">
+        <div><div class="lbl">En vedette</div><div class="val">{{ featured }}</div><div class="sub">Produits mis en avant</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-star"></i></div>
+    </div>
+</div>
+
+<!-- ═══ Table ═══ -->
+<div class="dash-card">
+    <div class="prod-toolbar">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="{% url 'dashboard:products' %}" class="btn btn-sm {% if not stock_filter %}btn-orange{% else %}btn-outline{% endif %}">Tous</a>
+            <a href="?stock=low" class="btn btn-sm {% if stock_filter == 'low' %}btn-orange{% else %}btn-outline{% endif %}">Stock faible</a>
+            <a href="?stock=out" class="btn btn-sm {% if stock_filter == 'out' %}btn-orange{% else %}btn-outline{% endif %}">Ruptures</a>
+        </div>
+        <form method="get" class="prod-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un produit...">
+        </form>
+        <button type="button" class="btn btn-orange" onclick="openProductModal()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>Produit</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>Ventes</th><th>Statut</th><th style="text-align:right;">Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for p in products %}
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:38px;height:38px;border-radius:8px;background:var(--dash-bg);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            {% if p.image %}<img src="{{ p.image.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}<i class="fa-solid fa-bag-shopping" style="color:var(--dash-text3);"></i>{% endif %}
+                        </div>
+                        <div>
+                            <div style="font-weight:600;color:var(--dash-text);">{{ p.name|truncatechars:35 }}</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">#{{ p.id }}{% if p.is_featured %} · <span style="color:var(--dash-accent);">Vedette</span>{% endif %}{% if p.is_flash_deal %} · <span style="color:var(--dash-yellow);">Flash</span>{% endif %}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ p.category.name }}</td>
+                <td style="font-weight:700;">{{ p.price|intcomma }} F</td>
+                <td>{% if p.stock <= 5 %}<span style="color:var(--dash-red);font-weight:700;">{{ p.stock }}</span>{% else %}{{ p.stock }}{% endif %}</td>
+                <td>{{ p.orders_count }}</td>
+                <td>{% if p.is_active %}<span class="status-badge st-delivered">Actif</span>{% else %}<span class="status-badge st-cancelled">Inactif</span>{% endif %}</td>
+                <td style="text-align:right;">
+                    <div class="prod-actions-menu">
+                        <button class="dots-btn" onclick="toggleProdMenu(event, {{ p.id }})"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="prod-dropdown" id="prodMenu{{ p.id }}">
+                            <button type="button" onclick='openProductModal({{ p.id }})'><i class="fa-solid fa-pen"></i> Modifier</button>
+                            <button type="button" onclick="openAdjustModal({{ p.id }}, '{{ p.name|escapejs }}', {{ p.stock }}, {{ p.low_stock_threshold }})"><i class="fa-solid fa-sliders"></i> Ajuster le stock</button>
+                            <a href="{% url 'billing:boost_product' p.pk %}"><i class="fa-solid fa-rocket"></i> Booster</a>
+                            <a href="{% url 'catalog:product_detail' p.slug %}" target="_blank"><i class="fa-solid fa-eye"></i> Voir en ligne</a>
+                            <button type="button" style="color:var(--dash-red);" onclick="openDeleteModal({{ p.id }}, '{{ p.name|escapejs }}')"><i class="fa-solid fa-trash-can" style="color:var(--dash-red);"></i> Supprimer</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;margin-bottom:12px;opacity:.25;"><i class="fa-solid fa-tag"></i></div>
+                <div style="color:var(--dash-text3);font-size:14px;">Aucun produit{% if search_query %} trouvé pour « {{ search_query }} »{% endif %}</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
+        Affichage de {{ products|length }} produit{{ products|length|pluralize:"s" }}
+    </div>
+</div>
+
+<!-- ═══ Modale Ajouter / Modifier ═══ -->
+<div class="dmodal" id="productModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3 id="productModalTitle"><i class="fa-solid fa-plus" style="color:var(--dash-accent);"></i> Ajouter un produit</h3>
+            <button type="button" class="dmodal-close" onclick="closeProductModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" id="productForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <div class="frow">
+                    <div class="form-group"><label>Nom du produit *</label><input type="text" name="name" id="pf_name" class="form-control" required></div>
+                    <div class="form-group"><label>Catégorie *</label>
+                        <select name="category" id="pf_category" class="form-control" required>
+                            <option value="">Sélectionner...</option>
+                            {% for cat in categories %}<option value="{{ cat.id }}">{{ cat.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="frow">
+                    <div class="form-group"><label>Prix (FCFA) *</label><input type="number" name="price" id="pf_price" class="form-control" min="0" required></div>
+                    <div class="form-group"><label>Ancien prix</label><input type="number" name="old_price" id="pf_old_price" class="form-control" min="0"></div>
+                </div>
+                <div class="frow">
+                    <div class="form-group" id="stock_field">
+                        <label>Stock *</label>
+                        <input type="number" name="stock" id="pf_stock" class="form-control" min="0" value="0" required>
+                        <small id="stock_hint" style="display:none;font-size:11px;color:var(--dash-text3);">Le stock se modifie uniquement via « Ajuster le stock » (menu ⋮) pour garder la traçabilité.</small>
+                    </div>
+                    <div class="form-group"><label>Quantité min. commande</label><input type="number" name="min_order" id="pf_min_order" class="form-control" min="1" value="1"></div>
+                </div>
+                <div class="form-group"><label>Description *</label><textarea name="description" id="pf_description" class="form-control" rows="3" required></textarea></div>
+                <div class="frow">
+                    <div class="form-group"><label>Couleurs (séparées par virgule)</label><input type="text" name="colors" id="pf_colors" class="form-control" placeholder="Rouge, Bleu"></div>
+                    <div class="form-group"><label>Tailles</label><input type="text" name="sizes" id="pf_sizes" class="form-control" placeholder="S, M, L"></div>
+                </div>
+                <div class="form-group">
+                    <label>Images du produit (jusqu'à 4)</label>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+                        {% for i in "1234" %}
+                        <div style="position:relative;">
+                            <label style="display:block;cursor:pointer;margin:0;">
+                                <div id="preview_{{ forloop.counter }}" style="width:100%;height:80px;border:1.5px dashed var(--dash-border);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dash-text3);font-size:20px;background:var(--dash-bg);overflow:hidden;">
+                                    <i class="fa-solid fa-image"></i>
+                                </div>
+                                <input type="file" name="image{% if forloop.counter > 1 %}_{{ forloop.counter }}{% endif %}" accept="image/*" style="display:none;" onchange="previewImage(this, {{ forloop.counter }})">
+                            </label>
+                            <div style="font-size:10px;color:var(--dash-text3);text-align:center;margin-top:3px;">Image {{ forloop.counter }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div style="display:flex;gap:18px;flex-wrap:wrap;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" name="is_active" id="pf_is_active" checked> Actif</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" name="is_featured" id="pf_is_featured"> En vedette</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" name="is_flash_deal" id="pf_is_flash_deal"> Flash deal</label>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeProductModal()">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══ Modale Ajustement de stock ═══ -->
+<div class="dmodal" id="adjustModal">
+    <div class="dmodal-box" style="max-width:460px;">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-sliders" style="color:var(--dash-accent);"></i> Ajuster le stock</h3>
+            <button type="button" class="dmodal-close" onclick="closeAdjustModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" id="adjustForm">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <p style="font-size:13px;color:var(--dash-text3);margin-bottom:14px;">Produit : <strong id="adjName" style="color:var(--dash-text);"></strong> · Stock actuel : <strong id="adjStock" style="color:var(--dash-accent);"></strong></p>
+                <div class="form-group">
+                    <label>Type de mouvement</label>
+                    <select name="movement_type" class="form-control">
+                        <option value="in">Entrée (réapprovisionnement)</option>
+                        <option value="out">Sortie (perte, casse...)</option>
+                        <option value="adjustment">Ajustement (correction)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantité *</label>
+                    <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Seuil d'alerte stock faible</label>
+                    <input type="number" name="low_stock_threshold" id="adjThreshold" class="form-control" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Motif</label>
+                    <input type="text" name="reason" class="form-control" placeholder="Ex: Livraison fournisseur, inventaire...">
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeAdjustModal()">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Valider</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ═══ Modale Suppression ═══ -->
+<div class="dmodal" id="deleteModal">
+    <div class="dmodal-box" style="max-width:420px;">
+        <div class="dmodal-body" style="text-align:center;">
+            <div style="width:60px;height:60px;border-radius:50%;background:rgba(240,68,56,.1);color:var(--dash-red);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;"><i class="fa-solid fa-trash-can"></i></div>
+            <h3 style="font-size:16px;margin-bottom:8px;">Supprimer ce produit ?</h3>
+            <p style="font-size:13px;color:var(--dash-text3);margin-bottom:0;">« <strong id="deleteProductName"></strong> » sera définitivement supprimé.</p>
+        </div>
+        <div class="dmodal-foot" style="justify-content:center;">
+            <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Annuler</button>
+            <form method="post" id="deleteForm" style="margin:0;">{% csrf_token %}
+                <button type="submit" class="btn" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-trash-can"></i> Supprimer</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var PRODUCTS = {
+{% for p in products %}
+{{ p.id }}: {
+    name: "{{ p.name|escapejs }}",
+    category: {{ p.category_id }},
+    price: "{{ p.price }}",
+    old_price: "{{ p.old_price|default:'' }}",
+    stock: {{ p.stock }},
+    min_order: {{ p.min_order }},
+    description: "{{ p.description|escapejs }}",
+    colors: "{{ p.colors|escapejs }}",
+    sizes: "{{ p.sizes|escapejs }}",
+    is_active: {{ p.is_active|yesno:"true,false" }},
+    is_featured: {{ p.is_featured|yesno:"true,false" }},
+    is_flash_deal: {{ p.is_flash_deal|yesno:"true,false" }},
+    images: [
+        {% if p.image %}"{{ p.image.url }}"{% else %}""{% endif %},
+        {% if p.image_2 %}"{{ p.image_2.url }}"{% else %}""{% endif %},
+        {% if p.image_3 %}"{{ p.image_3.url }}"{% else %}""{% endif %},
+        {% if p.image_4 %}"{{ p.image_4.url }}"{% else %}""{% endif %}
+    ]
+}{% if not forloop.last %},{% endif %}
+{% endfor %}
+};
+
+function previewImage(input, num) {
+    var box = document.getElementById('preview_' + num);
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            box.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function resetPreviews(images) {
+    for (var i = 1; i <= 4; i++) {
+        var box = document.getElementById('preview_' + i);
+        var url = images && images[i - 1] ? images[i - 1] : '';
+        if (url) {
+            box.innerHTML = '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;">';
+        } else {
+            box.innerHTML = '<i class="fa-solid fa-image"></i>';
+        }
+    }
+}
+
+var URL_ADD = "{% url 'dashboard:product_add' %}";
+var URL_EDIT = "{% url 'dashboard:product_edit' 0 %}".replace('/0/', '/{id}/');
+
+function openProductModal(id) {
+    var modal = document.getElementById('productModal');
+    var form = document.getElementById('productForm');
+    var title = document.getElementById('productModalTitle');
+    form.reset();
+    if (id && PRODUCTS[id]) {
+        var p = PRODUCTS[id];
+        title.innerHTML = '<i class="fa-solid fa-pen" style="color:var(--dash-accent);"></i> Modifier le produit';
+        form.action = URL_EDIT.replace('{id}', id);
+        document.getElementById('pf_name').value = p.name;
+        document.getElementById('pf_category').value = p.category;
+        document.getElementById('pf_price').value = parseInt(p.price);
+        document.getElementById('pf_old_price').value = p.old_price ? parseInt(p.old_price) : '';
+        document.getElementById('pf_stock').value = p.stock;
+        document.getElementById('pf_stock').readOnly = true;
+        document.getElementById('pf_stock').style.background = 'var(--dash-bg)';
+        document.getElementById('stock_hint').style.display = 'block';
+        document.getElementById('pf_min_order').value = p.min_order;
+        document.getElementById('pf_description').value = p.description;
+        document.getElementById('pf_colors').value = p.colors;
+        document.getElementById('pf_sizes').value = p.sizes;
+        document.getElementById('pf_is_active').checked = p.is_active;
+        document.getElementById('pf_is_featured').checked = p.is_featured;
+        document.getElementById('pf_is_flash_deal').checked = p.is_flash_deal;
+        resetPreviews(p.images);
+    } else {
+        title.innerHTML = '<i class="fa-solid fa-plus" style="color:var(--dash-accent);"></i> Ajouter un produit';
+        form.action = URL_ADD;
+        document.getElementById('pf_stock').readOnly = false;
+        document.getElementById('pf_stock').style.background = '';
+        document.getElementById('stock_hint').style.display = 'none';
+        resetPreviews(null);
+    }
+    modal.classList.add('open');
+}
+function closeProductModal() { document.getElementById('productModal').classList.remove('open'); }
+
+function openAdjustModal(id, name, stock, threshold) {
+    document.getElementById('adjName').textContent = name;
+    document.getElementById('adjStock').textContent = stock;
+    document.getElementById('adjThreshold').value = threshold;
+    document.getElementById('adjustForm').action = "{% url 'dashboard:stock_adjust' 0 %}".replace('/0/', '/' + id + '/');
+    document.getElementById('adjustModal').classList.add('open');
+}
+function closeAdjustModal() { document.getElementById('adjustModal').classList.remove('open'); }
+
+function openDeleteModal(id, name) {
+    document.getElementById('deleteProductName').textContent = name;
+    document.getElementById('deleteForm').action = "{% url 'dashboard:product_delete' 0 %}".replace('/0/', '/' + id + '/');
+    document.getElementById('deleteModal').classList.add('open');
+}
+function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('open'); }
+
+function toggleProdMenu(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById('prodMenu' + id);
+    var wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.prod-dropdown').forEach(function(d) { d.classList.remove('open'); });
+    if (wasOpen) return;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var menuHeight = 180;
+    var top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight) {
+        top = rect.top - menuHeight - 6;
+    }
+    menu.style.top = top + 'px';
+    menu.style.left = (rect.right - 170) + 'px';
+    menu.classList.add('open');
+}
+document.addEventListener('click', function() {
+    document.querySelectorAll('.prod-dropdown').forEach(function(d) { d.classList.remove('open'); });
+});
+document.querySelectorAll('.dmodal').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.querySelectorAll('.dmodal').forEach(function(m) { m.classList.remove('open'); });
+});
+</script>
 {% endblock %}

@@ -222,11 +222,25 @@ def dash_products(request):
         products = request.user.store.products.all()
     else:
         products = Product.objects.all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        products = products.filter(name__icontains=q)
+    stock_filter = request.GET.get('stock', '')
+    if stock_filter == 'out':
+        products = products.filter(stock=0)
+    elif stock_filter == 'low':
+        products = [p for p in products if p.is_low_stock]
+    else:
+        products = products.select_related('category', 'store')
     return render(request, 'dashboard/products.html', {
-        'products': products.select_related('category', 'store'),
-        'total': products.count(),
-        'active': products.filter(is_active=True).count(),
-        'low': products.filter(stock__lte=5, is_active=True).count(),
+        'products': products,
+        'categories': Category.objects.filter(is_active=True),
+        'search_query': q,
+        'stock_filter': stock_filter,
+        'total': len(products),
+        'active': sum(1 for p in products if p.is_active),
+        'low': sum(1 for p in products if p.is_low_stock),
+        'featured': sum(1 for p in products if p.is_featured),
     })
 
 
@@ -263,6 +277,8 @@ def dash_product_edit(request, pk=None):
         cat_id = request.POST.get('category')
         if cat_id: data['category'] = Category.objects.get(pk=cat_id)
         if product:
+            # Le stock ne se modifie que via l'ajustement (traçabilité)
+            data.pop('stock', None)
             for k, v in data.items(): setattr(product, k, v)
             for f in ['image', 'image_2', 'image_3', 'image_4']:
                 if request.FILES.get(f): setattr(product, f, request.FILES[f])
@@ -291,6 +307,306 @@ def dash_product_delete(request, pk):
         product.delete()
         django_messages.success(request, f'Produit "{name}" supprimé.')
     return redirect('dashboard:products')
+
+
+# ======== GESTION DE STOCK ========
+@login_required
+@seller_or_admin_required
+def dash_inventory(request):
+    """Page inventaire : historique des mouvements de stock avec filtres"""
+    from catalog.models import StockMovement
+    from datetime import datetime
+    if request.user.is_seller and hasattr(request.user, 'store'):
+        movements = StockMovement.objects.filter(store=request.user.store)
+    else:
+        movements = StockMovement.objects.all()
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        movements = movements.filter(product__name__icontains=q)
+    mtype = request.GET.get('type', '')
+    if mtype:
+        movements = movements.filter(movement_type=mtype)
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    if date_from:
+        try:
+            movements = movements.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            movements = movements.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+
+    return render(request, 'dashboard/inventory.html', {
+        'movements': movements.select_related('product', 'created_by')[:100],
+        'search_query': q,
+        'type_filter': mtype,
+        'date_from': date_from,
+        'date_to': date_to,
+        'type_choices': StockMovement.TYPE_CHOICES,
+        'total_movements': movements.count(),
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_stock_adjust(request, pk):
+    """Ajustement / entrée / sortie de stock via modale"""
+    product = get_object_or_404(Product, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and product.store != request.user.store:
+        django_messages.error(request, "Ce produit ne vous appartient pas.")
+        return redirect('dashboard:products')
+
+    if request.method == 'POST':
+        movement_type = request.POST.get('movement_type', 'adjustment')
+        qty = int(request.POST.get('quantity', 0))
+        reason = request.POST.get('reason', '').strip()
+        threshold = request.POST.get('low_stock_threshold')
+
+        if threshold is not None and threshold != '':
+            product.low_stock_threshold = max(0, int(threshold))
+            product.save(update_fields=['low_stock_threshold'])
+
+        if qty > 0:
+            if movement_type == 'out':
+                qty = -qty
+            product.adjust_stock(qty, movement_type, user=request.user, reason=reason)
+            django_messages.success(request, f'Stock de "{product.name}" mis à jour : {product.stock} unités.')
+        else:
+            django_messages.error(request, 'La quantité doit être supérieure à 0.')
+
+    return redirect(request.META.get('HTTP_REFERER', 'dashboard:products'))
+
+
+def _filtered_movements(request):
+    """Retourne les mouvements filtrés selon les paramètres GET."""
+    from catalog.models import StockMovement
+    from datetime import datetime
+    if request.user.is_seller and hasattr(request.user, 'store'):
+        movements = StockMovement.objects.filter(store=request.user.store)
+    else:
+        movements = StockMovement.objects.all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        movements = movements.filter(product__name__icontains=q)
+    mtype = request.GET.get('type', '')
+    if mtype:
+        movements = movements.filter(movement_type=mtype)
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    if date_from:
+        try:
+            movements = movements.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            movements = movements.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    return movements.select_related('product', 'created_by')
+
+
+@login_required
+@seller_or_admin_required
+def dash_movements_export_pdf(request):
+    """Export PDF de la liste filtrée des mouvements"""
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    import io
+
+    movements = _filtered_movements(request)[:500]
+
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    p.setFont('Helvetica-Bold', 16)
+    p.drawString(15*mm, height - 18*mm, 'AfriMarket — Mouvements de stock')
+    p.setFont('Helvetica', 9)
+    p.drawString(15*mm, height - 24*mm, f'Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — {movements.count()} mouvement(s)')
+    p.line(15*mm, height - 27*mm, width - 15*mm, height - 27*mm)
+
+    y = height - 36*mm
+    p.setFont('Helvetica-Bold', 8)
+    headers = ['Date', 'Produit', 'Type', 'Qté', 'Avant', 'Après', 'Motif', 'Référence', 'Par']
+    cols = [15, 40, 95, 125, 140, 155, 170, 215, 245]
+    for x, h in zip(cols, headers):
+        p.drawString(x*mm, y, h)
+    p.line(15*mm, y - 2*mm, width - 15*mm, y - 2*mm)
+    y -= 8*mm
+
+    p.setFont('Helvetica', 8)
+    for m in movements:
+        if y < 15*mm:
+            p.showPage()
+            y = height - 20*mm
+            p.setFont('Helvetica', 8)
+        row = [
+            m.created_at.strftime('%d/%m/%y %H:%M'),
+            m.product.name[:30],
+            m.get_movement_type_display(),
+            f'{m.quantity:+d}',
+            str(m.stock_before),
+            str(m.stock_after),
+            (m.reason or '—')[:25],
+            (m.reference or '—')[:15],
+            (m.created_by.display_name if m.created_by else '—')[:15],
+        ]
+        for x, val in zip(cols, row):
+            p.drawString(x*mm, y, str(val))
+        y -= 6*mm
+
+    p.showPage()
+    p.save()
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="mouvements_stock.pdf"'
+    return response
+
+
+@login_required
+@seller_or_admin_required
+def dash_movements_export_excel(request):
+    """Export Excel de la liste filtrée des mouvements"""
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    movements = _filtered_movements(request)[:1000]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Mouvements'
+    headers = ['Date', 'Produit', 'Type', 'Quantité', 'Stock avant', 'Stock après', 'Motif', 'Référence', 'Effectué par']
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for m in movements:
+        ws.append([
+            m.created_at.strftime('%d/%m/%Y %H:%M'),
+            m.product.name,
+            m.get_movement_type_display(),
+            m.quantity,
+            m.stock_before,
+            m.stock_after,
+            m.reason or '',
+            m.reference or '',
+            m.created_by.display_name if m.created_by else '',
+        ])
+    for col, w in zip('ABCDEFGHI', [16, 30, 14, 10, 12, 12, 30, 15, 15]):
+        ws.column_dimensions[col].width = w
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="mouvements_stock.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+@seller_or_admin_required
+def dash_movement_pdf(request, pk):
+    """Export PDF d'un mouvement de stock"""
+    from catalog.models import StockMovement
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    import io
+
+    m = get_object_or_404(StockMovement, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and m.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:inventory')
+
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+
+    p.setFont('Helvetica-Bold', 20)
+    p.drawString(20*mm, height - 25*mm, 'AfriMarket — Mouvement de stock')
+    p.setLineWidth(1)
+    p.line(20*mm, height - 30*mm, width - 20*mm, height - 30*mm)
+
+    rows = [
+        ('Référence mouvement', f'#{m.id}'),
+        ('Produit', m.product.name),
+        ('Type', m.get_movement_type_display()),
+        ('Quantité', f'{m.quantity:+d}'),
+        ('Stock avant', str(m.stock_before)),
+        ('Stock après', str(m.stock_after)),
+        ('Motif', m.reason or '—'),
+        ('Référence', m.reference or '—'),
+        ('Effectué par', m.created_by.display_name if m.created_by else '—'),
+        ('Date', m.created_at.strftime('%d/%m/%Y %H:%M')),
+    ]
+    y = height - 45*mm
+    for label, value in rows:
+        p.setFont('Helvetica', 10)
+        p.drawString(25*mm, y, label)
+        p.setFont('Helvetica-Bold', 11)
+        p.drawString(80*mm, y, str(value))
+        y -= 10*mm
+
+    p.setFont('Helvetica', 8)
+    p.drawString(20*mm, 15*mm, f'Document généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — AfriMarket')
+    p.showPage()
+    p.save()
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="mouvement_{m.id}.pdf"'
+    return response
+
+
+@login_required
+@seller_or_admin_required
+def dash_movement_excel(request, pk):
+    """Export Excel d'un mouvement de stock"""
+    from catalog.models import StockMovement
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+
+    m = get_object_or_404(StockMovement, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and m.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:inventory')
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Mouvement'
+    ws.append(['Champ', 'Valeur'])
+    for cell in ws[1]:
+        cell.font = cell.font.copy(bold=True)
+    rows = [
+        ('Référence mouvement', f'#{m.id}'),
+        ('Produit', m.product.name),
+        ('Type', m.get_movement_type_display()),
+        ('Quantité', m.quantity),
+        ('Stock avant', m.stock_before),
+        ('Stock après', m.stock_after),
+        ('Motif', m.reason or '—'),
+        ('Référence', m.reference or '—'),
+        ('Effectué par', m.created_by.display_name if m.created_by else '—'),
+        ('Date', m.created_at.strftime('%d/%m/%Y %H:%M')),
+    ]
+    for row in rows:
+        ws.append(list(row))
+    ws.column_dimensions['A'].width = 25
+    ws.column_dimensions['B'].width = 40
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="mouvement_{m.id}.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required

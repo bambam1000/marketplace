@@ -47,6 +47,7 @@ class Product(models.Model):
     bulk_price = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     bulk_min_qty = models.IntegerField(default=10)
     stock = models.PositiveIntegerField(default=0)
+    low_stock_threshold = models.PositiveIntegerField(default=5, help_text='Seuil d\'alerte stock faible')
     sku = models.CharField(max_length=50, blank=True)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     image_2 = models.ImageField(upload_to='products/', blank=True, null=True)
@@ -95,6 +96,29 @@ class Product(models.Model):
         return self.stock > 0
 
     @property
+    def is_low_stock(self):
+        return 0 < self.stock <= self.low_stock_threshold
+
+    @property
+    def stock_status(self):
+        if self.stock == 0:
+            return 'out'
+        if self.is_low_stock:
+            return 'low'
+        return 'ok'
+
+    def adjust_stock(self, quantity, movement_type, user=None, reason='', reference=''):
+        """Ajuste le stock et enregistre le mouvement."""
+        before = self.stock
+        self.stock = max(0, self.stock + quantity)
+        self.save(update_fields=['stock'])
+        return StockMovement.objects.create(
+            product=self, store=self.store, movement_type=movement_type,
+            quantity=quantity, stock_before=before, stock_after=self.stock,
+            reason=reason, reference=reference, created_by=user,
+        )
+
+    @property
     def avg_rating(self):
         avg = self.reviews.aggregate(avg=models.Avg('rating'))['avg']
         return round(avg, 1) if avg else 0
@@ -129,6 +153,34 @@ class Product(models.Model):
             if f:
                 imgs.append(f.url)
         return imgs
+
+
+class StockMovement(models.Model):
+    """Traçabilité complète des mouvements de stock (style Odoo)"""
+    TYPE_CHOICES = [
+        ('in', 'Entrée'),
+        ('out', 'Sortie'),
+        ('adjustment', 'Ajustement'),
+        ('sale', 'Vente en ligne'),
+        ('pos', 'Vente POS'),
+        ('return', 'Retour / Annulation'),
+    ]
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_movements')
+    store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='stock_movements')
+    movement_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    quantity = models.IntegerField(help_text='Positif = entrée, négatif = sortie')
+    stock_before = models.PositiveIntegerField()
+    stock_after = models.PositiveIntegerField()
+    reason = models.CharField(max_length=255, blank=True)
+    reference = models.CharField(max_length=100, blank=True, help_text='N° commande, vente POS...')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_movement_type_display()} {self.quantity:+d} — {self.product.name}"
 
 
 class Review(models.Model):

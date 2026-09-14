@@ -167,12 +167,15 @@ class POSSale(models.Model):
 
         self.save()
 
-        # Mettre à jour les stocks
+        # Mettre à jour les stocks (avec traçabilité)
         for item in self.items.all():
             if item.product:
-                item.product.stock -= item.quantity
                 item.product.orders_count += item.quantity
-                item.product.save()
+                item.product.save(update_fields=['orders_count'])
+                item.product.adjust_stock(
+                    -item.quantity, 'pos', user=self.cashier,
+                    reason='Vente POS', reference=self.sale_number,
+                )
 
         # Mettre à jour la session
         self.session.calculate_totals()
@@ -185,11 +188,13 @@ class POSSale(models.Model):
         self.status = 'refunded'
         self.save()
 
-        # Restaurer les stocks
+        # Restaurer les stocks (avec traçabilité)
         for item in self.items.all():
             if item.product:
-                item.product.stock += item.quantity
-                item.product.save()
+                item.product.adjust_stock(
+                    item.quantity, 'return', user=self.cashier,
+                    reason='Remboursement POS', reference=self.sale_number,
+                )
 
         # Mettre à jour la session
         self.session.calculate_totals()

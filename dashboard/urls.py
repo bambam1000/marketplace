@@ -9,6 +9,12 @@ urlpatterns = [
     path('produits/ajouter/', views.dash_product_edit, name='product_add'),
     path('produits/<int:pk>/', views.dash_product_edit, name='product_edit'),
     path('produits/<int:pk>/supprimer/', views.dash_product_delete, name='product_delete'),
+    path('inventaire/', views.dash_inventory, name='inventory'),
+    path('inventaire/<int:pk>/ajuster/', views.dash_stock_adjust, name='stock_adjust'),
+    path('inventaire/mouvement/<int:pk>/pdf/', views.dash_movement_pdf, name='movement_pdf'),
+    path('inventaire/mouvement/<int:pk>/excel/', views.dash_movement_excel, name='movement_excel'),
+    path('inventaire/export/pdf/', views.dash_movements_export_pdf, name='movements_pdf'),
+    path('inventaire/export/excel/', views.dash_movements_export_excel, name='movements_excel'),
     path('clients/', views.dash_customers, name='customers'),
     path('boutique/', views.dash_store, name='store'),
     # Admin only

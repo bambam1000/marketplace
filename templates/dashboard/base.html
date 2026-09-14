@@ -24,9 +24,9 @@
   --dash-lime: #ffd9b3;
   --dash-card: #ffffff;
   --dash-card-border: rgba(0,0,0,.05);
-  --dash-radius: 20px;
-  --dash-radius-sm: 12px;
-  --dash-radius-xs: 8px;
+  --dash-radius: 6px;
+  --dash-radius-sm: 4px;
+  --dash-radius-xs: 3px;
   --dash-shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px rgba(16,24,40,.04);
   --dash-shadow-lg: 0 8px 30px rgba(16,24,40,.08);
   --dash-shadow-hover: 0 12px 32px rgba(16,24,40,.1);
@@ -850,6 +850,7 @@ body {
 <a href="{% url 'orders:my_quotes' %}" class="{% if request.resolver_match.url_name == 'my_quotes' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-briefcase"></i></span> Mes devis soumis</a>
 </div>
 <a href="{% url 'dashboard:products' %}" class="{% if 'product' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-tag"></i></span> Produits</a>
+<a href="{% url 'dashboard:inventory' %}" class="{% if request.resolver_match.url_name == 'inventory' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></span> Inventaire</a>
 <a href="{% url 'dashboard:customers' %}" class="{% if request.resolver_match.url_name == 'customers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Clients</a>
 </nav>
 

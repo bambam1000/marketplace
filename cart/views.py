@@ -109,8 +109,11 @@ def checkout(request):
                     color=item.get('color', ''), size=item.get('size', ''),
                 )
                 product.orders_count += item['quantity']
-                product.stock = max(0, product.stock - item['quantity'])
-                product.save(update_fields=['orders_count', 'stock'])
+                product.save(update_fields=['orders_count'])
+                product.adjust_stock(
+                    -item['quantity'], 'sale', user=request.user,
+                    reason='Vente en ligne', reference=order.order_number,
+                )
             except Product.DoesNotExist:
                 pass
         save_cart(request, {})
