@@ -1,8 +1,84 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Commandes{% endblock %}
 {% block dash %}
-<div class="dash-header"><div><h1>Commandes</h1></div><div style="display:flex;gap:4px;flex-wrap:wrap;">{% for code, label in status_choices %}<a href="?status={{ code }}" class="btn btn-sm btn-outline">{{ label }}</a>{% endfor %}<a href="{% url 'dashboard:orders' %}" class="btn btn-sm btn-outline">Toutes</a></div></div>
-<div class="dash-card"><div class="dash-table-responsive"><table class="dash-table"><thead><tr><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th><th>Statut</th><th>Date</th><th></th></tr></thead><tbody>
-{% for o in orders %}<tr><td style="font-weight:600;">{{ o.order_number }}</td><td>{{ o.buyer.display_name }}<br><span style="font-size:11px;color:var(--dash-text3);">{{ o.buyer.phone }}</span></td><td>{{ o.get_payment_method_display }}</td><td style="font-weight:600;">{{ o.total_amount|intcomma }} F</td><td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td><td style="font-size:12px;color:var(--dash-text3);">{{ o.created_at|date:"d/m/Y" }}</td><td><a href="{% url 'dashboard:order_detail' o.order_number %}" class="btn btn-sm btn-outline">Voir</a></td></tr>{% empty %}<tr><td colspan="7" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">📦</div><div style="color:var(--dash-text3);font-size:14px;">Aucune commande</div></td></tr>{% endfor %}
-</tbody></table></div></div>
+<style>
+.ord-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.ord-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.ord-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.ord-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.ord-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.ord-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.ord-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.ord-filters a { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; color: var(--dash-text2); border: 1.5px solid var(--dash-border); }
+.ord-filters a.active { background: var(--dash-accent); color: #fff; border-color: var(--dash-accent); }
+.ord-search { position: relative; }
+.ord-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 240px; font-family: inherit; }
+.ord-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.ord-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+@media (max-width: 900px) { .ord-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<!-- ═══ Stats ═══ -->
+<div class="ord-stats">
+    <div class="ord-stat">
+        <div><div class="lbl">Total commandes</div><div class="val">{{ total }}</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-box"></i></div>
+    </div>
+    <div class="ord-stat">
+        <div><div class="lbl">En attente</div><div class="val" style="color:var(--dash-yellow);">{{ pending }}</div></div>
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-clock"></i></div>
+    </div>
+    <div class="ord-stat">
+        <div><div class="lbl">Livrées</div><div class="val" style="color:var(--dash-green);">{{ delivered }}</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-circle-check"></i></div>
+    </div>
+    <div class="ord-stat">
+        <div><div class="lbl">Chiffre d'affaires</div><div class="val">{{ total_revenue|intcomma }} F</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-sack-dollar"></i></div>
+    </div>
+</div>
+
+<!-- ═══ Tableau ═══ -->
+<div class="dash-card">
+    <div class="ord-toolbar">
+        <div class="ord-filters">
+            <a href="{% url 'dashboard:orders' %}" class="{% if not current_status %}active{% endif %}">Toutes</a>
+            {% for code, label in status_choices %}
+            <a href="?status={{ code }}" class="{% if current_status == code %}active{% endif %}">{{ label }}</a>
+            {% endfor %}
+        </div>
+        <form method="get" class="ord-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="N° commande ou client...">
+        </form>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th><th>Statut</th><th>Date</th><th style="text-align:right;">Action</th></tr>
+        </thead>
+        <tbody>
+            {% for o in orders %}
+            <tr>
+                <td style="font-weight:700;color:var(--dash-text);">#{{ o.order_number }}</td>
+                <td>{{ o.buyer.display_name }}<br><span style="font-size:11px;color:var(--dash-text3);">{{ o.buyer.phone }}</span></td>
+                <td>{{ o.get_payment_method_display }}</td>
+                <td style="font-weight:700;">{{ o.total_amount|intcomma }} F</td>
+                <td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ o.created_at|date:"d/m/Y" }}</td>
+                <td style="text-align:right;"><a href="{% url 'dashboard:order_detail' o.order_number %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-eye"></i> Voir</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;margin-bottom:12px;opacity:.25;"><i class="fa-solid fa-box-open"></i></div>
+                <div style="color:var(--dash-text3);font-size:14px;">Aucune commande</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
+        {{ orders.count }} commande{{ orders.count|pluralize:"s" }} affichée{{ orders.count|pluralize:"s" }}
+    </div>
+</div>
 {% endblock %}

@@ -1,0 +1,61 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}RFQ — {{ rfq.product_name }}{% endblock %}
+{% block dash %}
+<div style="max-width:800px;">
+<a href="{% url 'dashboard:rfqs' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour aux demandes</a>
+
+<!-- Infos de la demande -->
+<div class="dash-card" style="padding:22px;margin-top:14px;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px;">
+        <h2 style="margin:0;font-size:18px;">{{ rfq.product_name }}</h2>
+        <span class="status-badge {% if rfq.status == 'open' %}st-delivered{% elif rfq.status == 'quoted' %}st-pending{% else %}st-cancelled{% endif %}">{{ rfq.get_status_display }}</span>
+    </div>
+    <p style="font-size:13px;color:var(--dash-text2);line-height:1.7;margin-bottom:16px;">{{ rfq.description|linebreaksbr }}</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;background:var(--dash-bg);border-radius:6px;padding:14px;">
+        <div><div style="font-size:10px;color:var(--dash-text3);font-weight:700;text-transform:uppercase;">Quantité</div><div style="font-weight:700;">{{ rfq.quantity|intcomma }} {{ rfq.unit }}</div></div>
+        {% if rfq.target_price %}<div><div style="font-size:10px;color:var(--dash-text3);font-weight:700;text-transform:uppercase;">Prix cible</div><div style="font-weight:700;color:var(--dash-accent);">{{ rfq.target_price|intcomma }} F/{{ rfq.unit }}</div></div>{% endif %}
+        {% if rfq.category %}<div><div style="font-size:10px;color:var(--dash-text3);font-weight:700;text-transform:uppercase;">Catégorie</div><div style="font-weight:700;">{{ rfq.category.name }}</div></div>{% endif %}
+        <div><div style="font-size:10px;color:var(--dash-text3);font-weight:700;text-transform:uppercase;">Publié le</div><div style="font-weight:700;">{{ rfq.created_at|date:"d/m/Y" }}</div></div>
+    </div>
+</div>
+
+<!-- Formulaire de devis -->
+{% if rfq.status == 'open' %}
+<div class="dash-card" style="padding:22px;">
+    {% if user_quote %}
+    <div style="background:rgba(18,183,106,.08);border:1px solid rgba(18,183,106,.2);border-radius:6px;padding:14px 16px;margin-bottom:16px;">
+        <strong style="color:var(--dash-green);"><i class="fa-solid fa-circle-check"></i> Devis déjà soumis</strong>
+        <span style="font-size:13px;color:var(--dash-text2);"> — {{ user_quote.price_per_unit|intcomma }} F/{{ rfq.unit }}. Vous pouvez le modifier ci-dessous.</span>
+    </div>
+    {% endif %}
+    <h3 style="margin:0 0 16px;font-size:15px;"><i class="fa-solid fa-paper-plane" style="color:var(--dash-accent);"></i> {% if user_quote %}Modifier mon devis{% else %}Soumettre un devis{% endif %}</h3>
+    <form method="post">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-group">
+                <label>Prix unitaire (F) *</label>
+                <input type="number" name="price_per_unit" class="form-control" min="1" value="{{ user_quote.price_per_unit|default:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label>Délai de livraison</label>
+                <input type="text" name="delivery_time" class="form-control" placeholder="Ex: 7 jours" value="{{ user_quote.delivery_time|default:'' }}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Conditions de paiement</label>
+            <input type="text" name="payment_terms" class="form-control" placeholder="Ex: 50% à la commande" value="{{ user_quote.payment_terms|default:'' }}">
+        </div>
+        <div class="form-group">
+            <label>Message / Détails</label>
+            <textarea name="description" class="form-control" rows="3" placeholder="Précisez votre offre...">{{ user_quote.description|default:'' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-orange"><i class="fa-solid fa-paper-plane"></i> {% if user_quote %}Mettre à jour{% else %}Envoyer le devis{% endif %}</button>
+    </form>
+</div>
+{% else %}
+<div class="dash-card" style="padding:22px;text-align:center;color:var(--dash-text3);font-size:13px;">
+    Cette demande n'accepte plus de devis.
+</div>
+{% endif %}
+</div>
+{% endblock %}

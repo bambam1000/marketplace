@@ -1,8 +1,128 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Clients{% endblock %}
 {% block dash %}
-<div class="dash-header"><h1>Clients ({{ customers|length }})</h1></div>
-<div class="dash-card"><div class="dash-table-responsive"><table class="dash-table"><thead><tr><th>Client</th><th>Téléphone</th><th>Ville</th><th>Commandes</th><th>Total dépensé</th><th>Inscrit</th></tr></thead><tbody>
-{% for c in customers %}<tr><td><div style="font-weight:600;">{{ c.display_name }}</div><div style="font-size:11px;color:var(--dash-text3);">{{ c.email }}</div></td><td>{{ c.phone|default:"—" }}</td><td>{{ c.city|default:"—" }}</td><td style="font-weight:600;">{{ c.order_count }}</td><td style="font-weight:600;color:var(--dash-accent);">{{ c.total_spent|default:0|intcomma }} F</td><td style="font-size:12px;color:var(--dash-text3);">{{ c.date_joined|date:"d/m/Y" }}</td></tr>{% empty %}<tr><td colspan="6" style="text-align:center;padding:3rem;"><div style="font-size:48px;margin-bottom:12px;opacity:.3;">👥</div><div style="color:var(--dash-text3);font-size:14px;">Aucun client</div></td></tr>{% endfor %}
-</tbody></table></div></div>
+<style>
+.cust-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.cust-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.cust-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.cust-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.cust-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.cust-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.cust-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.cust-search { position: relative; }
+.cust-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 260px; font-family: inherit; }
+.cust-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.cust-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+.cust-actions-menu { position: relative; }
+.cust-dropdown { display: none; position: fixed; background: #fff; border: 1px solid var(--dash-border); border-radius: 6px; box-shadow: var(--dash-shadow-lg); min-width: 190px; z-index: 1500; overflow: hidden; }
+.cust-dropdown.open { display: block; }
+.cust-dropdown a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; color: var(--dash-text2); text-decoration: none; }
+.cust-dropdown a:hover { background: var(--dash-bg); color: var(--dash-text); }
+.cust-dropdown i { width: 16px; text-align: center; color: var(--dash-text3); }
+.dots-btn { background: none; border: none; cursor: pointer; color: var(--dash-text3); padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+.dots-btn:hover { background: var(--dash-bg); color: var(--dash-text); }
+.cust-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-light)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+@media (max-width: 900px) { .cust-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<!-- ═══ Stats ═══ -->
+<div class="cust-stats">
+    <div class="cust-stat">
+        <div><div class="lbl">Total clients</div><div class="val">{{ total }}</div><div class="sub">Ayant commandé</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-users"></i></div>
+    </div>
+    <div class="cust-stat">
+        <div><div class="lbl">Nouveaux (30j)</div><div class="val" style="color:var(--dash-green);">{{ new_30d }}</div><div class="sub">Ce mois-ci</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-user-plus"></i></div>
+    </div>
+    <div class="cust-stat">
+        <div><div class="lbl">Total encaissé</div><div class="val">{{ total_spent_all|intcomma }} F</div><div class="sub">Tous clients</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-sack-dollar"></i></div>
+    </div>
+    <div class="cust-stat">
+        <div><div class="lbl">Panier moyen</div><div class="val">{{ avg_spent|intcomma }} F</div><div class="sub">Par client</div></div>
+        <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-cart-shopping"></i></div>
+    </div>
+</div>
+
+<!-- ═══ Tableau ═══ -->
+<div class="dash-card">
+    <div class="cust-toolbar">
+        <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-users" style="color:var(--dash-accent);"></i> Mes clients</h3>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <form method="get" class="cust-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Nom, email, téléphone...">
+            </form>
+            <a href="{% url 'dashboard:customers_export' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+        </div>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>Client</th><th>Téléphone</th><th>Ville</th><th>Commandes</th><th>Total dépensé</th><th>Inscrit</th><th style="text-align:right;">Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for c in customers %}
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="cust-avatar">{{ c.initials }}</div>
+                        <div>
+                            <div style="font-weight:600;color:var(--dash-text);">{{ c.display_name }}</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">{{ c.email }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ c.phone|default:"—" }}</td>
+                <td>{{ c.city|default:"—" }}</td>
+                <td style="font-weight:600;">{{ c.order_count }}</td>
+                <td style="font-weight:700;color:var(--dash-accent);">{{ c.total_spent|default:0|intcomma }} F</td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ c.date_joined|date:"d/m/Y" }}</td>
+                <td style="text-align:right;">
+                    <div class="cust-actions-menu">
+                        <button class="dots-btn" onclick="toggleCustMenu(event, {{ c.id }})"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="cust-dropdown" id="custMenu{{ c.id }}">
+                            <a href="{% url 'dashboard:orders' %}?q={{ c.username }}"><i class="fa-solid fa-box"></i> Voir ses commandes</a>
+                            <a href="{% url 'messaging:new' c.id %}"><i class="fa-solid fa-comments"></i> Contacter</a>
+                            <a href="{% url 'invoicing:invoices' %}"><i class="fa-solid fa-file-invoice"></i> Créer une facture</a>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;margin-bottom:12px;opacity:.25;"><i class="fa-solid fa-users"></i></div>
+                <div style="color:var(--dash-text3);font-size:14px;">Aucun client{% if search_query %} trouvé pour « {{ search_query }} »{% endif %}</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
+        {{ customers|length }} client{{ customers|length|pluralize:"s" }} affiché{{ customers|length|pluralize:"s" }}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCustMenu(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById('custMenu' + id);
+    var wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.cust-dropdown').forEach(function(d) { d.classList.remove('open'); });
+    if (wasOpen) return;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var menuHeight = 140;
+    var top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight) top = rect.top - menuHeight - 6;
+    menu.style.top = top + 'px';
+    menu.style.left = (rect.right - 190) + 'px';
+    menu.classList.add('open');
+}
+document.addEventListener('click', function() {
+    document.querySelectorAll('.cust-dropdown').forEach(function(d) { d.classList.remove('open'); });
+});
+</script>
 {% endblock %}

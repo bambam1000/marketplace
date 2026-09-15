@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.db.models import Sum, Count, Q
 from django.core.files.base import ContentFile
 from datetime import timedelta
+from decimal import Decimal
 from .models import Invoice, InvoiceItem, InvoiceSettings, DeliveryNote, PaymentReceipt
 from .pdf_generator import generate_invoice_pdf, generate_delivery_note_pdf, generate_payment_receipt_pdf
 from orders.models import Order
@@ -86,11 +87,26 @@ def invoices_list(request):
 
     invoices = invoices.order_by('-created_at')
 
+    all_invoices = Invoice.objects.filter(store=store)
+
+    # Ventes récentes sans facture (pour pré-remplir la modale)
+    from orders.models import Order
+    recent_sales = Order.objects.filter(
+        items__store=store, is_paid=True
+    ).exclude(invoices__isnull=False).distinct().select_related('buyer').order_by('-created_at')[:30]
+
     context = {
         'invoices': invoices,
         'status_filter': status,
         'type_filter': invoice_type,
         'search': search,
+        'total_count': all_invoices.count(),
+        'paid_count': all_invoices.filter(status='paid').count(),
+        'pending_amount': all_invoices.filter(status='sent').aggregate(t=Sum('total_amount'))['t'] or 0,
+        'total_revenue': all_invoices.filter(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0,
+        'recent_sales': recent_sales,
+        'today': timezone.now().date().isoformat(),
+        'my_products': store.products.filter(is_active=True),
     }
     return render(request, 'invoicing/invoices_list.html', context)
 
@@ -117,8 +133,8 @@ def invoice_create(request):
             issue_date=request.POST.get('issue_date', timezone.now().date()),
             due_date=request.POST.get('due_date') or None,
             notes=request.POST.get('notes', ''),
-            shipping_amount=request.POST.get('shipping_amount', 0),
-            discount_amount=request.POST.get('discount_amount', 0),
+            shipping_amount=Decimal(str(request.POST.get('shipping_amount') or 0)),
+            discount_amount=Decimal(str(request.POST.get('discount_amount') or 0)),
             status='draft',
         )
 
@@ -133,7 +149,7 @@ def invoice_create(request):
                     invoice=invoice,
                     description=desc,
                     quantity=int(quantities[i]) if i < len(quantities) else 1,
-                    unit_price=float(unit_prices[i]) if i < len(unit_prices) else 0,
+                    unit_price=Decimal(str(unit_prices[i])) if i < len(unit_prices) else Decimal('0'),
                     order=i
                 )
 
@@ -246,7 +262,7 @@ def invoice_edit(request, pk):
                     invoice=invoice,
                     description=desc,
                     quantity=int(quantities[i]) if i < len(quantities) else 1,
-                    unit_price=float(unit_prices[i]) if i < len(unit_prices) else 0,
+                    unit_price=Decimal(str(unit_prices[i])) if i < len(unit_prices) else Decimal('0'),
                     order=i
                 )
 

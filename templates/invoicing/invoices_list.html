@@ -1,220 +1,414 @@
-{% extends 'dashboard/base.html' %}
-{% load humanize %}
-
-{% block title %}Liste des Factures{% endblock %}
-
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Facturation{% endblock %}
 {% block dash %}
-<div class="dash-header">
-    <div>
-        <h1>📄 Factures</h1>
-        <p>Gérez toutes vos factures</p>
+<style>
+.inv-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.inv-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.inv-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.inv-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.inv-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.inv-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.inv-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.inv-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.inv-filters a { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; color: var(--dash-text2); border: 1.5px solid var(--dash-border); }
+.inv-filters a.active { background: var(--dash-accent); color: #fff; border-color: var(--dash-accent); }
+.inv-search { position: relative; }
+.inv-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 240px; font-family: inherit; }
+.inv-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.inv-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+.inv-actions-menu { position: relative; }
+.inv-dropdown { display: none; position: fixed; background: #fff; border: 1px solid var(--dash-border); border-radius: 6px; box-shadow: var(--dash-shadow-lg); min-width: 180px; z-index: 1500; overflow: hidden; }
+.inv-dropdown.open { display: block; }
+.inv-dropdown a, .inv-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; font-size: 13px; color: var(--dash-text2); text-decoration: none; background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.inv-dropdown a:hover, .inv-dropdown button:hover { background: var(--dash-bg); color: var(--dash-text); }
+.inv-dropdown i { width: 16px; text-align: center; color: var(--dash-text3); }
+.dots-btn { background: none; border: none; cursor: pointer; color: var(--dash-text3); padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+.dots-btn:hover { background: var(--dash-bg); color: var(--dash-text); }
+/* Modale multi-étapes */
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 22px; }
+.dmodal-foot { display: flex; justify-content: space-between; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--dash-border); }
+.steps-bar { display: flex; gap: 6px; padding: 14px 22px 0; }
+.step-dot { flex: 1; text-align: center; font-size: 11px; font-weight: 600; color: var(--dash-text3); padding-bottom: 10px; border-bottom: 3px solid var(--dash-border); transition: all .2s; }
+.step-dot.active { color: var(--dash-accent); border-color: var(--dash-accent); }
+.step-dot.done { color: var(--dash-green); border-color: var(--dash-green); }
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.item-row { display: grid; grid-template-columns: 1fr 80px 110px 36px; gap: 8px; margin-bottom: 8px; align-items: center; }
+.item-row .rm-item { background: none; border: none; color: var(--dash-red); cursor: pointer; font-size: 14px; padding: 6px; }
+.inv-total-bar { display: flex; justify-content: space-between; align-items: center; background: var(--dash-bg); border-radius: 6px; padding: 12px 16px; margin-top: 14px; }
+@media (max-width: 900px) { .inv-stats { grid-template-columns: repeat(2, 1fr); } .frow { grid-template-columns: 1fr; } }
+</style>
+
+<!-- ═══ Stats ═══ -->
+<div class="inv-stats">
+    <div class="inv-stat">
+        <div><div class="lbl">Total factures</div><div class="val">{{ total_count }}</div><div class="sub">Toutes les factures</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-file-lines"></i></div>
     </div>
-    <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-primary">+ Créer une facture</a>
+    <div class="inv-stat">
+        <div><div class="lbl">Payées</div><div class="val" style="color:var(--dash-green);">{{ paid_count }}</div><div class="sub">Factures soldées</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-circle-check"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">En attente</div><div class="val" style="color:var(--dash-yellow);">{{ pending_amount|intcomma }} F</div><div class="sub">À encaisser</div></div>
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-clock"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">Encaissé</div><div class="val">{{ total_revenue|intcomma }} F</div><div class="sub">Total payé</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-sack-dollar"></i></div>
+    </div>
 </div>
 
-<div class="card" style="margin-bottom: 2rem;">
-    <div class="card-body">
-        <form method="get" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
-            <div class="form-group" style="margin: 0;">
-                <label for="status">Statut</label>
-                <select name="status" id="status" class="form-control">
-                    <option value="">Tous</option>
-                    <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Brouillon</option>
-                    <option value="sent" {% if status_filter == 'sent' %}selected{% endif %}>Envoyée</option>
-                    <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Payée</option>
-                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Annulée</option>
-                </select>
-            </div>
-
-            <div class="form-group" style="margin: 0;">
-                <label for="type">Type</label>
-                <select name="type" id="type" class="form-control">
-                    <option value="">Tous</option>
-                    <option value="proforma" {% if type_filter == 'proforma' %}selected{% endif %}>Pro Forma</option>
-                    <option value="standard" {% if type_filter == 'standard' %}selected{% endif %}>Standard</option>
-                    <option value="credit_note" {% if type_filter == 'credit_note' %}selected{% endif %}>Avoir</option>
-                </select>
-            </div>
-
-            <div class="form-group" style="margin: 0;">
-                <label for="q">Recherche</label>
-                <input type="text" name="q" id="q" class="form-control" placeholder="N°, client, email..." value="{{ search }}">
-            </div>
-
-            <button type="submit" class="btn btn-primary">🔍 Filtrer</button>
-        </form>
+<!-- ═══ Tableau ═══ -->
+<div class="dash-card">
+    <div class="inv-toolbar">
+        <div class="inv-filters">
+            <a href="{% url 'invoicing:invoices' %}" class="{% if not status_filter %}active{% endif %}">Toutes</a>
+            <a href="?status=draft" class="{% if status_filter == 'draft' %}active{% endif %}">Brouillons</a>
+            <a href="?status=sent" class="{% if status_filter == 'sent' %}active{% endif %}">Envoyées</a>
+            <a href="?status=paid" class="{% if status_filter == 'paid' %}active{% endif %}">Payées</a>
+            <a href="?status=cancelled" class="{% if status_filter == 'cancelled' %}active{% endif %}">Annulées</a>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <form method="get" class="inv-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" name="q" value="{{ search }}" placeholder="N°, client, email...">
+            </form>
+            <button type="button" class="btn btn-orange" onclick="openInvoiceModal()"><i class="fa-solid fa-plus"></i> Créer une facture</button>
+        </div>
     </div>
-</div>
-
-<div class="card">
-    <table class="table">
+    <div class="dash-table-responsive">
+    <table class="dash-table">
         <thead>
-            <tr>
-                <th>N° Facture</th>
-                <th>Client</th>
-                <th>Type</th>
-                <th>Date d'émission</th>
-                <th>Date d'échéance</th>
-                <th>Montant</th>
-                <th>Statut</th>
-                <th>Actions</th>
-            </tr>
+            <tr><th>N° Facture</th><th>Client</th><th>Type</th><th>Émise le</th><th>Montant</th><th>Statut</th><th style="text-align:right;">Actions</th></tr>
         </thead>
         <tbody>
-            {% for invoice in invoices %}
+            {% for inv in invoices %}
             <tr>
-                <td><strong><a href="{% url 'invoicing:invoice_detail' invoice.pk %}">{{ invoice.invoice_number }}</a></strong></td>
+                <td style="font-weight:700;color:var(--dash-text);">{{ inv.invoice_number }}</td>
+                <td>{{ inv.customer_name }}{% if inv.customer_email %}<br><span style="font-size:11px;color:var(--dash-text3);">{{ inv.customer_email }}</span>{% endif %}</td>
                 <td>
-                    <div>{{ invoice.customer_name }}</div>
-                    {% if invoice.customer_email %}
-                    <div style="font-size: 0.75rem; color: #6b7280;">{{ invoice.customer_email }}</div>
-                    {% endif %}
+                    {% if inv.invoice_type == 'proforma' %}<span class="tag" style="background:rgba(46,144,250,.1);color:var(--dash-blue);">Pro Forma</span>
+                    {% elif inv.invoice_type == 'credit_note' %}<span class="tag" style="background:rgba(240,68,56,.1);color:var(--dash-red);">Avoir</span>
+                    {% else %}<span class="tag tag-orange">Standard</span>{% endif %}
                 </td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ inv.issue_date|date:"d/m/Y" }}</td>
+                <td style="font-weight:700;">{{ inv.total_amount|intcomma }} F</td>
                 <td>
-                    {% if invoice.invoice_type == 'proforma' %}
-                    <span class="badge" style="background: #dbeafe; color: #1e40af;">Pro Forma</span>
-                    {% elif invoice.invoice_type == 'credit_note' %}
-                    <span class="badge" style="background: #fee2e2; color: #991b1b;">Avoir</span>
-                    {% else %}
-                    <span class="badge">Standard</span>
-                    {% endif %}
+                    {% if inv.status == 'paid' %}<span class="status-badge st-delivered">Payée</span>
+                    {% elif inv.status == 'sent' %}<span class="status-badge st-shipped">Envoyée</span>
+                    {% elif inv.status == 'cancelled' %}<span class="status-badge st-cancelled">Annulée</span>
+                    {% else %}<span class="status-badge st-pending">Brouillon</span>{% endif %}
                 </td>
-                <td>{{ invoice.issue_date|date:"d/m/Y" }}</td>
-                <td>
-                    {% if invoice.due_date %}
-                    {{ invoice.due_date|date:"d/m/Y" }}
-                    {% if invoice.is_overdue %}
-                    <span style="color: #dc2626; font-weight: bold;">⚠️</span>
-                    {% endif %}
-                    {% else %}
-                    -
-                    {% endif %}
-                </td>
-                <td><strong>{{ invoice.total_amount|floatformat:0|intcomma }} F</strong></td>
-                <td>
-                    {% if invoice.status == 'paid' %}
-                    <span class="badge badge-success">✓ Payée</span>
-                    {% elif invoice.status == 'sent' %}
-                    <span class="badge badge-warning">📤 Envoyée</span>
-                    {% elif invoice.status == 'draft' %}
-                    <span class="badge badge-secondary">📝 Brouillon</span>
-                    {% else %}
-                    <span class="badge badge-danger">✗ Annulée</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <a href="{% url 'invoicing:invoice_detail' invoice.pk %}" class="btn btn-sm" title="Voir">👁️</a>
-                        <a href="{% url 'invoicing:invoice_pdf' invoice.pk %}" class="btn btn-sm" title="Télécharger PDF">⬇️</a>
-                        {% if invoice.status == 'draft' %}
-                        <a href="{% url 'invoicing:invoice_edit' invoice.pk %}" class="btn btn-sm" title="Modifier">✏️</a>
-                        {% endif %}
+                <td style="text-align:right;">
+                    <div class="inv-actions-menu">
+                        <button class="dots-btn" onclick="toggleInvMenu(event, {{ inv.pk }})"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="inv-dropdown" id="invMenu{{ inv.pk }}">
+                            <a href="{% url 'invoicing:invoice_detail' inv.pk %}"><i class="fa-solid fa-eye"></i> Voir</a>
+                            <a href="{% url 'invoicing:invoice_pdf' inv.pk %}"><i class="fa-solid fa-file-pdf"></i> Télécharger PDF</a>
+                            {% if inv.status == 'draft' %}<a href="{% url 'invoicing:invoice_edit' inv.pk %}"><i class="fa-solid fa-pen"></i> Modifier</a>{% endif %}
+                            {% if inv.status == 'sent' %}
+                            <form method="post" action="{% url 'invoicing:invoice_mark_paid' inv.pk %}" style="margin:0;">{% csrf_token %}
+                                <button type="submit"><i class="fa-solid fa-circle-check"></i> Marquer payée</button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </div>
                 </td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="8" style="text-align: center; padding: 3rem; color: #6b7280;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
-                    {% if search or status_filter or type_filter %}
-                    <p>Aucune facture ne correspond à vos critères.</p>
-                    <a href="{% url 'invoicing:invoices' %}" class="btn">Effacer les filtres</a>
-                    {% else %}
-                    <p>Aucune facture pour le moment.</p>
-                    <a href="{% url 'invoicing:invoice_create' %}" class="btn btn-primary" style="margin-top: 1rem;">Créer votre première facture</a>
-                    {% endif %}
-                </td>
-            </tr>
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;margin-bottom:12px;opacity:.25;"><i class="fa-solid fa-file-invoice"></i></div>
+                <div style="color:var(--dash-text3);font-size:14px;">Aucune facture{% if search %} trouvée pour « {{ search }} »{% endif %}</div>
+            </td></tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
+        {{ invoices|length }} facture{{ invoices|length|pluralize:"s" }} affichée{{ invoices|length|pluralize:"s" }}
+    </div>
 </div>
 
-<style>
-.card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+<!-- ═══ Modale Création de facture (multi-étapes) ═══ -->
+<div class="dmodal" id="invoiceModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-file-invoice" style="color:var(--dash-accent);"></i> Nouvelle facture</h3>
+            <button type="button" class="dmodal-close" onclick="closeInvoiceModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="steps-bar">
+            <div class="step-dot active" id="dot1">1. Client</div>
+            <div class="step-dot" id="dot2">2. Articles</div>
+            <div class="step-dot" id="dot3">3. Finaliser</div>
+        </div>
+        <form method="post" action="{% url 'invoicing:invoice_create' %}" id="invoiceForm">
+            {% csrf_token %}
+            <div class="dmodal-body">
+
+                <!-- Étape 1 : Client -->
+                <div class="inv-step" id="step1">
+                    <div class="frow">
+                        <div class="form-group"><label>Nom du client *</label><input type="text" name="customer_name" id="inv_customer" class="form-control" required></div>
+                        <div class="form-group"><label>Email</label><input type="email" name="customer_email" class="form-control"></div>
+                    </div>
+                    <div class="frow">
+                        <div class="form-group"><label>Téléphone</label><input type="tel" name="customer_phone" class="form-control"></div>
+                        <div class="form-group"><label>Type de facture</label>
+                            <select name="invoice_type" class="form-control">
+                                <option value="standard">Standard</option>
+                                <option value="proforma">Pro Forma (devis)</option>
+                                <option value="credit_note">Avoir</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Adresse</label><textarea name="customer_address" class="form-control" rows="2"></textarea></div>
+                </div>
+
+                <!-- Étape 2 : Articles -->
+                <div class="inv-step" id="step2" style="display:none;">
+                    {% if recent_sales %}
+                    <div class="form-group" style="background:var(--dash-bg);border-radius:6px;padding:12px 14px;">
+                        <label style="margin-bottom:6px;"><i class="fa-solid fa-bolt" style="color:var(--dash-accent);"></i> Partir d'une vente (remplit automatiquement)</label>
+                        <select id="salePicker" class="form-control" onchange="fillFromSale()">
+                            <option value="">— Saisie manuelle —</option>
+                            {% for sale in recent_sales %}
+                            <option value="{{ sale.order_number }}">#{{ sale.order_number }} — {{ sale.shipping_name }} — {{ sale.total_amount|intcomma }} F</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div id="itemsContainer">
+                        <div class="item-row">
+                            <div class="prod-search-box" style="position:relative;">
+                                <input type="text" name="item_description[]" class="form-control item-desc" placeholder="Rechercher un produit ou saisir..." autocomplete="off" required onfocus="showProdList(this)" oninput="filterProdList(this)">
+                                <div class="prod-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--dash-border);border-radius:6px;box-shadow:var(--dash-shadow-lg);max-height:180px;overflow-y:auto;z-index:100;"></div>
+                            </div>
+                            <input type="number" name="item_quantity[]" class="form-control item-qty" min="1" value="1" onchange="calcInvoiceTotal()" oninput="calcInvoiceTotal()">
+                            <input type="number" name="item_unit_price[]" class="form-control item-price" min="0" placeholder="Prix unit." onchange="calcInvoiceTotal()" oninput="calcInvoiceTotal()">
+                            <button type="button" class="rm-item" onclick="removeItem(this)"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addItem()"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>
+                    <div class="inv-total-bar">
+                        <span style="font-size:13px;font-weight:600;color:var(--dash-text3);">Total estimé</span>
+                        <span id="invTotal" style="font-size:18px;font-weight:800;color:var(--dash-accent);">0 F</span>
+                    </div>
+                </div>
+
+                <!-- Étape 3 : Finaliser -->
+                <div class="inv-step" id="step3" style="display:none;">
+                    <div class="frow">
+                        <div class="form-group"><label>Date d'émission</label><input type="date" name="issue_date" class="form-control" value="{{ today }}"></div>
+                        <div class="form-group"><label>Date d'échéance</label><input type="date" name="due_date" class="form-control"></div>
+                    </div>
+                    <div class="frow">
+                        <div class="form-group"><label>Livraison (F)</label><input type="number" name="shipping_amount" class="form-control" min="0" value="0"></div>
+                        <div class="form-group"><label>Remise (F)</label><input type="number" name="discount_amount" class="form-control" min="0" value="0"></div>
+                    </div>
+                    <div class="form-group"><label>Notes</label><textarea name="notes" class="form-control" rows="2" placeholder="Notes visibles sur la facture..."></textarea></div>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" id="btnPrev" onclick="invStep(-1)" style="visibility:hidden;"><i class="fa-solid fa-arrow-left"></i> Précédent</button>
+                <div style="display:flex;gap:10px;">
+                    <button type="button" class="btn btn-outline" onclick="closeInvoiceModal()">Annuler</button>
+                    <button type="button" class="btn btn-orange" id="btnNext" onclick="invStep(1)">Suivant <i class="fa-solid fa-arrow-right"></i></button>
+                    <button type="submit" class="btn btn-orange" id="btnSubmit" style="display:none;"><i class="fa-solid fa-check"></i> Créer la facture</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var currentStep = 1;
+
+/* Données des ventes pour pré-remplissage */
+var SALES = {
+{% for sale in recent_sales %}
+"{{ sale.order_number }}": {
+    customer: "{{ sale.shipping_name|escapejs }}",
+    email: "{{ sale.buyer.email|escapejs }}",
+    phone: "{{ sale.shipping_phone|escapejs }}",
+    address: "{{ sale.shipping_address|escapejs }}",
+    items: [
+        {% for item in sale.items.all %}
+        { desc: "{{ item.product.name|escapejs }}", qty: {{ item.quantity }}, price: {{ item.price }} }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+}{% if not forloop.last %},{% endif %}
+{% endfor %}
+};
+
+function fillFromSale() {
+    var key = document.getElementById('salePicker').value;
+    if (!key || !SALES[key]) return;
+    var sale = SALES[key];
+
+    // Pré-remplir le client (étape 1)
+    document.getElementById('inv_customer').value = sale.customer;
+    document.querySelector('input[name="customer_email"]').value = sale.email;
+    document.querySelector('input[name="customer_phone"]').value = sale.phone;
+    document.querySelector('textarea[name="customer_address"]').value = sale.address;
+
+    // Remplacer les articles
+    var container = document.getElementById('itemsContainer');
+    container.innerHTML = '';
+    sale.items.forEach(function(item) {
+        var row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML =
+            '<div class="prod-search-box" style="position:relative;">' +
+            '<input type="text" name="item_description[]" class="form-control item-desc" value="' + item.desc.replace(/"/g, '&quot;') + '" required onfocus="showProdList(this)" oninput="filterProdList(this)">' +
+            '<div class="prod-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--dash-border);border-radius:6px;box-shadow:var(--dash-shadow-lg);max-height:180px;overflow-y:auto;z-index:100;"></div>' +
+            '</div>' +
+            '<input type="number" name="item_quantity[]" class="form-control item-qty" min="1" value="' + item.qty + '" onchange="calcInvoiceTotal()" oninput="calcInvoiceTotal()">' +
+            '<input type="number" name="item_unit_price[]" class="form-control item-price" min="0" value="' + item.price + '" onchange="calcInvoiceTotal()" oninput="calcInvoiceTotal()">' +
+            '<button type="button" class="rm-item" onclick="removeItem(this)"><i class="fa-solid fa-trash-can"></i></button>';
+        container.appendChild(row);
+    });
+    calcInvoiceTotal();
 }
 
-.card-body {
-    padding: 1.5rem;
+function openInvoiceModal() {
+    document.getElementById('invoiceModal').classList.add('open');
+    showStep(1);
+}
+function closeInvoiceModal() { document.getElementById('invoiceModal').classList.remove('open'); }
+
+function showStep(n) {
+    currentStep = n;
+    for (var i = 1; i <= 3; i++) {
+        document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
+        var dot = document.getElementById('dot' + i);
+        dot.classList.toggle('active', i === n);
+        dot.classList.toggle('done', i < n);
+    }
+    document.getElementById('btnPrev').style.visibility = n === 1 ? 'hidden' : 'visible';
+    document.getElementById('btnNext').style.display = n === 3 ? 'none' : 'inline-flex';
+    document.getElementById('btnSubmit').style.display = n === 3 ? 'inline-flex' : 'none';
 }
 
-.form-group label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: #374151;
-    font-size: 0.875rem;
+function invStep(dir) {
+    var next = currentStep + dir;
+    if (next < 1 || next > 3) return;
+    if (dir === 1 && currentStep === 1) {
+        if (!document.getElementById('inv_customer').value.trim()) {
+            alert('Le nom du client est requis.');
+            return;
+        }
+    }
+    if (dir === 1 && currentStep === 2) {
+        var valid = false;
+        document.querySelectorAll('#itemsContainer .item-row').forEach(function(row) {
+            var desc = row.querySelector('input[name="item_description[]"]').value.trim();
+            var price = parseFloat(row.querySelector('.item-price').value) || 0;
+            if (desc && price > 0) valid = true;
+        });
+        if (!valid) {
+            alert('Ajoutez au moins un article avec une description et un prix.');
+            return;
+        }
+    }
+    showStep(next);
 }
 
-.form-control {
-    width: 100%;
-    padding: 0.625rem 0.875rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 0.875rem;
+/* Catalogue produits pour l'autocomplétion */
+var PRODUCTS = [
+{% for p in my_products %}
+    { name: "{{ p.name|escapejs }}", price: {{ p.price }} }{% if not forloop.last %},{% endif %}
+{% endfor %}
+];
+
+function renderProdList(input, filter) {
+    var box = input.closest('.prod-search-box');
+    var list = box.querySelector('.prod-list');
+    var q = (filter || '').toLowerCase();
+    var html = '';
+    PRODUCTS.forEach(function(p) {
+        if (p.name.toLowerCase().indexOf(q) !== -1) {
+            html += '<div class="prod-opt" data-name="' + p.name.replace(/"/g, '&quot;') + '" data-price="' + p.price + '" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--dash-border);">'
+                + '<strong>' + p.name + '</strong> <span style="color:var(--dash-text3);font-size:11px;">— ' + p.price.toLocaleString('fr') + ' F</span></div>';
+        }
+    });
+    if (!html) { list.style.display = 'none'; return; }
+    list.innerHTML = html;
+    list.style.display = 'block';
+    list.querySelectorAll('.prod-opt').forEach(function(opt) {
+        opt.addEventListener('mousedown', function() {
+            var row = input.closest('.item-row');
+            input.value = opt.dataset.name;
+            row.querySelector('.item-price').value = opt.dataset.price;
+            list.style.display = 'none';
+            calcInvoiceTotal();
+        });
+        opt.addEventListener('mouseover', function() { opt.style.background = 'var(--dash-bg)'; });
+        opt.addEventListener('mouseout', function() { opt.style.background = ''; });
+    });
 }
 
-.form-control:focus {
-    outline: none;
-    border-color: #1a56db;
-    box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+function showProdList(input) { renderProdList(input, input.value); }
+function filterProdList(input) { renderProdList(input, input.value); }
+
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.prod-list').forEach(function(l) {
+        if (!l.closest('.prod-search-box').contains(e.target)) l.style.display = 'none';
+    });
+});
+
+function addItem() {
+    var container = document.getElementById('itemsContainer');
+    var row = container.querySelector('.item-row').cloneNode(true);
+    row.querySelector('.item-desc').value = '';
+    row.querySelector('.item-qty').value = 1;
+    row.querySelector('.item-price').value = '';
+    container.appendChild(row);
 }
 
-.table {
-    width: 100%;
-    border-collapse: collapse;
+function removeItem(btn) {
+    var container = document.getElementById('itemsContainer');
+    if (container.querySelectorAll('.item-row').length > 1) {
+        btn.closest('.item-row').remove();
+        calcInvoiceTotal();
+    }
 }
 
-.table th {
-    text-align: left;
-    padding: 0.75rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: #374151;
-    border-bottom: 2px solid #e5e7eb;
-    white-space: nowrap;
+function calcInvoiceTotal() {
+    var total = 0;
+    document.querySelectorAll('#itemsContainer .item-row').forEach(function(row) {
+        var qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+        var price = parseFloat(row.querySelector('.item-price').value) || 0;
+        total += qty * price;
+    });
+    document.getElementById('invTotal').textContent = total.toLocaleString('fr') + ' F';
 }
 
-.table td {
-    padding: 0.75rem;
-    border-bottom: 1px solid #f3f4f6;
+function toggleInvMenu(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById('invMenu' + id);
+    var wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.inv-dropdown').forEach(function(d) { d.classList.remove('open'); });
+    if (wasOpen) return;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var menuHeight = 160;
+    var top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight) top = rect.top - menuHeight - 6;
+    menu.style.top = top + 'px';
+    menu.style.left = (rect.right - 180) + 'px';
+    menu.classList.add('open');
 }
-
-.table tbody tr:hover {
-    background: #f9fafb;
-}
-
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    background: #f3f4f6;
-    color: #374151;
-    white-space: nowrap;
-}
-
-.badge-success {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.badge-warning {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.badge-secondary {
-    background: #f3f4f6;
-    color: #6b7280;
-}
-
-.badge-danger {
-    background: #fee2e2;
-    color: #991b1b;
-}
-</style>
+document.addEventListener('click', function() {
+    document.querySelectorAll('.inv-dropdown').forEach(function(d) { d.classList.remove('open'); });
+});
+document.getElementById('invoiceModal').addEventListener('click', function(e) { if (e.target === this) closeInvoiceModal(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeInvoiceModal(); });
+</script>
 {% endblock %}

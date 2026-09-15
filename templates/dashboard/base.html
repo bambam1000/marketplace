@@ -841,14 +841,9 @@ body {
 <nav class="dash-nav">
 <a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Vue d'ensemble</a>
 <a href="{% url 'dashboard:orders' %}" class="{% if 'order' in request.resolver_match.url_name and 'rfq' not in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-box"></i></span> Commandes</a>
-<div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon"><i class="fa-solid fa-file-invoice"></i></span> Devis RFQ</div>
-<i class="fa-solid fa-chevron-right"></i>
-</div>
-<div class="nav-submenu">
-<a href="{% url 'orders:rfq_list' %}" class="{% if request.resolver_match.url_name == 'rfq_list' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-lines"></i></span> Demandes ouvertes</a>
-<a href="{% url 'orders:my_quotes' %}" class="{% if request.resolver_match.url_name == 'my_quotes' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-briefcase"></i></span> Mes devis soumis</a>
-</div>
+<a href="{% url 'dashboard:sales' %}" class="{% if request.resolver_match.url_name == 'sales' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Ventes</a>
+<a href="{% url 'invoicing:invoices' %}" class="{% if request.resolver_match.app_name == 'invoicing' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-receipt"></i></span> Facturation</a>
+<a href="{% url 'dashboard:rfqs' %}" class="{% if request.resolver_match.url_name == 'rfqs' or request.resolver_match.url_name == 'rfq_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice"></i></span> Devis RFQ</a>
 <a href="{% url 'dashboard:products' %}" class="{% if 'product' in request.resolver_match.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-tag"></i></span> Produits</a>
 <a href="{% url 'dashboard:inventory' %}" class="{% if request.resolver_match.url_name == 'inventory' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></span> Inventaire</a>
 <a href="{% url 'dashboard:customers' %}" class="{% if request.resolver_match.url_name == 'customers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Clients</a>
@@ -880,16 +875,6 @@ body {
 <a href="{% url 'marketing:loyalty' %}"><span class="nav-icon"><i class="fa-solid fa-star"></i></span> Fidélité</a>
 </div>
 <div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon"><i class="fa-solid fa-receipt"></i></span> Facturation</div>
-<i class="fa-solid fa-chevron-right"></i>
-</div>
-<div class="nav-submenu">
-<a href="{% url 'invoicing:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
-<a href="{% url 'invoicing:invoices' %}"><span class="nav-icon"><i class="fa-solid fa-file-lines"></i></span> Toutes les factures</a>
-<a href="{% url 'invoicing:invoice_create' %}"><span class="nav-icon"><i class="fa-solid fa-plus"></i></span> Créer facture</a>
-<a href="{% url 'invoicing:settings' %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>
-</div>
-<div class="nav-menu-toggle" onclick="toggleMenu(this)">
 <div><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Comptabilité</div>
 <i class="fa-solid fa-chevron-right"></i>
 </div>
@@ -897,15 +882,6 @@ body {
 <a href="{% url 'accounting:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
 <a href="{% url 'accounting:transactions' %}"><span class="nav-icon"><i class="fa-solid fa-rotate"></i></span> Transactions</a>
 <a href="{% url 'accounting:report' %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span> Rapports</a>
-</div>
-<div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span> Point de Vente</div>
-<i class="fa-solid fa-chevron-right"></i>
-</div>
-<div class="nav-submenu">
-<a href="{% url 'pos:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
-<a href="{% url 'pos:interface' %}"><span class="nav-icon"><i class="fa-solid fa-cart-shopping"></i></span> Caisse</a>
-<a href="{% url 'pos:sales_report' %}"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Rapports</a>
 </div>
 </nav>
 {% endif %}

@@ -62,6 +62,7 @@
             <a href="{% url 'dashboard:products' %}" class="btn btn-sm {% if not stock_filter %}btn-orange{% else %}btn-outline{% endif %}">Tous</a>
             <a href="?stock=low" class="btn btn-sm {% if stock_filter == 'low' %}btn-orange{% else %}btn-outline{% endif %}">Stock faible</a>
             <a href="?stock=out" class="btn btn-sm {% if stock_filter == 'out' %}btn-orange{% else %}btn-outline{% endif %}">Ruptures</a>
+            <a href="?stock=archived" class="btn btn-sm {% if stock_filter == 'archived' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-box-archive"></i> Archivés</a>
         </div>
         <form method="get" class="prod-search">
             <i class="fa-solid fa-magnifying-glass"></i>
@@ -101,7 +102,13 @@
                             <button type="button" onclick="openAdjustModal({{ p.id }}, '{{ p.name|escapejs }}', {{ p.stock }}, {{ p.low_stock_threshold }})"><i class="fa-solid fa-sliders"></i> Ajuster le stock</button>
                             <a href="{% url 'billing:boost_product' p.pk %}"><i class="fa-solid fa-rocket"></i> Booster</a>
                             <a href="{% url 'catalog:product_detail' p.slug %}" target="_blank"><i class="fa-solid fa-eye"></i> Voir en ligne</a>
-                            <button type="button" style="color:var(--dash-red);" onclick="openDeleteModal({{ p.id }}, '{{ p.name|escapejs }}')"><i class="fa-solid fa-trash-can" style="color:var(--dash-red);"></i> Supprimer</button>
+                            {% if p.is_active %}
+                            <button type="button" style="color:var(--dash-yellow);" onclick="openDeleteModal({{ p.id }}, '{{ p.name|escapejs }}')"><i class="fa-solid fa-box-archive" style="color:var(--dash-yellow);"></i> Archiver</button>
+                            {% else %}
+                            <form method="post" action="{% url 'dashboard:product_unarchive' p.pk %}" style="margin:0;">{% csrf_token %}
+                                <button type="submit" style="color:var(--dash-green);"><i class="fa-solid fa-rotate-left" style="color:var(--dash-green);"></i> Désarchiver</button>
+                            </form>
+                            {% endif %}
                         </div>
                     </div>
                 </td>
@@ -230,14 +237,14 @@
 <div class="dmodal" id="deleteModal">
     <div class="dmodal-box" style="max-width:420px;">
         <div class="dmodal-body" style="text-align:center;">
-            <div style="width:60px;height:60px;border-radius:50%;background:rgba(240,68,56,.1);color:var(--dash-red);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;"><i class="fa-solid fa-trash-can"></i></div>
-            <h3 style="font-size:16px;margin-bottom:8px;">Supprimer ce produit ?</h3>
-            <p style="font-size:13px;color:var(--dash-text3);margin-bottom:0;">« <strong id="deleteProductName"></strong> » sera définitivement supprimé.</p>
+            <div style="width:60px;height:60px;border-radius:50%;background:rgba(247,144,9,.1);color:var(--dash-yellow);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;"><i class="fa-solid fa-box-archive"></i></div>
+            <h3 style="font-size:16px;margin-bottom:8px;">Archiver ce produit ?</h3>
+            <p style="font-size:13px;color:var(--dash-text3);margin-bottom:0;">« <strong id="deleteProductName"></strong> » ne sera plus visible en boutique.<br>Son historique (ventes, stocks) sera conservé. Vous pourrez le réactiver à tout moment.</p>
         </div>
         <div class="dmodal-foot" style="justify-content:center;">
             <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Annuler</button>
             <form method="post" id="deleteForm" style="margin:0;">{% csrf_token %}
-                <button type="submit" class="btn" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-trash-can"></i> Supprimer</button>
+                <button type="submit" class="btn" style="background:var(--dash-yellow);color:#fff;"><i class="fa-solid fa-box-archive"></i> Archiver</button>
             </form>
         </div>
     </div>

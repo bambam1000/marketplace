@@ -1,0 +1,217 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Ventes{% endblock %}
+{% block dash %}
+<style>
+.sales-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.sales-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.sales-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.sales-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.sales-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.sales-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.sales-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.sales-search { position: relative; }
+.sales-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 280px; font-family: inherit; }
+.sales-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.sales-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+@media (max-width: 900px) { .sales-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<!-- ═══ Stats ═══ -->
+<div class="sales-stats">
+    <div class="sales-stat">
+        <div><div class="lbl">Chiffre d'affaires</div><div class="val">{{ total_revenue|intcomma }} F</div><div class="sub">Ventes payées</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-sack-dollar"></i></div>
+    </div>
+    <div class="sales-stat">
+        <div><div class="lbl">Ce mois</div><div class="val">{{ month_revenue|intcomma }} F</div><div class="sub">{{ now|date:'F Y' }}</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-calendar-check"></i></div>
+    </div>
+    <div class="sales-stat">
+        <div><div class="lbl">Articles vendus</div><div class="val">{{ total_qty }}</div><div class="sub">{{ orders_count }} commande{{ orders_count|pluralize:"s" }}</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-bag-shopping"></i></div>
+    </div>
+    <div class="sales-stat">
+        <div><div class="lbl">Panier moyen</div><div class="val">{{ avg_basket|intcomma }} F</div><div class="sub">Par commande</div></div>
+        <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-cart-shopping"></i></div>
+    </div>
+</div>
+
+<!-- ═══ Tableau des ventes ═══ -->
+<div class="dash-card">
+    <div class="sales-toolbar">
+        <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-chart-line" style="color:var(--dash-accent);"></i> Ventes réalisées</h3>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <form method="get" class="sales-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Produit ou n° de commande...">
+            </form>
+            <button type="button" class="btn btn-orange" onclick="document.getElementById('saleModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle vente</button>
+        </div>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>Commande</th><th>Produit</th><th>Client</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td><a href="{% url 'dashboard:order_detail' item.order.order_number %}" style="font-weight:600;color:var(--dash-accent);text-decoration:none;">#{{ item.order.order_number }}</a></td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:34px;height:34px;border-radius:6px;background:var(--dash-bg);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            {% if item.product.image %}<img src="{{ item.product.image.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}<i class="fa-solid fa-bag-shopping" style="color:var(--dash-text3);font-size:12px;"></i>{% endif %}
+                        </div>
+                        <span style="font-weight:600;color:var(--dash-text);">{{ item.product.name|truncatechars:30 }}</span>
+                    </div>
+                </td>
+                <td>{{ item.order.buyer.display_name }}</td>
+                <td style="font-weight:600;">{{ item.quantity }}</td>
+                <td>{{ item.price|intcomma }} F</td>
+                <td style="font-weight:700;color:var(--dash-text);">{{ item.subtotal|intcomma }} F</td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ item.order.created_at|date:"d/m/Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;margin-bottom:12px;opacity:.25;"><i class="fa-solid fa-chart-line"></i></div>
+                <div style="color:var(--dash-text3);font-size:14px;">Aucune vente{% if search_query %} trouvée pour « {{ search_query }} »{% endif %}</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
+        Affichage des {{ items|length }} dernières lignes de vente
+    </div>
+</div>
+
+<!-- ═══ Modale Nouvelle vente ═══ -->
+<div class="dmodal" id="saleModal" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.5);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:8px;width:100%;max-width:480px;box-shadow:0 24px 60px rgba(0,0,0,.25);">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--dash-border);">
+            <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-cash-register" style="color:var(--dash-accent);"></i> Nouvelle vente directe</h3>
+            <button type="button" onclick="document.getElementById('saleModal').classList.remove('open')" style="background:none;border:none;font-size:18px;color:var(--dash-text3);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" action="{% url 'dashboard:sale_create' %}">
+            {% csrf_token %}
+            <div style="padding:20px;">
+                <div class="form-group">
+                    <label>Produits *</label>
+                    <div id="saleItems">
+                        <div class="sale-item" style="display:grid;grid-template-columns:1fr 90px 36px;gap:8px;margin-bottom:8px;">
+                            <div class="prod-search-box" style="position:relative;">
+                                <input type="text" class="form-control sale-search" placeholder="Rechercher un produit..." autocomplete="off" onfocus="showSaleList(this)" oninput="filterSaleList(this)">
+                                <input type="hidden" name="product[]" class="sale-product-id" required>
+                                <div class="sale-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--dash-border);border-radius:6px;box-shadow:var(--dash-shadow-lg);max-height:200px;overflow-y:auto;z-index:100;"></div>
+                            </div>
+                            <input type="number" name="quantity[]" class="form-control sale-qty" min="1" value="1" required onchange="updateSaleTotal()" oninput="updateSaleTotal()">
+                            <button type="button" onclick="removeSaleItem(this)" style="background:none;border:none;color:var(--dash-red);cursor:pointer;font-size:14px;"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addSaleItem()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>
+                </div>
+                <div class="form-group">
+                    <label>Paiement</label>
+                    <select name="payment_method" class="form-control">
+                        {% for code, label in payment_choices %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Nom du client</label>
+                        <input type="text" name="customer_name" class="form-control" placeholder="Client comptoir">
+                    </div>
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="tel" name="customer_phone" class="form-control" placeholder="6XX XXX XXX">
+                    </div>
+                </div>
+                <div style="background:var(--dash-bg);border-radius:6px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:var(--dash-text3);font-weight:600;">Total</span>
+                    <span id="saleTotal" style="font-size:18px;font-weight:800;color:var(--dash-accent);">0 F</span>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--dash-border);">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('saleModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer la vente</button>
+            </div>
+        </form>
+    </div>
+</div>
+<style>.dmodal.open { display: flex !important; }</style>
+<script>
+/* Catalogue produits pour la recherche */
+var PRODUCTS = [
+{% for p in my_products %}
+    { id: {{ p.id }}, name: "{{ p.name|escapejs }}", price: {{ p.price }}, stock: {{ p.stock }} }{% if not forloop.last %},{% endif %}
+{% endfor %}
+];
+
+function renderSaleList(input, filter) {
+    var box = input.closest('.prod-search-box');
+    var list = box.querySelector('.sale-list');
+    var q = (filter || '').toLowerCase();
+    var html = '';
+    PRODUCTS.forEach(function(p) {
+        if (p.name.toLowerCase().indexOf(q) !== -1) {
+            html += '<div class="sale-opt" data-id="' + p.id + '" data-price="' + p.price + '" data-name="' + p.name.replace(/"/g, '&quot;') + '" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--dash-border);">'
+                + '<strong>' + p.name + '</strong> <span style="color:var(--dash-text3);font-size:11px;">— ' + p.price.toLocaleString('fr') + ' F · stock: ' + p.stock + '</span></div>';
+        }
+    });
+    list.innerHTML = html || '<div style="padding:10px;font-size:12px;color:var(--dash-text3);">Aucun produit trouvé</div>';
+    list.style.display = 'block';
+    list.querySelectorAll('.sale-opt').forEach(function(opt) {
+        opt.addEventListener('mousedown', function() {
+            box.querySelector('.sale-search').value = opt.dataset.name;
+            box.querySelector('.sale-product-id').value = opt.dataset.id;
+            list.style.display = 'none';
+            updateSaleTotal();
+        });
+        opt.addEventListener('mouseover', function() { opt.style.background = 'var(--dash-bg)'; });
+        opt.addEventListener('mouseout', function() { opt.style.background = ''; });
+    });
+}
+
+function showSaleList(input) { renderSaleList(input, input.value); }
+function filterSaleList(input) {
+    input.closest('.prod-search-box').querySelector('.sale-product-id').value = '';
+    renderSaleList(input, input.value);
+}
+
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.sale-list').forEach(function(l) {
+        if (!l.closest('.prod-search-box').contains(e.target)) l.style.display = 'none';
+    });
+});
+
+function updateSaleTotal() {
+    var total = 0;
+    document.querySelectorAll('#saleItems .sale-item').forEach(function(row) {
+        var id = row.querySelector('.sale-product-id').value;
+        var qty = parseInt(row.querySelector('.sale-qty').value) || 0;
+        var prod = PRODUCTS.find(function(p) { return p.id == id; });
+        if (prod) total += prod.price * qty;
+    });
+    document.getElementById('saleTotal').textContent = total.toLocaleString('fr') + ' F';
+}
+
+function addSaleItem() {
+    var container = document.getElementById('saleItems');
+    var row = container.querySelector('.sale-item').cloneNode(true);
+    row.querySelector('.sale-search').value = '';
+    row.querySelector('.sale-product-id').value = '';
+    row.querySelector('.sale-qty').value = 1;
+    container.appendChild(row);
+}
+
+function removeSaleItem(btn) {
+    var container = document.getElementById('saleItems');
+    if (container.querySelectorAll('.sale-item').length > 1) {
+        btn.closest('.sale-item').remove();
+        updateSaleTotal();
+    }
+}
+document.getElementById('saleModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('saleModal').classList.remove('open'); });
+</script>
+{% endblock %}

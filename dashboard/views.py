@@ -160,12 +160,19 @@ def dash_orders(request):
         orders = Order.objects.all()
     status = request.GET.get('status')
     if status: orders = orders.filter(status=status)
+    q = request.GET.get('q', '').strip()
+    if q:
+        orders = orders.filter(Q(order_number__icontains=q) | Q(buyer__username__icontains=q) | Q(buyer__first_name__icontains=q) | Q(buyer__last_name__icontains=q))
+    total_revenue = OrderItem.objects.filter(order__in=orders, order__is_paid=True).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
     return render(request, 'dashboard/orders.html', {
         'orders': orders.select_related('buyer').order_by('-created_at'),
         'status_choices': Order.STATUS_CHOICES,
+        'current_status': status,
+        'search_query': q,
         'total': orders.count(),
         'pending': orders.filter(status='pending').count(),
         'delivered': orders.filter(status='delivered').count(),
+        'total_revenue': total_revenue,
     })
 
 
@@ -230,6 +237,8 @@ def dash_products(request):
         products = products.filter(stock=0)
     elif stock_filter == 'low':
         products = [p for p in products if p.is_low_stock]
+    elif stock_filter == 'archived':
+        products = products.filter(is_active=False).select_related('category', 'store')
     else:
         products = products.select_related('category', 'store')
     return render(request, 'dashboard/products.html', {
@@ -297,16 +306,235 @@ def dash_product_edit(request, pk=None):
 @login_required
 @seller_or_admin_required
 def dash_product_delete(request, pk):
+    """Archive un produit (style Odoo : on ne supprime pas, on archive).
+    La suppression définitive n'est possible que si le produit n'a aucun historique."""
     product = get_object_or_404(Product, pk=pk)
     is_admin = request.user.is_superuser or request.user.role == 'admin'
     if not is_admin and product.store != request.user.store:
-        django_messages.error(request, 'Vous ne pouvez pas supprimer ce produit.')
+        django_messages.error(request, 'Vous ne pouvez pas modifier ce produit.')
         return redirect('dashboard:products')
     if request.method == 'POST':
-        name = product.name
-        product.delete()
-        django_messages.success(request, f'Produit "{name}" supprimé.')
+        has_history = product.stock_movements.exists() or product.orderitem_set.exists()
+        if has_history:
+            # Archivage : le produit reste en base pour la traçabilité
+            product.is_active = False
+            product.save(update_fields=['is_active'])
+            django_messages.success(request, f'Produit "{product.name}" archivé. Il n\'est plus visible en boutique mais son historique est conservé.')
+        else:
+            name = product.name
+            product.delete()
+            django_messages.success(request, f'Produit "{name}" supprimé (aucun historique).')
     return redirect('dashboard:products')
+
+
+@login_required
+@seller_or_admin_required
+def dash_product_unarchive(request, pk):
+    """Réactive un produit archivé."""
+    product = get_object_or_404(Product, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and product.store != request.user.store:
+        django_messages.error(request, 'Vous ne pouvez pas modifier ce produit.')
+        return redirect('dashboard:products')
+    if request.method == 'POST':
+        product.is_active = True
+        product.save(update_fields=['is_active'])
+        django_messages.success(request, f'Produit "{product.name}" réactivé.')
+    return redirect('dashboard:products')
+
+
+@login_required
+@seller_or_admin_required
+def dash_sales(request):
+    """Page Ventes : commandes payées avec statistiques"""
+    if request.user.is_seller and hasattr(request.user, 'store'):
+        items = OrderItem.objects.filter(store=request.user.store, order__is_paid=True)
+    else:
+        items = OrderItem.objects.filter(order__is_paid=True)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        items = items.filter(Q(product__name__icontains=q) | Q(order__order_number__icontains=q))
+
+    now = timezone.now()
+    total_revenue = items.aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
+    total_qty = items.aggregate(t=Sum('quantity'))['t'] or 0
+    month_revenue = items.filter(order__created_at__month=now.month, order__created_at__year=now.year).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
+    orders_count = items.values('order').distinct().count()
+    avg_basket = int(total_revenue / orders_count) if orders_count else 0
+
+    store = getattr(request.user, 'store', None)
+    return render(request, 'dashboard/sales.html', {
+        'items': items.select_related('order', 'order__buyer', 'product').order_by('-order__created_at')[:100],
+        'total_revenue': total_revenue,
+        'total_qty': total_qty,
+        'month_revenue': month_revenue,
+        'orders_count': orders_count,
+        'avg_basket': avg_basket,
+        'search_query': q,
+        'my_products': store.products.filter(is_active=True, stock__gt=0) if store else [],
+        'payment_choices': Order.PAYMENT_CHOICES,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_sale_create(request):
+    """Vente directe : vendre sans commande en ligne (comptoir, téléphone...)"""
+    if request.method == 'POST':
+        store = getattr(request.user, 'store', None)
+        if not store:
+            django_messages.error(request, "Vous devez avoir une boutique.")
+            return redirect('dashboard:sales')
+
+        product_ids = request.POST.getlist('product[]')
+        quantities = request.POST.getlist('quantity[]')
+        customer_name = request.POST.get('customer_name', '').strip() or 'Client comptoir'
+        customer_phone = request.POST.get('customer_phone', '').strip()
+        payment_method = request.POST.get('payment_method', 'cash')
+
+        # Valider les lignes
+        lines = []
+        for i, pid in enumerate(product_ids):
+            if not pid:
+                continue
+            product = get_object_or_404(Product, pk=pid, store=store)
+            qty = int(quantities[i]) if i < len(quantities) else 1
+            if qty < 1:
+                continue
+            if qty > product.stock:
+                django_messages.error(request, f'Stock insuffisant pour "{product.name}" : {product.stock} disponible(s).')
+                return redirect('dashboard:sales')
+            lines.append((product, qty))
+
+        if not lines:
+            django_messages.error(request, 'Ajoutez au moins un produit.')
+            return redirect('dashboard:sales')
+
+        total = sum(p.price * q for p, q in lines)
+        order = Order.objects.create(
+            buyer=request.user,
+            status='delivered',
+            is_paid=True,
+            payment_method=payment_method,
+            subtotal=total,
+            shipping_cost=0,
+            total_amount=total,
+            shipping_name=customer_name,
+            shipping_phone=customer_phone or '—',
+            shipping_address='Vente directe',
+            shipping_city=store.city,
+            notes=f'Vente directe — {customer_name}',
+        )
+        for product, qty in lines:
+            OrderItem.objects.create(order=order, product=product, store=store, quantity=qty, price=product.price)
+            product.orders_count += qty
+            product.save(update_fields=['orders_count'])
+            product.adjust_stock(-qty, 'sale', user=request.user, reason='Vente directe', reference=order.order_number)
+
+        django_messages.success(request, f'Vente {order.order_number} enregistrée : {len(lines)} produit(s), {total:,} F.')
+    return redirect('dashboard:sales')
+
+
+# ======== DEVIS RFQ (dashboard vendeur) ========
+@login_required
+@seller_or_admin_required
+def dash_rfqs(request):
+    """Liste des demandes de devis ouvertes + création de demande — dans le dashboard"""
+    from orders.models import RFQ
+
+    # Le vendeur peut aussi créer une demande de devis (il achète aussi)
+    if request.method == 'POST':
+        RFQ.objects.create(
+            buyer=request.user,
+            product_name=request.POST.get('product_name'),
+            category_id=request.POST.get('category') or None,
+            description=request.POST.get('description'),
+            quantity=int(request.POST.get('quantity', 1)),
+            target_price=request.POST.get('target_price') or None,
+            unit=request.POST.get('unit', 'pièce'),
+        )
+        django_messages.success(request, 'Votre demande de devis a été publiée !')
+        return redirect('dashboard:rfqs')
+
+    from orders.models import Quote
+    view = request.GET.get('view', 'open')
+
+    # RFQ où le vendeur a déjà soumis un devis
+    my_quoted_ids = []
+    if hasattr(request.user, 'store'):
+        my_quoted_ids = list(Quote.objects.filter(seller=request.user).values_list('rfq_id', flat=True))
+
+    # Mes propres demandes de devis
+    my_rfqs = RFQ.objects.filter(buyer=request.user).annotate(quote_cnt=Count('quotes')).order_by('-created_at')
+
+    # Liste principale selon l'onglet
+    if view == 'mine':
+        rfqs = my_rfqs
+    elif view == 'quoted':
+        rfqs = RFQ.objects.filter(pk__in=my_quoted_ids).annotate(quote_cnt=Count('quotes')).order_by('-created_at')
+    else:
+        rfqs = RFQ.objects.filter(status='open').exclude(buyer=request.user).annotate(quote_cnt=Count('quotes')).order_by('-created_at')
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        rfqs = rfqs.filter(Q(product_name__icontains=q) | Q(description__icontains=q))
+    category = request.GET.get('category')
+    if category:
+        rfqs = rfqs.filter(category_id=category)
+
+    return render(request, 'dashboard/rfqs.html', {
+        'rfqs': rfqs,
+        'my_rfqs': my_rfqs,
+        'categories': Category.objects.filter(parent__isnull=True),
+        'search_query': q,
+        'category_filter': category,
+        'current_view': view,
+        'my_quoted_ids': my_quoted_ids,
+        'total_open': RFQ.objects.filter(status='open').exclude(buyer=request.user).count(),
+        'my_quotes_count': len(my_quoted_ids),
+        'my_rfqs_count': my_rfqs.count(),
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_rfq_detail(request, rfq_id):
+    """Détail RFQ + soumission de devis — dans le dashboard"""
+    from orders.models import RFQ, Quote
+    rfq = get_object_or_404(RFQ, pk=rfq_id)
+    user_quote = Quote.objects.filter(rfq=rfq, seller=request.user).first()
+
+    if request.method == 'POST':
+        if not hasattr(request.user, 'store'):
+            django_messages.error(request, 'Vous devez avoir une boutique.')
+            return redirect('dashboard:rfq_detail', rfq_id=rfq_id)
+        if rfq.status != 'open':
+            django_messages.error(request, "Cette demande n'est plus ouverte.")
+            return redirect('dashboard:rfq_detail', rfq_id=rfq_id)
+
+        price_per_unit = int(request.POST.get('price_per_unit'))
+        Quote.objects.update_or_create(
+            rfq=rfq, seller=request.user,
+            defaults={
+                'store': request.user.store,
+                'price_per_unit': price_per_unit,
+                'total_price': price_per_unit * rfq.quantity,
+                'delivery_time': request.POST.get('delivery_time') or '',
+                'payment_terms': request.POST.get('payment_terms') or '',
+                'description': request.POST.get('description') or '',
+            }
+        )
+        if rfq.status == 'open':
+            rfq.status = 'quoted'
+            rfq.save()
+        django_messages.success(request, 'Votre devis a été soumis avec succès !')
+        return redirect('dashboard:rfq_detail', rfq_id=rfq_id)
+
+    return render(request, 'dashboard/rfq_detail.html', {
+        'rfq': rfq,
+        'user_quote': user_quote,
+    })
 
 
 # ======== GESTION DE STOCK ========
@@ -614,7 +842,6 @@ def dash_movement_excel(request, pk):
 def dash_customers(request):
     # Si l'utilisateur est un vendeur, afficher uniquement ses clients
     if request.user.is_seller and hasattr(request.user, 'store'):
-        # Récupérer les clients qui ont commandé des produits de ce vendeur
         customers = User.objects.filter(
             orders__items__product__store__owner=request.user
         ).distinct().annotate(
@@ -622,16 +849,78 @@ def dash_customers(request):
             total_spent=Sum('orders__total_amount', filter=Q(orders__items__product__store__owner=request.user))
         ).order_by('-date_joined')
     else:
-        # Pour les admins, afficher tous les acheteurs
         customers = User.objects.filter(role='buyer').annotate(
             order_count=Count('orders'), total_spent=Sum('orders__total_amount')
         ).order_by('-date_joined')
 
+    # Recherche
+    q = request.GET.get('q', '').strip()
+    if q:
+        customers = customers.filter(
+            Q(username__icontains=q) | Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) | Q(email__icontains=q) | Q(phone__icontains=q)
+        )
+
+    customers_list = list(customers)
+    total_spent_all = sum(c.total_spent or 0 for c in customers_list)
+    total_orders_all = sum(c.order_count or 0 for c in customers_list)
+
     return render(request, 'dashboard/customers.html', {
-        'customers': customers,
-        'total': customers.count(),
-        'new_30d': customers.filter(date_joined__gte=timezone.now() - timedelta(days=30)).count(),
+        'customers': customers_list,
+        'total': len(customers_list),
+        'new_30d': sum(1 for c in customers_list if c.date_joined >= timezone.now() - timedelta(days=30)),
+        'total_spent_all': total_spent_all,
+        'avg_spent': int(total_spent_all / len(customers_list)) if customers_list else 0,
+        'search_query': q,
     })
+
+
+@login_required
+@seller_or_admin_required
+def dash_customers_export(request):
+    """Export Excel de la liste des clients"""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from django.http import HttpResponse
+
+    if request.user.is_seller and hasattr(request.user, 'store'):
+        customers = User.objects.filter(
+            orders__items__product__store__owner=request.user
+        ).distinct().annotate(
+            order_count=Count('orders', filter=Q(orders__items__product__store__owner=request.user), distinct=True),
+            total_spent=Sum('orders__total_amount', filter=Q(orders__items__product__store__owner=request.user))
+        )
+    else:
+        customers = User.objects.filter(role='buyer').annotate(
+            order_count=Count('orders'), total_spent=Sum('orders__total_amount')
+        )
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        customers = customers.filter(
+            Q(username__icontains=q) | Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) | Q(email__icontains=q) | Q(phone__icontains=q)
+        )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Clients'
+    ws.append(['Nom', 'Email', 'Téléphone', 'Ville', 'Commandes', 'Total dépensé (F)', 'Inscrit le'])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for c in customers:
+        ws.append([
+            c.display_name, c.email, c.phone or '', c.city or '',
+            c.order_count or 0, int(c.total_spent or 0),
+            c.date_joined.strftime('%d/%m/%Y'),
+        ])
+    for col, w in zip('ABCDEFG', [25, 30, 15, 15, 12, 18, 12]):
+        ws.column_dimensions[col].width = w
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="clients.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required

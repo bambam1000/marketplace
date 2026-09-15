@@ -1,0 +1,157 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Devis RFQ{% endblock %}
+{% block dash %}
+<style>
+.rfq-stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.rfq-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.rfq-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.rfq-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); }
+.rfq-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.rfq-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.rfq-toolbar form { display: flex; gap: 10px; flex-wrap: wrap; }
+.rfq-toolbar input, .rfq-toolbar select { padding: 9px 14px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+.rfq-toolbar input:focus, .rfq-toolbar select:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.rfq-card { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 18px; border-bottom: 1px solid var(--dash-border); transition: var(--dash-transition); }
+.rfq-card:hover { background: var(--dash-bg); }
+.rfq-card:last-child { border-bottom: none; }
+@media (max-width: 900px) { .rfq-stats { grid-template-columns: 1fr; } }
+</style>
+
+<!-- ═══ Stats ═══ -->
+<div class="rfq-stats">
+    <div class="rfq-stat">
+        <div><div class="lbl">Demandes ouvertes</div><div class="val">{{ total_open }}</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-file-invoice"></i></div>
+    </div>
+    <div class="rfq-stat">
+        <div><div class="lbl">Mes devis soumis</div><div class="val">{{ my_quotes_count }}</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-briefcase"></i></div>
+    </div>
+    <div class="rfq-stat">
+        <div><div class="lbl">Mes demandes</div><div class="val">{{ my_rfqs_count }}</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-file-circle-plus"></i></div>
+    </div>
+</div>
+
+<!-- ═══ Onglets de filtre ═══ -->
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <a href="{% url 'dashboard:rfqs' %}" class="btn btn-sm {% if current_view == 'open' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-inbox"></i> Demandes ouvertes ({{ total_open }})</a>
+    <a href="?view=mine" class="btn btn-sm {% if current_view == 'mine' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-file-circle-plus"></i> Mes demandes ({{ my_rfqs_count }})</a>
+    <a href="?view=quoted" class="btn btn-sm {% if current_view == 'quoted' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-briefcase"></i> Mes devis soumis ({{ my_quotes_count }})</a>
+</div>
+
+<!-- ═══ Liste ═══ -->
+<div class="dash-card">
+    <div class="rfq-toolbar">
+        <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-file-invoice" style="color:var(--dash-accent);"></i> Demandes de devis ouvertes</h3>
+        <form method="get">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher...">
+            <select name="category" onchange="this.form.submit()">
+                <option value="">Toutes catégories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.pk }}" {% if category_filter == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-orange btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrer</button>
+        </form>
+        <button type="button" class="btn btn-orange" onclick="document.getElementById('rfqModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle demande</button>
+    </div>
+
+    {% for rfq in rfqs %}
+    <div class="rfq-card">
+        <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <span style="font-weight:700;font-size:14px;color:var(--dash-text);">{{ rfq.product_name }}</span>
+                {% if current_view == 'mine' %}
+                <span class="status-badge {% if rfq.status == 'open' %}st-delivered{% elif rfq.status == 'quoted' %}st-pending{% elif rfq.status == 'accepted' %}st-confirmed{% else %}st-cancelled{% endif %}">{{ rfq.get_status_display }}</span>
+                {% elif rfq.id in my_quoted_ids %}
+                <span class="tag tag-green">Devis soumis</span>
+                {% endif %}
+            </div>
+            <div style="font-size:12px;color:var(--dash-text3);margin-bottom:8px;">{{ rfq.description|truncatewords:20 }}</div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dash-text3);">
+                <span><i class="fa-solid fa-box"></i> {{ rfq.quantity|intcomma }} {{ rfq.unit }}</span>
+                {% if rfq.target_price %}<span><i class="fa-solid fa-money-bill"></i> {{ rfq.target_price|intcomma }} F/{{ rfq.unit }}</span>{% endif %}
+                {% if rfq.category %}<span><i class="fa-solid fa-tag"></i> {{ rfq.category.name }}</span>{% endif %}
+                <span><i class="fa-solid fa-calendar"></i> {{ rfq.created_at|date:"d/m/Y" }}</span>
+                <span><i class="fa-solid fa-briefcase"></i> {{ rfq.quote_cnt }} devis</span>
+            </div>
+        </div>
+        {% if current_view == 'mine' %}
+            {% if rfq.status == 'open' or rfq.status == 'quoted' %}
+            <form method="post" action="{% url 'orders:close_rfq' rfq.id %}" onsubmit="return confirm('Fermer cette demande ?');" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);flex-shrink:0;"><i class="fa-solid fa-xmark"></i> Fermer</button>
+            </form>
+            {% endif %}
+        {% else %}
+        <a href="{% url 'dashboard:rfq_detail' rfq.id %}" class="btn btn-orange btn-sm" style="flex-shrink:0;">
+            {% if rfq.id in my_quoted_ids %}<i class="fa-solid fa-eye"></i> Voir mon devis{% else %}<i class="fa-solid fa-paper-plane"></i> Répondre{% endif %}
+        </a>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div style="text-align:center;padding:3rem;">
+        <div style="font-size:40px;margin-bottom:12px;opacity:.25;"><i class="fa-solid fa-file-invoice"></i></div>
+        <div style="color:var(--dash-text3);font-size:14px;">
+            {% if current_view == 'mine' %}Vous n'avez pas encore créé de demande{% elif current_view == 'quoted' %}Vous n'avez soumis aucun devis{% else %}Aucune demande de devis ouverte{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ═══ Modale Nouvelle demande ═══ -->
+<div class="dmodal" id="rfqModal" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.5);z-index:2000;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:8px;width:100%;max-width:520px;box-shadow:0 24px 60px rgba(0,0,0,.25);">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--dash-border);">
+            <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-file-circle-plus" style="color:var(--dash-accent);"></i> Nouvelle demande de devis</h3>
+            <button type="button" onclick="document.getElementById('rfqModal').classList.remove('open')" style="background:none;border:none;font-size:18px;color:var(--dash-text3);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div style="padding:20px;">
+                <div class="form-group">
+                    <label>Produit recherché *</label>
+                    <input type="text" name="product_name" class="form-control" required placeholder="Ex: 500 sacs de ciment">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Quantité *</label>
+                        <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unité</label>
+                        <input type="text" name="unit" class="form-control" value="pièce">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Catégorie</label>
+                        <select name="category" class="form-control">
+                            <option value="">—</option>
+                            {% for cat in categories %}<option value="{{ cat.pk }}">{{ cat.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Prix cible (F/unité)</label>
+                        <input type="number" name="target_price" class="form-control" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description *</label>
+                    <textarea name="description" class="form-control" rows="3" required placeholder="Décrivez votre besoin en détail..."></textarea>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--dash-border);">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('rfqModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-paper-plane"></i> Publier la demande</button>
+            </div>
+        </form>
+    </div>
+</div>
+<style>.dmodal.open { display: flex !important; }</style>
+<script>
+document.getElementById('rfqModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('rfqModal').classList.remove('open'); });
+</script>
+{% endblock %}
