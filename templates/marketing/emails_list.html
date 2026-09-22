@@ -1,0 +1,176 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Email Marketing{% endblock %}
+{% block dash %}
+<style>
+.em-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.em-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.em-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; box-shadow: var(--dash-shadow); display: flex; align-items: center; gap: 12px; }
+.em-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.em-stat .v { font-weight: 800; font-size: 18px; }
+.em-stat .l { font-size: 11px; color: var(--dash-text3); }
+.em-actions-menu { position: relative; display: inline-block; }
+.em-dropdown { display: none; position: fixed; background: #fff; border: 1px solid var(--dash-border); border-radius: 6px; box-shadow: var(--dash-shadow-lg); min-width: 170px; z-index: 1500; overflow: hidden; }
+.em-dropdown.open { display: block; }
+.em-dropdown a, .em-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; font-size: 13px; color: var(--dash-text2); text-decoration: none; background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.em-dropdown a:hover, .em-dropdown button:hover { background: var(--dash-bg); color: var(--dash-text); }
+.em-dropdown i { width: 16px; text-align: center; color: var(--dash-text3); }
+.dots-btn { background: none; border: none; cursor: pointer; color: var(--dash-text3); padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+.dots-btn:hover { background: var(--dash-bg); color: var(--dash-text); }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 420px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <a href="{% url 'marketing:dashboard' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Marketing</a>
+        <h1><i class="fa-solid fa-envelope-open-text" style="color:var(--dash-accent);"></i> Email Marketing</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ emails|length }} campagne{{ emails|length|pluralize:"s" }} email</p>
+    </div>
+    <a href="{% url 'marketing:email_create' %}" class="btn btn-orange"><i class="fa-solid fa-plus"></i> Nouvelle campagne</a>
+</div>
+
+<div class="em-stats">
+    <div class="em-stat">
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-paper-plane"></i></div>
+        <div><div class="v">{{ sent_count }}</div><div class="l">Envoyée{{ sent_count|pluralize:"s" }}</div></div>
+    </div>
+    <div class="em-stat">
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-file-lines"></i></div>
+        <div><div class="v">{{ draft_count }}</div><div class="l">Brouillon{{ draft_count|pluralize:"s" }}</div></div>
+    </div>
+    <div class="em-stat">
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-users"></i></div>
+        <div><div class="v">{{ customers_count }}</div><div class="l">Clients de la boutique</div></div>
+    </div>
+    <div class="em-stat">
+        <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-globe"></i></div>
+        <div><div class="v">{{ all_count }}</div><div class="l">Acheteurs plateforme</div></div>
+    </div>
+</div>
+
+<div class="dash-card">
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>Sujet</th><th>Audience</th><th>Code promo</th><th>Destinataires</th><th>Statut</th><th>Date</th><th style="text-align:right;">Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for e in emails %}
+            <tr>
+                <td style="font-weight:700;">{{ e.subject }}</td>
+                <td>
+                    {% if e.target_audience == 'customers' %}<span class="tag" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-users"></i> Mes clients</span>
+                    {% else %}<span class="tag" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-globe"></i> Tous les acheteurs</span>{% endif %}
+                </td>
+                <td>
+                    {% if e.promo_code %}<span class="tag" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-ticket"></i> {{ e.promo_code.code }}</span>
+                    {% else %}<span style="color:var(--dash-text3);font-size:12px;">—</span>{% endif %}
+                </td>
+                <td>{{ e.recipients_count }}</td>
+                <td>
+                    {% if e.status == 'sent' %}<span class="status-badge st-delivered">Envoyée</span>
+                    {% elif e.status == 'scheduled' %}<span class="status-badge st-shipped">Programmée</span>
+                    {% else %}<span class="status-badge st-pending">Brouillon</span>{% endif %}
+                </td>
+                <td style="font-size:12px;color:var(--dash-text3);">
+                    {% if e.status == 'scheduled' and e.scheduled_at %}<i class="fa-solid fa-clock" style="color:var(--dash-purple);"></i> {{ e.scheduled_at|date:"d/m/Y H:i" }}
+                    {% elif e.sent_at %}{{ e.sent_at|date:"d/m/Y H:i" }}
+                    {% else %}{{ e.created_at|date:"d/m/Y" }}{% endif %}
+                </td>
+                <td style="text-align:right;">
+                    <div class="em-actions-menu">
+                        <button class="dots-btn" onclick="toggleEmMenu(event, {{ e.pk }})"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="em-dropdown" id="emMenu{{ e.pk }}">
+                            <a href="{% url 'marketing:email_detail' e.pk %}"><i class="fa-solid fa-eye"></i> Aperçu</a>
+                            {% if e.status != 'sent' %}
+                            <button type="button" style="color:var(--dash-green);" onclick="openSendModal({{ e.pk }}, '{{ e.subject|escapejs }}')"><i class="fa-solid fa-paper-plane" style="color:var(--dash-green);"></i> Envoyer</button>
+                            <button type="button" style="color:var(--dash-red);" onclick="openDeleteModal({{ e.pk }}, '{{ e.subject|escapejs }}')"><i class="fa-solid fa-trash-can" style="color:var(--dash-red);"></i> Supprimer</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-envelope-open-text"></i></div>
+                <div style="color:var(--dash-text3);">Aucune campagne email</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Modale Envoyer -->
+<div class="dmodal" id="sendModal">
+    <div class="dmodal-box">
+        <div class="dmodal-body" style="text-align:center;">
+            <div style="width:60px;height:60px;border-radius:50%;background:rgba(18,183,106,.1);color:var(--dash-green);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;"><i class="fa-solid fa-paper-plane"></i></div>
+            <h3 style="font-size:16px;margin-bottom:8px;">Envoyer cette campagne ?</h3>
+            <p style="font-size:13px;color:var(--dash-text3);margin-bottom:0;">« <strong id="sendSubject"></strong> » sera envoyée immédiatement à tous les destinataires de l'audience choisie.</p>
+        </div>
+        <div class="dmodal-foot">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('sendModal').classList.remove('open')">Annuler</button>
+            <form method="post" id="sendForm" style="margin:0;">{% csrf_token %}
+                <button type="submit" class="btn" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-paper-plane"></i> Envoyer</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modale Supprimer -->
+<div class="dmodal" id="deleteModal">
+    <div class="dmodal-box">
+        <div class="dmodal-body" style="text-align:center;">
+            <div style="width:60px;height:60px;border-radius:50%;background:rgba(239,68,68,.1);color:var(--dash-red);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;"><i class="fa-solid fa-trash-can"></i></div>
+            <h3 style="font-size:16px;margin-bottom:8px;">Supprimer ce brouillon ?</h3>
+            <p style="font-size:13px;color:var(--dash-text3);margin-bottom:0;">« <strong id="deleteSubject"></strong> » sera définitivement supprimée.</p>
+        </div>
+        <div class="dmodal-foot">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('deleteModal').classList.remove('open')">Annuler</button>
+            <form method="post" id="deleteForm" style="margin:0;">{% csrf_token %}
+                <button type="submit" class="btn" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-trash-can"></i> Supprimer</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleEmMenu(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById('emMenu' + id);
+    var wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.em-dropdown').forEach(function(d) { d.classList.remove('open'); });
+    if (wasOpen) return;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var menuHeight = 140;
+    var top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight) { top = rect.top - menuHeight - 6; }
+    menu.style.top = top + 'px';
+    menu.style.left = (rect.right - 170) + 'px';
+    menu.classList.add('open');
+}
+document.addEventListener('click', function() {
+    document.querySelectorAll('.em-dropdown').forEach(function(d) { d.classList.remove('open'); });
+});
+function openSendModal(id, subject) {
+    document.getElementById('sendSubject').textContent = subject;
+    document.getElementById('sendForm').action = "{% url 'marketing:email_send' 0 %}".replace('/0/', '/' + id + '/');
+    document.getElementById('sendModal').classList.add('open');
+}
+function openDeleteModal(id, subject) {
+    document.getElementById('deleteSubject').textContent = subject;
+    document.getElementById('deleteForm').action = "{% url 'marketing:email_delete' 0 %}".replace('/0/', '/' + id + '/');
+    document.getElementById('deleteModal').classList.add('open');
+}
+document.querySelectorAll('.dmodal').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.querySelectorAll('.dmodal').forEach(function(m) { m.classList.remove('open'); });
+});
+</script>
+{% endblock %}

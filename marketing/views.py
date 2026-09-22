@@ -24,6 +24,7 @@ def marketing_dashboard(request):
     active_campaigns = Campaign.objects.filter(store=store, status='active').count()
     active_promos = PromoCode.objects.filter(store=store, is_active=True).count()
     total_loyalty_members = LoyaltyProgram.objects.filter(store=store).count()
+    emails_count = Newsletter.objects.filter(store=store).count()
 
     # Analytics des 30 derniers jours
     analytics = MarketingAnalytics.objects.filter(
@@ -45,6 +46,7 @@ def marketing_dashboard(request):
         'active_campaigns': active_campaigns,
         'active_promos': active_promos,
         'total_loyalty_members': total_loyalty_members,
+        'emails_count': emails_count,
         'analytics': analytics,
         'recent_campaigns': recent_campaigns,
         'active_promo_codes': active_promo_codes,
@@ -326,3 +328,321 @@ def loyalty_program(request):
         'tier_breakdown': tier_breakdown,
     }
     return render(request, 'marketing/loyalty_program.html', context)
+
+
+# ========== EMAIL MARKETING ==========
+def _get_seller_store(request):
+    """Retourne la boutique du vendeur ou None."""
+    if not request.user.is_seller:
+        return None
+    return getattr(request.user, 'store', None)
+
+
+def _get_email_recipients(store, audience):
+    """Retourne le queryset des destinataires selon l'audience."""
+    from accounts.models import User
+    if audience == 'customers':
+        # Clients ayant commandé un produit de cette boutique
+        return User.objects.filter(
+            orders__items__product__store=store, email__isnull=False
+        ).exclude(email='').distinct()
+    # 'all' : tous les acheteurs de la plateforme
+    return User.objects.filter(
+        role='buyer', email__isnull=False
+    ).exclude(email='').distinct()
+
+
+def _get_newsletter_emails(newsletter):
+    """Retourne la liste d'emails pour une newsletter (toutes audiences)."""
+    if newsletter.target_audience == 'custom':
+        return [e.strip() for e in newsletter.custom_recipients.splitlines() if e.strip()]
+    return list(_get_email_recipients(
+        newsletter.store, newsletter.target_audience
+    ).values_list('email', flat=True))
+
+
+def _parse_recipients_excel(file):
+    """Lit un fichier Excel et retourne la liste des emails valides (1ère colonne)."""
+    import openpyxl
+    import re
+    emails = []
+    wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    ws = wb.active
+    email_re = re.compile(r'^[\w.\-+]+@[\w\-]+\.[\w.\-]+$')
+    for row in ws.iter_rows(values_only=True):
+        if not row or row[0] is None:
+            continue
+        val = str(row[0]).strip().lower()
+        if val == 'email':  # en-tête
+            continue
+        if email_re.match(val) and val not in emails:
+            emails.append(val)
+    wb.close()
+    return emails
+
+
+def _build_email_html(newsletter, base_url='http://127.0.0.1:8000'):
+    """Construit le HTML de l'email avec branding boutique + produits + code promo."""
+    store = newsletter.store
+
+    # Bloc produits (2 colonnes)
+    products_block = ''
+    products = list(newsletter.products.all())
+    if products:
+        cells = []
+        for p in products:
+            img = f'<img src="{base_url}{p.image.url}" style="width:100%;height:140px;object-fit:cover;display:block;">' if p.image else '<div style="width:100%;height:140px;background:#f0f1f3;"></div>'
+            old = f'<span style="text-decoration:line-through;color:#98a2b3;font-size:11px;margin-left:6px;">{p.old_price:.0f} FCFA</span>' if p.old_price else ''
+            cells.append(f'''
+                <td style="width:50%;padding:6px;vertical-align:top;">
+                    <div style="border:1px solid #eaecf0;border-radius:8px;overflow:hidden;">
+                        {img}
+                        <div style="padding:12px;">
+                            <div style="font-weight:700;font-size:13px;color:#101828;margin-bottom:4px;">{p.name}</div>
+                            <div style="margin-bottom:8px;"><span style="color:#ff6a00;font-weight:800;font-size:15px;">{p.price:.0f} FCFA</span>{old}</div>
+                            <a href="{base_url}{p.get_absolute_url()}" style="display:block;background:#ff6a00;color:#fff;text-align:center;padding:8px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:700;">Voir le produit</a>
+                        </div>
+                    </div>
+                </td>''')
+        rows = ''
+        for i in range(0, len(cells), 2):
+            pair = cells[i] + (cells[i + 1] if i + 1 < len(cells) else '<td style="width:50%;"></td>')
+            rows += f'<tr>{pair}</tr>'
+        products_block = f'<table style="width:100%;border-collapse:collapse;margin-top:16px;">{rows}</table>'
+
+    promo_block = ''
+    if newsletter.promo_code:
+        p = newsletter.promo_code
+        if p.discount_type == 'percentage':
+            reduction = f'-{p.discount_value:.0f}%'
+        else:
+            reduction = f'-{p.discount_value:.0f} FCFA'
+        promo_block = f'''
+        <div style="background:#fff4ec;border:2px dashed #ff6a00;border-radius:10px;padding:20px;text-align:center;margin:24px 0;">
+            <div style="font-size:13px;color:#666;margin-bottom:6px;">Profitez de {reduction} avec le code</div>
+            <div style="font-size:26px;font-weight:800;letter-spacing:3px;color:#ff6a00;">{p.code}</div>
+            <div style="font-size:11px;color:#999;margin-top:6px;">Valable jusqu'au {p.valid_to.strftime('%d/%m/%Y')}</div>
+        </div>'''
+    return f'''<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:#ff6a00;padding:24px;text-align:center;">
+        <div style="color:#fff;font-size:22px;font-weight:800;">{store.name}</div>
+    </div>
+    <div style="padding:32px 28px;color:#333;font-size:14px;line-height:1.7;">
+        {newsletter.content}
+        {products_block}
+        {promo_block}
+    </div>
+    <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
+        {store.name} · {store.city or 'Douala'} · AfriMarket
+    </div>
+</div>
+</body></html>'''
+
+
+@login_required
+def emails_list(request):
+    """Liste des campagnes email"""
+    store = _get_seller_store(request)
+    if not store:
+        messages.error(request, 'Accès réservé aux vendeurs.')
+        return redirect('dashboard:index')
+
+    emails = Newsletter.objects.filter(store=store).select_related('promo_code')
+    return render(request, 'marketing/emails_list.html', {
+        'emails': emails,
+        'sent_count': emails.filter(status='sent').count(),
+        'draft_count': emails.filter(status='draft').count(),
+        'customers_count': _get_email_recipients(store, 'customers').count(),
+        'all_count': _get_email_recipients(store, 'all').count(),
+    })
+
+
+@login_required
+def email_create(request):
+    """Créer (et optionnellement envoyer) une campagne email"""
+    store = _get_seller_store(request)
+    if not store:
+        messages.error(request, 'Accès réservé aux vendeurs.')
+        return redirect('dashboard:index')
+
+    if request.method == 'POST':
+        subject = request.POST.get('subject', '').strip()
+        content = request.POST.get('content', '').strip()
+        audience = request.POST.get('target_audience', 'customers')
+        promo_id = request.POST.get('promo_code') or None
+        action = request.POST.get('action', 'draft')
+
+        if not subject or not content:
+            messages.error(request, 'Le sujet et le contenu sont requis.')
+            return redirect('marketing:email_create')
+
+        # Audience personnalisée via fichier Excel
+        custom_emails = []
+        if audience == 'custom':
+            excel_file = request.FILES.get('recipients_file')
+            if not excel_file:
+                messages.error(request, 'Veuillez téléverser le fichier Excel des destinataires.')
+                return redirect('marketing:email_create')
+            try:
+                custom_emails = _parse_recipients_excel(excel_file)
+            except Exception:
+                messages.error(request, 'Fichier Excel illisible. Utilisez le template fourni.')
+                return redirect('marketing:email_create')
+            if not custom_emails:
+                messages.error(request, 'Aucun email valide trouvé dans le fichier.')
+                return redirect('marketing:email_create')
+
+        newsletter = Newsletter.objects.create(
+            store=store,
+            subject=subject,
+            content=content,
+            target_audience=audience,
+            promo_code_id=promo_id,
+            custom_recipients='\n'.join(custom_emails),
+            status='draft',
+        )
+        product_ids = request.POST.getlist('products')
+        if product_ids:
+            newsletter.products.set(product_ids)
+
+        if action == 'send':
+            return _send_newsletter(request, newsletter)
+
+        if action == 'schedule':
+            scheduled_at = request.POST.get('scheduled_at', '').strip()
+            if not scheduled_at:
+                messages.error(request, 'Veuillez choisir la date et l\'heure d\'envoi.')
+                return redirect('marketing:email_create')
+            from datetime import datetime
+            try:
+                naive_dt = datetime.strptime(scheduled_at, '%Y-%m-%dT%H:%M')
+                newsletter.scheduled_at = timezone.make_aware(naive_dt)
+            except ValueError:
+                messages.error(request, 'Date de programmation invalide.')
+                return redirect('marketing:email_create')
+            if newsletter.scheduled_at <= timezone.now():
+                messages.error(request, 'La date d\'envoi doit être dans le futur.')
+                return redirect('marketing:email_create')
+            newsletter.status = 'scheduled'
+            newsletter.save()
+            messages.success(request, f'Campagne programmée pour le {newsletter.scheduled_at.strftime("%d/%m/%Y à %H:%M")}.')
+            return redirect('marketing:emails_list')
+
+        messages.success(request, 'Campagne email enregistrée en brouillon.')
+        return redirect('marketing:emails_list')
+
+    return render(request, 'marketing/email_form.html', {
+        'promo_codes': PromoCode.objects.filter(store=store, is_active=True),
+        'products': Product.objects.filter(store=store, is_active=True).order_by('name'),
+        'customers_count': _get_email_recipients(store, 'customers').count(),
+        'all_count': _get_email_recipients(store, 'all').count(),
+    })
+
+
+def _send_newsletter_now(newsletter):
+    """Envoie une newsletter à son audience. Retourne le nombre d'envois."""
+    from django.core.mail import EmailMessage
+    from django.conf import settings as dj_settings
+
+    recipients = _get_newsletter_emails(newsletter)
+    if not recipients:
+        return 0
+
+    html = _build_email_html(newsletter)
+    sent = 0
+    for email in recipients:
+        try:
+            msg = EmailMessage(
+                subject=newsletter.subject,
+                body=html,
+                from_email=dj_settings.DEFAULT_FROM_EMAIL,
+                to=[email],
+            )
+            msg.content_subtype = 'html'
+            msg.send(fail_silently=True)
+            sent += 1
+        except Exception:
+            pass
+
+    newsletter.status = 'sent'
+    newsletter.sent_at = timezone.now()
+    newsletter.recipients_count = sent
+    newsletter.save()
+    return sent
+
+
+def _send_newsletter(request, newsletter):
+    """Envoie une newsletter (contexte web avec messages)."""
+    sent = _send_newsletter_now(newsletter)
+    if sent == 0:
+        messages.warning(request, "Aucun destinataire pour cette audience.")
+    else:
+        messages.success(request, f'Campagne envoyée à {sent} destinataire{"s" if sent > 1 else ""}.')
+    return redirect('marketing:emails_list')
+
+
+@login_required
+def email_send(request, pk):
+    """Envoyer un brouillon existant"""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    newsletter = get_object_or_404(Newsletter, pk=pk, store=store)
+    if request.method == 'POST':
+        if newsletter.status == 'sent':
+            messages.warning(request, 'Cette campagne a déjà été envoyée.')
+            return redirect('marketing:emails_list')
+        return _send_newsletter(request, newsletter)
+    return redirect('marketing:emails_list')
+
+
+@login_required
+def email_recipients_template(request):
+    """Télécharge le template Excel pour les destinataires personnalisés."""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    import openpyxl
+    from django.http import HttpResponse
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Destinataires'
+    ws.append(['email'])
+    ws.append(['client1@example.com'])
+    ws.append(['client2@example.com'])
+    ws.append(['client3@example.com'])
+    ws.column_dimensions['A'].width = 35
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="template_destinataires.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def email_detail(request, pk):
+    """Aperçu d'une campagne email"""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    newsletter = get_object_or_404(Newsletter, pk=pk, store=store)
+    return render(request, 'marketing/email_detail.html', {
+        'email': newsletter,
+        'html_preview': _build_email_html(newsletter),
+    })
+
+
+@login_required
+def email_delete(request, pk):
+    """Supprimer un brouillon"""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    newsletter = get_object_or_404(Newsletter, pk=pk, store=store)
+    if request.method == 'POST':
+        newsletter.delete()
+        messages.success(request, 'Campagne supprimée.')
+    return redirect('marketing:emails_list')

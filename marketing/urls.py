@@ -24,4 +24,12 @@ urlpatterns = [
 
     # Programme de fidélité
     path('loyalty/', views.loyalty_program, name='loyalty'),
+
+    # Email marketing
+    path('emails/', views.emails_list, name='emails_list'),
+    path('emails/nouveau/', views.email_create, name='email_create'),
+    path('emails/template-destinataires/', views.email_recipients_template, name='email_recipients_template'),
+    path('emails/<int:pk>/', views.email_detail, name='email_detail'),
+    path('emails/<int:pk>/envoyer/', views.email_send, name='email_send'),
+    path('emails/<int:pk>/supprimer/', views.email_delete, name='email_delete'),
 ]

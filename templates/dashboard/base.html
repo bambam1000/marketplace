@@ -861,26 +861,7 @@ body {
 <a href="{% url 'billing:my_boosts' %}"><span class="nav-icon"><i class="fa-solid fa-rocket"></i></span> Mes Boosts</a>
 <a href="{% url 'accounting:wallet' %}"><span class="nav-icon"><i class="fa-solid fa-wallet"></i></span> Portefeuille</a>
 </div>
-<div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon"><i class="fa-solid fa-bullhorn"></i></span> Marketing</div>
-<i class="fa-solid fa-chevron-right"></i>
-</div>
-<div class="nav-submenu">
-<a href="{% url 'marketing:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
-<a href="{% url 'marketing:promo_codes' %}"><span class="nav-icon"><i class="fa-solid fa-ticket"></i></span> Codes Promo</a>
-<a href="{% url 'marketing:campaigns' %}"><span class="nav-icon"><i class="fa-solid fa-bullseye"></i></span> Campagnes</a>
-<a href="{% url 'marketing:analytics' %}"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Analytics</a>
-<a href="{% url 'marketing:loyalty' %}"><span class="nav-icon"><i class="fa-solid fa-star"></i></span> Fidélité</a>
-</div>
-<div class="nav-menu-toggle" onclick="toggleMenu(this)">
-<div><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Comptabilité</div>
-<i class="fa-solid fa-chevron-right"></i>
-</div>
-<div class="nav-submenu">
-<a href="{% url 'accounting:dashboard' %}"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span> Tableau de bord</a>
-<a href="{% url 'accounting:transactions' %}"><span class="nav-icon"><i class="fa-solid fa-rotate"></i></span> Transactions</a>
-<a href="{% url 'accounting:report' %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span> Rapports</a>
-</div>
+<a href="{% url 'marketing:dashboard' %}" class="{% if request.resolver_match.app_name == 'marketing' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-bullhorn"></i></span> Marketing</a>
 </nav>
 {% endif %}
 

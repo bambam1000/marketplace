@@ -1,0 +1,53 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ email.subject }}{% endblock %}
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <a href="{% url 'marketing:emails_list' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Email Marketing</a>
+        <h1><i class="fa-solid fa-envelope-open-text" style="color:var(--dash-accent);"></i> {{ email.subject }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">
+            {% if email.status == 'sent' %}Envoyée le {{ email.sent_at|date:"d/m/Y à H:i" }} à {{ email.recipients_count }} destinataire{{ email.recipients_count|pluralize:"s" }}
+            {% elif email.status == 'scheduled' %}<i class="fa-solid fa-clock" style="color:var(--dash-purple);"></i> Programmée pour le {{ email.scheduled_at|date:"d/m/Y à H:i" }}
+            {% else %}Brouillon créé le {{ email.created_at|date:"d/m/Y" }}{% endif %}
+        </p>
+    </div>
+    {% if email.status != 'sent' %}
+    <form method="post" action="{% url 'marketing:email_send' email.pk %}" onsubmit="return confirm('Envoyer cette campagne maintenant ?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-orange"><i class="fa-solid fa-paper-plane"></i> Envoyer maintenant</button>
+    </form>
+    {% endif %}
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px;">
+    <div class="dash-card" style="padding:16px;">
+        <div style="font-size:11px;color:var(--dash-text3);margin-bottom:4px;">Audience</div>
+        <div style="font-weight:700;font-size:14px;">{% if email.target_audience == 'customers' %}Mes clients{% else %}Tous les acheteurs{% endif %}</div>
+    </div>
+    <div class="dash-card" style="padding:16px;">
+        <div style="font-size:11px;color:var(--dash-text3);margin-bottom:4px;">Produits</div>
+        <div style="font-weight:700;font-size:14px;">{{ email.products.count }}</div>
+    </div>
+    <div class="dash-card" style="padding:16px;">
+        <div style="font-size:11px;color:var(--dash-text3);margin-bottom:4px;">Code promo</div>
+        <div style="font-weight:700;font-size:14px;">{% if email.promo_code %}{{ email.promo_code.code }}{% else %}—{% endif %}</div>
+    </div>
+    <div class="dash-card" style="padding:16px;">
+        <div style="font-size:11px;color:var(--dash-text3);margin-bottom:4px;">Destinataires</div>
+        <div style="font-weight:700;font-size:14px;">{{ email.recipients_count }}</div>
+    </div>
+    <div class="dash-card" style="padding:16px;">
+        <div style="font-size:11px;color:var(--dash-text3);margin-bottom:4px;">Statut</div>
+        <div style="font-weight:700;font-size:14px;">
+            {% if email.status == 'sent' %}<span class="status-badge st-delivered">Envoyée</span>{% else %}<span class="status-badge st-pending">Brouillon</span>{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="dash-card" style="padding:0;overflow:hidden;">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);font-weight:700;font-size:14px;">
+        <i class="fa-solid fa-eye" style="color:var(--dash-accent);"></i> Aperçu de l'email
+    </div>
+    <iframe srcdoc="{{ html_preview|escape }}" style="width:100%;height:560px;border:none;background:#f4f5f7;"></iframe>
+</div>
+{% endblock %}

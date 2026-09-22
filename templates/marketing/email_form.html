@@ -1,0 +1,149 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Nouvelle campagne email{% endblock %}
+{% block dash %}
+<style>
+.em-form-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .em-form-grid { grid-template-columns: 1fr; } }
+.aud-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1.5px solid var(--dash-border); border-radius: 8px; cursor: pointer; transition: var(--dash-transition); margin-bottom: 10px; }
+.aud-card:hover { border-color: var(--dash-accent); }
+.aud-card input { margin-top: 3px; accent-color: var(--dash-accent); }
+.aud-card.selected { border-color: var(--dash-accent); background: rgba(255,106,0,.04); }
+.aud-card .t { font-weight: 700; font-size: 13px; }
+.aud-card .s { font-size: 11px; color: var(--dash-text3); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <a href="{% url 'marketing:emails_list' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Email Marketing</a>
+        <h1><i class="fa-solid fa-envelope-open-text" style="color:var(--dash-accent);"></i> Nouvelle campagne email</h1>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+{% csrf_token %}
+<div class="em-form-grid">
+    <!-- Contenu -->
+    <div class="dash-card" style="padding:20px;">
+        <div class="form-group">
+            <label>Sujet de l'email *</label>
+            <input type="text" name="subject" class="form-control" placeholder="Ex : -20% sur tout ce week-end !" required>
+        </div>
+        <div class="form-group">
+            <label>Message *</label>
+            <textarea name="content" class="form-control" rows="10" placeholder="Bonjour,&#10;&#10;Nous avons le plaisir de vous annoncer..." required></textarea>
+            <small style="font-size:11px;color:var(--dash-text3);">Sauts de ligne conservés. Le nom de votre boutique et le code promo (si choisi) sont ajoutés automatiquement.</small>
+        </div>
+        <div class="form-group">
+            <label>Produits à mettre en avant (optionnel)</label>
+            <div style="border:1.5px solid var(--dash-border);border-radius:8px;overflow:hidden;">
+                <div style="position:relative;border-bottom:1px solid var(--dash-border);">
+                    <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+                    <input type="text" id="prodSearch" placeholder="Rechercher un produit..." onkeyup="filterProducts()" style="width:100%;padding:10px 12px 10px 34px;border:none;font-size:13px;font-family:inherit;outline:none;background:transparent;">
+                </div>
+                <div id="prodList" style="max-height:240px;overflow-y:auto;">
+                    {% for p in products %}
+                    <label class="prod-item" data-name="{{ p.name|lower }}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--dash-border);cursor:pointer;margin:0;" onmouseover="this.style.background='var(--dash-bg)'" onmouseout="this.style.background=''">
+                        <input type="checkbox" name="products" value="{{ p.pk }}" onchange="updateProdCount()" style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                        {% if p.image %}<img src="{{ p.image.url }}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">
+                        {% else %}<div style="width:40px;height:40px;background:var(--dash-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dash-text3);"><i class="fa-solid fa-image"></i></div>{% endif %}
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">{{ p.price|floatformat:0 }} FCFA · Stock : {{ p.stock }}</div>
+                        </div>
+                    </label>
+                    {% empty %}
+                    <div style="padding:20px;text-align:center;color:var(--dash-text3);font-size:13px;">Aucun produit actif</div>
+                    {% endfor %}
+                    <div id="prodEmpty" style="display:none;padding:20px;text-align:center;color:var(--dash-text3);font-size:13px;">Aucun produit trouvé</div>
+                </div>
+            </div>
+            <small style="font-size:11px;color:var(--dash-text3);"><span id="prodCount">0</span> produit(s) sélectionné(s) — ils apparaîtront en cartes avec photo, prix et bouton d'achat dans l'email.</small>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label>Code promo à inclure (optionnel)</label>
+            <select name="promo_code" class="form-control">
+                <option value="">— Aucun —</option>
+                {% for p in promo_codes %}
+                <option value="{{ p.pk }}">{{ p.code }} — {% if p.discount_type == 'percentage' %}-{{ p.discount_value|floatformat:0 }}%{% else %}-{{ p.discount_value|floatformat:0 }} FCFA{% endif %}</option>
+                {% endfor %}
+            </select>
+            <small style="font-size:11px;color:var(--dash-text3);">Le code sera mis en avant dans un encadré orange dans l'email.</small>
+        </div>
+    </div>
+
+    <!-- Audience + actions -->
+    <div>
+        <div class="dash-card" style="padding:20px;margin-bottom:16px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:12px;"><i class="fa-solid fa-users" style="color:var(--dash-accent);"></i> Audience</div>
+            <label class="aud-card selected" onclick="selectAud(this)">
+                <input type="radio" name="target_audience" value="customers" checked>
+                <div>
+                    <div class="t">Mes clients</div>
+                    <div class="s">{{ customers_count }} client{{ customers_count|pluralize:"s" }} ayant commandé dans votre boutique</div>
+                </div>
+            </label>
+            <label class="aud-card" onclick="selectAud(this)">
+                <input type="radio" name="target_audience" value="all">
+                <div>
+                    <div class="t">Tous les acheteurs</div>
+                    <div class="s">{{ all_count }} acheteur{{ all_count|pluralize:"s" }} de la plateforme</div>
+                </div>
+            </label>
+            <label class="aud-card" onclick="selectAud(this)" style="margin-bottom:0;">
+                <input type="radio" name="target_audience" value="custom" id="audCustom">
+                <div>
+                    <div class="t">Liste personnalisée</div>
+                    <div class="s">Importer un fichier Excel d'emails</div>
+                </div>
+            </label>
+            <div id="customUpload" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--dash-border);">
+                <input type="file" name="recipients_file" accept=".xlsx" class="form-control" style="padding:8px;">
+                <a href="{% url 'marketing:email_recipients_template' %}" style="font-size:11px;color:var(--dash-accent);text-decoration:none;display:inline-block;margin-top:6px;"><i class="fa-solid fa-file-excel"></i> Télécharger le template Excel</a>
+            </div>
+        </div>
+        <div class="dash-card" style="padding:20px;margin-bottom:16px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:12px;"><i class="fa-solid fa-clock" style="color:var(--dash-accent);"></i> Programmation</div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label style="font-size:12px;">Date et heure d'envoi</label>
+                <input type="datetime-local" name="scheduled_at" id="scheduledAt" class="form-control">
+                <small style="font-size:11px;color:var(--dash-text3);">Requis uniquement pour « Programmer ».</small>
+            </div>
+        </div>
+        <div class="dash-card" style="padding:20px;">
+            <button type="submit" name="action" value="send" class="btn btn-orange" style="width:100%;margin-bottom:10px;" onclick="return confirm('Envoyer immédiatement cette campagne ?');">
+                <i class="fa-solid fa-paper-plane"></i> Envoyer maintenant
+            </button>
+            <button type="submit" name="action" value="schedule" class="btn" style="width:100%;margin-bottom:10px;background:var(--dash-purple);color:#fff;">
+                <i class="fa-solid fa-clock"></i> Programmer l'envoi
+            </button>
+            <button type="submit" name="action" value="draft" class="btn btn-outline" style="width:100%;">
+                <i class="fa-solid fa-floppy-disk"></i> Enregistrer en brouillon
+            </button>
+        </div>
+    </div>
+</div>
+</form>
+
+<script>
+function selectAud(card) {
+    document.querySelectorAll('.aud-card').forEach(function(c) { c.classList.remove('selected'); });
+    card.classList.add('selected');
+    var isCustom = card.querySelector('input').value === 'custom';
+    document.getElementById('customUpload').style.display = isCustom ? 'block' : 'none';
+}
+function filterProducts() {
+    var q = document.getElementById('prodSearch').value.toLowerCase();
+    var visible = 0;
+    document.querySelectorAll('.prod-item').forEach(function(item) {
+        var match = item.dataset.name.indexOf(q) !== -1;
+        item.style.display = match ? 'flex' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('prodEmpty').style.display = visible === 0 ? 'block' : 'none';
+}
+function updateProdCount() {
+    var n = document.querySelectorAll('.prod-item input:checked').length;
+    document.getElementById('prodCount').textContent = n;
+}
+</script>
+{% endblock %}
