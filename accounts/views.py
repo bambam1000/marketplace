@@ -42,7 +42,16 @@ def register_view(request):
             )
             if role == 'seller':
                 from store.models import Store
-                Store.objects.create(owner=user, name=request.POST.get('store_name', f'Boutique {username}'))
+                from inventory.models import Warehouse
+                store = Store.objects.create(owner=user, name=request.POST.get('store_name', f'Boutique {username}'))
+                # Entrepôt principal créé automatiquement à l'inscription
+                Warehouse.objects.create(
+                    store=store,
+                    name='Entrepôt principal',
+                    code=f'{store.id:03d}-MAIN',
+                    city=store.city,
+                    is_default=True,
+                )
             login(request, user)
             messages.success(request, 'Bienvenue ! Votre compte a été créé.')
             return redirect('home')

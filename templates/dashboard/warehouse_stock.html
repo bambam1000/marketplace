@@ -1,0 +1,43 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Stock — {{ warehouse.name }}{% endblock %}
+{% block dash %}
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+
+<div class="dash-header" style="margin-top:12px;">
+    <div>
+        <h1><i class="fa-solid fa-boxes-stacked" style="color:var(--dash-accent);"></i> Stock — {{ warehouse.name }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ stocks|length }} produit{{ stocks|length|pluralize:"s" }} dans cet entrepôt</p>
+    </div>
+</div>
+
+<div class="dash-card">
+    <div style="display:flex;justify-content:flex-end;padding:14px 18px;border-bottom:1px solid var(--dash-border);">
+        <form method="get" style="position:relative;">
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un produit..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:240px;">
+        </form>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead><tr><th>Produit</th><th>Quantité</th><th>Seuil d'alerte</th><th>Valeur</th><th>Statut</th></tr></thead>
+        <tbody>
+            {% for s in stocks %}
+            <tr>
+                <td style="font-weight:600;">{{ s.product.name|truncatechars:40 }}</td>
+                <td style="font-weight:800;font-size:15px;">{{ s.quantity }}</td>
+                <td style="color:var(--dash-text3);">{{ s.low_stock_threshold }}</td>
+                <td style="font-weight:600;">{% widthratio s.product.price 1 s.quantity %} F</td>
+                <td>
+                    {% if s.quantity == 0 %}<span class="status-badge st-cancelled">Rupture</span>
+                    {% elif s.quantity <= s.low_stock_threshold %}<span class="status-badge st-pending">Stock faible</span>
+                    {% else %}<span class="status-badge st-delivered">En stock</span>{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;padding:3rem;color:var(--dash-text3);">Aucun produit dans cet entrepôt</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

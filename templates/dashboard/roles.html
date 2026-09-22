@@ -1,0 +1,94 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Rôles & Permissions{% endblock %}
+{% block dash %}
+<style>
+.role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.role-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 18px; box-shadow: var(--dash-shadow); }
+.perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.perm-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 8px 10px; background: var(--dash-bg); border-radius: 6px; }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-shield-halved" style="color:var(--dash-accent);"></i> Rôles & Permissions</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ roles|length }} rôle{{ roles|length|pluralize:"s" }} défini{{ roles|length|pluralize:"s" }}</p>
+    </div>
+    <button type="button" class="btn btn-orange" onclick="openRoleModal()"><i class="fa-solid fa-plus"></i> Nouveau rôle</button>
+</div>
+
+<div class="role-grid">
+    {% for role in roles %}
+    <div class="role-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-weight:700;font-size:15px;"><i class="fa-solid fa-shield-halved" style="color:var(--dash-accent);"></i> {{ role.name }}</div>
+            <button class="btn btn-sm btn-outline" onclick='openRoleModal({{ role.id }}, {{ role.name|escapejs|safe }}, {{ role.permissions|safe }})'><i class="fa-solid fa-pen"></i></button>
+        </div>
+        <div style="font-size:12px;color:var(--dash-text3);">{{ role.permissions|length }} permission{{ role.permissions|length|pluralize:"s" }}</div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">
+            {% for perm in role.permissions|slice:":4" %}<span class="tag tag-orange" style="font-size:10px;">{{ perm }}</span>{% endfor %}
+            {% if role.permissions|length > 4 %}<span class="tag" style="font-size:10px;">+{{ role.permissions|length|add:"-4" }}</span>{% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="dash-card" style="grid-column:1/-1;text-align:center;padding:3rem;">
+        <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-shield-halved"></i></div>
+        <div style="color:var(--dash-text3);">Aucun rôle. Créez des rôles pour déléguer des permissions à vos employés.</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modale rôle -->
+<div class="dmodal" id="roleModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3 id="roleModalTitle"><i class="fa-solid fa-shield-halved" style="color:var(--dash-accent);"></i> Nouveau rôle</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('roleModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="role_id" id="roleId">
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Nom du rôle *</label>
+                    <input type="text" name="name" id="roleName" class="form-control" required placeholder="Ex: Caissier, Gestionnaire stock...">
+                </div>
+                <div class="form-group">
+                    <label>Permissions</label>
+                    <div class="perm-grid">
+                        {% for code, label in permission_choices %}
+                        <label class="perm-item"><input type="checkbox" name="permissions" value="{{ code }}"> {{ label }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('roleModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function openRoleModal(id, name, permissions) {
+    document.getElementById('roleId').value = id || '';
+    document.getElementById('roleName').value = name || '';
+    document.getElementById('roleModalTitle').innerHTML = id
+        ? '<i class="fa-solid fa-pen" style="color:var(--dash-accent);"></i> Modifier le rôle'
+        : '<i class="fa-solid fa-shield-halved" style="color:var(--dash-accent);"></i> Nouveau rôle';
+    document.querySelectorAll('input[name="permissions"]').forEach(function(cb) {
+        cb.checked = permissions ? permissions.indexOf(cb.value) !== -1 : false;
+    });
+    document.getElementById('roleModal').classList.add('open');
+}
+document.getElementById('roleModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('roleModal').classList.remove('open'); });
+</script>
+{% endblock %}

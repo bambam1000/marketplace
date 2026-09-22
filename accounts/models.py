@@ -17,6 +17,11 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=False)
 
     @property
+    def store(self):
+        """Boutique principale de l'utilisateur (la première créée)."""
+        return self.stores.first()
+
+    @property
     def is_seller(self):
         return self.role == 'seller'
 

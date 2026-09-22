@@ -1,0 +1,55 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Employés{% endblock %}
+{% block dash %}
+<style>
+.emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.emp-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 20px; box-shadow: var(--dash-shadow); transition: var(--dash-transition); }
+.emp-card:hover { box-shadow: var(--dash-shadow-hover); transform: translateY(-2px); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-user-tie" style="color:var(--dash-accent);"></i> Employés</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">Gérez votre équipe</p>
+    </div>
+</div>
+
+<div class="emp-grid">
+    <div class="emp-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,106,0,.1);color:var(--dash-accent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+                <i class="fa-solid fa-user-tie"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:15px;">Employés</div>
+                <div style="font-size:11px;color:var(--dash-text3);">{{ members_count }} membre{{ members_count|pluralize:"s" }} de l'équipe</div>
+            </div>
+        </div>
+        <a href="{% url 'dashboard:employees_list' %}" class="btn btn-outline btn-sm" style="width:100%;"><i class="fa-solid fa-list"></i> Voir la liste</a>
+    </div>
+    <div class="emp-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div style="width:48px;height:48px;border-radius:10px;background:rgba(122,90,248,.1);color:var(--dash-purple);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:15px;">Rôles</div>
+                <div style="font-size:11px;color:var(--dash-text3);">{{ roles_count }} rôle{{ roles_count|pluralize:"s" }} défini{{ roles_count|pluralize:"s" }}</div>
+            </div>
+        </div>
+        <a href="{% url 'dashboard:roles' %}" class="btn btn-outline btn-sm" style="width:100%;"><i class="fa-solid fa-gear"></i> Gérer les rôles</a>
+    </div>
+    <div class="emp-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div style="width:48px;height:48px;border-radius:10px;background:rgba(18,183,106,.1);color:var(--dash-green);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+                <i class="fa-solid fa-money-check"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:15px;">Paie</div>
+                <div style="font-size:11px;color:var(--dash-text3);">Bulletins de paie</div>
+            </div>
+        </div>
+        <a href="{% url 'dashboard:payroll' %}" class="btn btn-outline btn-sm" style="width:100%;"><i class="fa-solid fa-money-check"></i> Voir la paie</a>
+    </div>
+</div>
+{% endblock %}

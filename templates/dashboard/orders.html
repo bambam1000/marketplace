@@ -11,6 +11,19 @@
 .ord-filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .ord-filters a { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; color: var(--dash-text2); border: 1.5px solid var(--dash-border); }
 .ord-filters a.active { background: var(--dash-accent); color: #fff; border-color: var(--dash-accent); }
+#ordFilterMenu { position: fixed !important; display: none; background: #fff; border: 1px solid var(--dash-border); border-radius: 8px; box-shadow: var(--dash-shadow-lg); min-width: 220px; z-index: 1500; padding: 10px; }
+#ordFilterMenu.open { display: block !important; }
+#ordFilterMenu a { display: block; padding: 8px 10px; font-size: 13px; border-radius: 6px; text-decoration: none; color: var(--dash-text2); }
+#ordFilterMenu a:hover { background: var(--dash-bg); }
+#ordFilterMenu a.active { background: var(--dash-bg); font-weight: 600; }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
 .ord-search { position: relative; }
 .ord-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 240px; font-family: inherit; }
 .ord-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
@@ -41,13 +54,28 @@
 <!-- ═══ Tableau ═══ -->
 <div class="dash-card">
     <div class="ord-toolbar">
-        <div class="ord-filters">
-            <a href="{% url 'dashboard:orders' %}" class="{% if not current_status %}active{% endif %}">Toutes</a>
-            {% for code, label in status_choices %}
-            <a href="?status={{ code }}" class="{% if current_status == code %}active{% endif %}">{{ label }}</a>
-            {% endfor %}
+        <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="toggleOrdFilterMenu(event)">
+                <i class="fa-solid fa-filter"></i> Filtres {% if current_status or date_from or date_to %}<span style="background:var(--dash-accent);color:#fff;border-radius:50%;width:8px;height:8px;display:inline-block;margin-left:4px;"></span>{% endif %}
+            </button>
+            <div id="ordFilterMenu">
+                <div style="font-size:10px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;padding:6px 10px;">Statut</div>
+                <a href="{% url 'dashboard:orders' %}" class="{% if not current_status %}active{% endif %}">Toutes</a>
+                {% for code, label in status_choices %}
+                <a href="?status={{ code }}" class="{% if current_status == code %}active{% endif %}">{{ label }}</a>
+                {% endfor %}
+                <div style="border-top:1px solid var(--dash-border);margin-top:6px;padding-top:8px;">
+                    <button type="button" onclick="document.getElementById('ordFilterMenu').classList.remove('open');document.getElementById('ordDateModal').classList.add('open');" style="width:100%;padding:8px 10px;font-size:13px;border:none;background:none;text-align:left;cursor:pointer;color:var(--dash-accent);font-weight:600;border-radius:6px;"><i class="fa-solid fa-calendar"></i> Filtrer par date...</button>
+                </div>
+            </div>
+            {% if current_status or date_from or date_to %}
+            <a href="{% url 'dashboard:orders' %}" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser</a>
+            {% endif %}
         </div>
         <form method="get" class="ord-search">
+            {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+            {% if date_from %}<input type="hidden" name="from" value="{{ date_from }}">{% endif %}
+            {% if date_to %}<input type="hidden" name="to" value="{{ date_to }}">{% endif %}
             <i class="fa-solid fa-magnifying-glass"></i>
             <input type="text" name="q" value="{{ search_query }}" placeholder="N° commande ou client...">
         </form>
@@ -81,4 +109,50 @@
         {{ orders.count }} commande{{ orders.count|pluralize:"s" }} affichée{{ orders.count|pluralize:"s" }}
     </div>
 </div>
+
+<!-- Modale filtre par date -->
+<div class="dmodal" id="ordDateModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-calendar" style="color:var(--dash-accent);"></i> Filtrer par date</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('ordDateModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="get">
+            {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+            <div class="dmodal-body">
+                <div class="form-group"><label>Du</label><input type="date" name="from" class="form-control" value="{{ date_from }}"></div>
+                <div class="form-group"><label>Au</label><input type="date" name="to" class="form-control" value="{{ date_to }}"></div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('ordDateModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Appliquer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleOrdFilterMenu(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('ordFilterMenu');
+    if (menu.classList.contains('open')) { menu.classList.remove('open'); return; }
+    var rect = e.currentTarget.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.style.left = rect.left + 'px';
+    menu.classList.add('open');
+}
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('ordFilterMenu');
+    if (menu && menu.classList.contains('open') && !menu.contains(e.target)) menu.classList.remove('open');
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('ordFilterMenu').classList.remove('open');
+        document.getElementById('ordDateModal').classList.remove('open');
+    }
+});
+</script>
 {% endblock %}

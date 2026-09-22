@@ -76,6 +76,7 @@ class Invoice(models.Model):
     invoice_number = models.CharField(max_length=50, unique=True)
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='invoices')
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     order = models.ForeignKey('orders.Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
 
     # Type et statut

@@ -17,6 +17,9 @@
 <span class="store-badge"><i class="fa-solid fa-calendar"></i> Depuis {{ store.year_established }}</span>
 {% if store.phone %}<span class="store-badge"><i class="fa-solid fa-phone"></i> {{ store.phone }}</span>{% endif %}
 {% if store.email %}<span class="store-badge"><i class="fa-solid fa-envelope"></i> {{ store.email }}</span>{% endif %}
+{% if store.opening_hours %}<span class="store-badge"><i class="fa-solid fa-clock"></i> {{ store.opening_hours }}</span>{% endif %}
+{% if store.facebook %}<a href="{{ store.facebook }}" target="_blank" class="store-badge" style="text-decoration:none;"><i class="fa-brands fa-facebook"></i> Facebook</a>{% endif %}
+{% if store.instagram %}<a href="{{ store.instagram }}" target="_blank" class="store-badge" style="text-decoration:none;"><i class="fa-brands fa-instagram"></i> Instagram</a>{% endif %}
 </div>
 <div class="store-stats-bar"><span><strong>{{ store.product_count }}</strong> produits</span><span><strong>★ {{ store.rating }}</strong> note</span><span><strong>{{ store.response_rate }}%</strong> réponse</span><span><strong>{{ store.total_sales }}</strong> ventes</span></div>
 </div>
@@ -30,7 +33,31 @@
 </div>
 </div></div>
 <div id="shareTip" style="display:none;align-items:center;gap:8px;background:var(--green-bg);color:var(--green);border:1px solid #a7f3d0;border-radius:var(--radius-sm);padding:10px 16px;margin-top:10px;font-size:13px;font-weight:600;"><i class="fa-solid fa-check"></i> Lien copié !</div>
-<div class="section-head"><h2>Produits de {{ store.name }} ({{ products|length }})</h2></div>
+<div class="section-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <h2>Produits de {{ store.name }} ({{ products|length }})</h2>
+    <form method="get" style="display:flex;gap:8px;align-items:center;">
+        {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
+        <div style="position:relative;">
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;"></i>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher dans la boutique..." style="padding:8px 14px 8px 34px;border:1.5px solid var(--border2);border-radius:6px;font-size:13px;width:240px;font-family:inherit;">
+        </div>
+        <select name="sort" onchange="this.form.submit()" style="padding:8px 14px;border:1.5px solid var(--border2);border-radius:6px;font-size:13px;font-family:inherit;background:#fff;">
+            <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Plus récents</option>
+            <option value="popular" {% if current_sort == 'popular' %}selected{% endif %}>Populaires</option>
+            <option value="price" {% if current_sort == 'price' %}selected{% endif %}>Prix croissant</option>
+            <option value="-price" {% if current_sort == '-price' %}selected{% endif %}>Prix décroissant</option>
+        </select>
+    </form>
+</div>
+
+{% if categories %}
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;">
+    <a href="{% url 'store:detail' store.slug %}" class="btn btn-sm {% if not current_category %}btn-orange{% else %}btn-outline{% endif %}">Tous</a>
+    {% for cat in categories %}
+    <a href="?category={{ cat.slug }}" class="btn btn-sm {% if current_category == cat.slug %}btn-orange{% else %}btn-outline{% endif %}">{{ cat.name }}</a>
+    {% endfor %}
+</div>
+{% endif %}
 <div class="products-grid">{% for p in products %}{% include 'includes/product_card.html' with product=p %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon"><i class="fa-solid fa-box-open"></i></div><h3>Aucun produit</h3></div>{% endfor %}</div>
 
 <div style="background:#fff;padding:1.5rem;border-radius:var(--radius);border:1px solid var(--border2);margin-top:2rem;">

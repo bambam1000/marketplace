@@ -1,0 +1,83 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Commandes — {{ warehouse.name }}{% endblock %}
+{% block dash %}
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+
+<div class="dash-header" style="margin-top:12px;">
+    <div>
+        <h1><i class="fa-solid fa-box" style="color:var(--dash-accent);"></i> Commandes — {{ warehouse.name }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ orders|length }} commande{{ orders|length|pluralize:"s" }} liée{{ orders|length|pluralize:"s" }} à cet entrepôt</p>
+    </div>
+</div>
+
+<div class="dash-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--dash-border);flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;align-items:center;">
+            <div style="position:relative;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleOrdFilterMenu(event)">
+                    <i class="fa-solid fa-filter"></i> Filtres {% if current_status %}<span style="background:var(--dash-accent);color:#fff;border-radius:50%;width:8px;height:8px;display:inline-block;margin-left:4px;"></span>{% endif %}
+                </button>
+                <div id="ordFilterMenu" style="display:none;position:fixed;background:#fff;border:1px solid var(--dash-border);border-radius:8px;box-shadow:var(--dash-shadow-lg);min-width:200px;z-index:1500;padding:10px;">
+                    <div style="font-size:10px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;padding:6px 10px;">Statut</div>
+                    <a href="?" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if not current_status %}background:var(--dash-bg);font-weight:600;{% endif %}">Toutes</a>
+                    {% for code, label in status_choices %}
+                    <a href="?status={{ code }}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if current_status == code %}background:var(--dash-bg);font-weight:600;{% endif %}">{{ label }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% if current_status %}
+            <a href="?" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser</a>
+            {% endif %}
+        </div>
+        <form method="get" style="position:relative;">
+            {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="N° commande ou client..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:220px;">
+        </form>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead><tr><th>N°</th><th>Client</th><th>Produits de cet entrepôt</th><th>Total</th><th>Statut</th><th>Date</th><th style="text-align:right;">Action</th></tr></thead>
+        <tbody>
+            {% for o in orders %}
+            <tr>
+                <td style="font-weight:700;">#{{ o.order_number }}</td>
+                <td>{{ o.buyer.display_name }}</td>
+                <td style="font-size:12px;">
+                    {% for item in o.items.all %}{% if item.warehouse == warehouse %}{{ item.product.name|truncatechars:20 }} ×{{ item.quantity }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
+                </td>
+                <td style="font-weight:700;">{{ o.total_amount|intcomma }} F</td>
+                <td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ o.created_at|date:"d/m/Y" }}</td>
+                <td style="text-align:right;"><a href="{% url 'dashboard:order_detail' o.order_number %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-eye"></i> Voir</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-box-open"></i></div>
+                <div style="color:var(--dash-text3);">Aucune commande liée à cet entrepôt</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<script>
+function toggleOrdFilterMenu(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('ordFilterMenu');
+    if (menu.style.display === 'block') { menu.style.display = 'none'; return; }
+    var rect = e.currentTarget.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.style.left = rect.left + 'px';
+    menu.style.display = 'block';
+}
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('ordFilterMenu');
+    if (menu && menu.style.display === 'block' && !menu.contains(e.target)) menu.style.display = 'none';
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('ordFilterMenu').style.display = 'none';
+});
+</script>
+{% endblock %}

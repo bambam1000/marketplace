@@ -1,0 +1,148 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Paie{% endblock %}
+{% block dash %}
+<style>
+.pay-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.pay-filters { display: flex; gap: 8px; align-items: center; }
+.pay-filters select { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 12px; font-family: inherit; }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 480px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-money-check" style="color:var(--dash-accent);"></i> Paie</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ payslips|length }} bulletin{{ payslips|length|pluralize:"s" }} de paie</p>
+    </div>
+    <button type="button" class="btn btn-orange" onclick="document.getElementById('payModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouveau bulletin</button>
+</div>
+
+<div class="dash-card">
+    <div class="pay-toolbar">
+        <form method="get" class="pay-filters">
+            <select name="month" onchange="this.form.submit()">
+                <option value="">Tous les mois</option>
+                {% for num, name in months %}<option value="{{ num }}" {% if month_filter == num|stringformat:"s" %}selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
+            <select name="year" onchange="this.form.submit()">
+                <option value="">Toutes années</option>
+                {% for y in years %}<option value="{{ y }}" {% if year_filter == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>{% endfor %}
+            </select>
+        </form>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead><tr><th>Référence</th><th>Employé</th><th>Période</th><th>Brut</th><th>Primes</th><th>Retenues</th><th>Net</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead>
+        <tbody>
+            {% for p in payslips %}
+            <tr>
+                <td style="font-weight:700;">{{ p.reference }}</td>
+                <td>{{ p.member.user.display_name }}</td>
+                <td style="font-size:12px;">{{ p.month }}/{{ p.year }}</td>
+                <td>{{ p.base_salary|intcomma }} F</td>
+                <td style="color:var(--dash-green);">+{{ p.bonuses|intcomma }} F</td>
+                <td style="color:var(--dash-red);">-{{ p.deductions|intcomma }} F</td>
+                <td style="font-weight:700;">{{ p.net_salary|intcomma }} F</td>
+                <td>
+                    {% if p.status == 'paid' %}<span class="status-badge st-delivered">Payé</span>
+                    {% elif p.status == 'validated' %}<span class="status-badge st-confirmed">Validé</span>
+                    {% else %}<span class="status-badge st-pending">Brouillon</span>{% endif %}
+                </td>
+                <td style="text-align:right;">
+                    {% if p.status == 'draft' %}
+                    <form method="post" action="{% url 'dashboard:payslip_action' p.pk 'validate' %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm btn-orange"><i class="fa-solid fa-check"></i> Valider</button></form>
+                    {% elif p.status == 'validated' %}
+                    <form method="post" action="{% url 'dashboard:payslip_action' p.pk 'pay' %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-money-bill"></i> Marquer payé</button></form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-money-check"></i></div>
+                <div style="color:var(--dash-text3);">Aucun bulletin de paie</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Modale nouveau bulletin -->
+<div class="dmodal" id="payModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-money-check" style="color:var(--dash-accent);"></i> Nouveau bulletin de paie</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('payModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" action="{% url 'dashboard:payslip_create' %}">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Employé *</label>
+                    <select name="member" class="form-control" required>
+                        <option value="">Sélectionner...</option>
+                        {% for m in members %}<option value="{{ m.id }}">{{ m.user.display_name }} — {{ m.salary|intcomma }} F/mois</option>{% endfor %}
+                    </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Mois *</label>
+                        <select name="month" class="form-control" required>
+                            {% for num, name in months %}<option value="{{ num }}">{{ name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Année *</label>
+                        <select name="year" class="form-control" required>
+                            {% for y in years %}<option value="{{ y }}">{{ y }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>Salaire brut (F)</label><input type="number" name="base_salary" class="form-control" min="0"></div>
+
+                <div class="form-group">
+                    <label>Primes & Retenues</label>
+                    <div id="payLines">
+                        <div class="pay-line" style="display:grid;grid-template-columns:100px 1fr 110px 36px;gap:8px;margin-bottom:8px;">
+                            <select name="line_type[]" class="form-control">
+                                <option value="bonus">Prime</option>
+                                <option value="deduction">Retenue</option>
+                            </select>
+                            <input type="text" name="line_label[]" class="form-control" placeholder="Ex: Prime de transport, Assurance...">
+                            <input type="number" name="line_amount[]" class="form-control" min="0" placeholder="Montant">
+                            <button type="button" onclick="removePayLine(this)" style="background:none;border:none;color:var(--dash-red);cursor:pointer;"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addPayLine()"><i class="fa-solid fa-plus"></i> Ajouter une ligne</button>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('payModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Créer</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.getElementById('payModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('payModal').classList.remove('open'); });
+function addPayLine() {
+    var c = document.getElementById('payLines');
+    var row = c.querySelector('.pay-line').cloneNode(true);
+    row.querySelector('input[type="text"]').value = '';
+    row.querySelector('input[type="number"]').value = '';
+    c.appendChild(row);
+}
+function removePayLine(btn) {
+    var c = document.getElementById('payLines');
+    if (c.querySelectorAll('.pay-line').length > 1) btn.closest('.pay-line').remove();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Comptabilité — {{ warehouse.name }}{% endblock %}
+{% block dash %}
+<style>
+.acc-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.acc-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; box-shadow: var(--dash-shadow); }
+.acc-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.acc-stat .val { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.acc-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 440px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+@media (max-width: 900px) { .acc-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+
+<div class="dash-header" style="margin-top:12px;">
+    <div>
+        <h1><i class="fa-solid fa-chart-line" style="color:var(--dash-accent);"></i> Comptabilité — {{ warehouse.name }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">Suivi financier de cet entrepôt</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <form method="get" style="display:flex;gap:8px;">
+            <select name="month" class="form-control" style="width:auto;" onchange="this.form.submit()">
+                {% for num, name in months %}<option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>{% endfor %}
+            </select>
+            <select name="year" class="form-control" style="width:auto;" onchange="this.form.submit()">
+                {% for y in years %}<option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>{% endfor %}
+            </select>
+        </form>
+        <button type="button" class="btn btn-orange" onclick="document.getElementById('expenseModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Dépense</button>
+    </div>
+</div>
+
+<!-- ═══ Stats ═══ -->
+<div class="acc-stats">
+    <div class="acc-stat">
+        <div class="lbl">Revenus</div>
+        <div class="val" style="color:var(--dash-green);">{{ revenue|intcomma }} F</div>
+        <div class="sub">Ventes payées ce mois</div>
+    </div>
+    <div class="acc-stat">
+        <div class="lbl">Commissions</div>
+        <div class="val" style="color:var(--dash-yellow);">-{{ commission|intcomma }} F</div>
+        <div class="sub">10% plateforme</div>
+    </div>
+    <div class="acc-stat">
+        <div class="lbl">Dépenses</div>
+        <div class="val" style="color:var(--dash-red);">-{{ total_expenses|intcomma }} F</div>
+        <div class="sub">{{ expenses|length }} dépense{{ expenses|length|pluralize:"s" }}</div>
+    </div>
+    <div class="acc-stat" style="border-left:3px solid {% if net_profit >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">
+        <div class="lbl">Résultat net</div>
+        <div class="val" style="color:{% if net_profit >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">{{ net_profit|intcomma }} F</div>
+        <div class="sub">Revenus − commissions − dépenses</div>
+    </div>
+</div>
+
+<!-- ═══ Graphique + Dépenses ═══ -->
+<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;">
+    <div class="dash-card" style="padding:20px;">
+        <h3 style="margin:0 0 16px;font-size:15px;">Revenus sur 6 mois</h3>
+        <div style="height:240px;"><canvas id="revChart"></canvas></div>
+    </div>
+    <div class="dash-card">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);">
+            <h3 style="margin:0;font-size:15px;">Dépenses du mois</h3>
+        </div>
+        <div style="max-height:280px;overflow-y:auto;">
+            {% for e in expenses %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--dash-border);">
+                <div>
+                    <div style="font-weight:600;font-size:13px;">{{ e.description }}</div>
+                    <div style="font-size:11px;color:var(--dash-text3);">{{ e.get_category_display }} · {{ e.date|date:"d/m/Y" }}</div>
+                </div>
+                <div style="font-weight:700;color:var(--dash-red);">-{{ e.amount|intcomma }} F</div>
+            </div>
+            {% empty %}
+            <div style="text-align:center;padding:2.5rem;color:var(--dash-text3);font-size:13px;">Aucune dépense ce mois</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Modale dépense ═══ -->
+<div class="dmodal" id="expenseModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-accent);"></i> Nouvelle dépense</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('expenseModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Catégorie *</label>
+                    <select name="category" class="form-control">
+                        {% for code, label in expense_categories %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group"><label>Description *</label><input type="text" name="description" class="form-control" required placeholder="Ex: Loyer septembre"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group"><label>Montant (F) *</label><input type="number" name="amount" class="form-control" min="1" required></div>
+                    <div class="form-group"><label>Date</label><input type="date" name="date" class="form-control" value="{{ today }}"></div>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('expenseModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('expenseModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('expenseModal').classList.remove('open'); });
+
+var ctx = document.getElementById('revChart');
+if (ctx) {
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [{% for m in monthly %}'{{ m.label }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for m in monthly %}{{ m.revenue }}{% if not forloop.last %},{% endif %}{% endfor %}],
+                backgroundColor: function(context) {
+                    var chart = context.chart;
+                    var area = chart.chartArea;
+                    if (!area) return '#ff6a00';
+                    var g = chart.ctx.createLinearGradient(0, area.bottom, 0, area.top);
+                    g.addColorStop(0, 'rgba(255,106,0,.6)');
+                    g.addColorStop(1, '#ff6a00');
+                    return g;
+                },
+                borderRadius: 6,
+                borderSkipped: false,
+                maxBarThickness: 32,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, border: { display: false }, ticks: { color: '#98a2b3', font: { size: 11 } } },
+                y: { border: { display: false }, grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#98a2b3', font: { size: 11 }, callback: function(v) { return v >= 1000 ? (v/1000) + 'K' : v; } } }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

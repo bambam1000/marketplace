@@ -1,0 +1,48 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Employés — {{ warehouse.name }}{% endblock %}
+{% block dash %}
+<style>
+.emp-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-light)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+</style>
+
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+
+<div class="dash-header" style="margin-top:12px;">
+    <div>
+        <h1><i class="fa-solid fa-user-tie" style="color:var(--dash-accent);"></i> Employés — {{ warehouse.name }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ members|length }} employé{{ members|length|pluralize:"s" }} assigné{{ members|length|pluralize:"s" }} à cet entrepôt</p>
+    </div>
+</div>
+
+<div class="dash-card">
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead><tr><th>Employé</th><th>Rôle</th><th>Statut</th><th>Ajouté le</th></tr></thead>
+        <tbody>
+            {% for m in members %}
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="emp-avatar">{{ m.user.initials }}</div>
+                        <div>
+                            <div style="font-weight:600;">{{ m.user.display_name }}</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">{{ m.user.email }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>{% if m.role %}<span class="tag tag-orange">{{ m.role.name }}</span>{% else %}<span style="color:var(--dash-text3);">—</span>{% endif %}</td>
+                <td>{% if m.is_active %}<span class="status-badge st-delivered">Actif</span>{% else %}<span class="status-badge st-cancelled">Désactivé</span>{% endif %}</td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ m.created_at|date:"d/m/Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-user-tie"></i></div>
+                <div style="color:var(--dash-text3);">Aucun employé assigné à cet entrepôt.</div>
+                <a href="{% url 'dashboard:employees' %}" class="btn btn-orange btn-sm" style="margin-top:12px;"><i class="fa-solid fa-plus"></i> Assigner un employé</a>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

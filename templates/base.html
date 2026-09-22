@@ -32,7 +32,19 @@
 {% if user.is_authenticated %}
 <a href="{% url 'accounts:profile' %}"><i class="fa-solid fa-user"></i> {{ user.display_name }}</a>
 <span class="topbar-sep"></span>
-{% if user.store %}<a href="{% url 'store:detail' slug=user.store.slug %}"><i class="fa-solid fa-store"></i> Ma Boutique</a>
+{% if user.store %}
+{% if user.stores.count > 1 %}
+<div style="position:relative;display:inline-block;" id="storesMenu">
+<a href="#" onclick="event.preventDefault();document.getElementById('storesDropdown').classList.toggle('open');"><i class="fa-solid fa-store"></i> Mes Boutiques <i class="fa-solid fa-chevron-down" style="font-size:9px;"></i></a>
+<div id="storesDropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:6px;background:#fff;border:1px solid var(--border2);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:200px;z-index:1000;">
+{% for s in user.stores.all %}
+<a href="{% url 'store:detail' slug=s.slug %}" style="display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:13px;color:var(--text1);text-decoration:none;border-bottom:1px solid var(--border2);"><i class="fa-solid fa-store" style="color:var(--orange);"></i> {{ s.name }}</a>
+{% endfor %}
+</div>
+</div>
+{% else %}
+<a href="{% url 'store:detail' slug=user.store.slug %}"><i class="fa-solid fa-store"></i> Ma Boutique</a>
+{% endif %}
 <span class="topbar-sep"></span>{% endif %}
 {% if user.is_seller or user.is_superuser or user.role == 'admin' %}
 <a href="{% url 'dashboard:index' %}"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
@@ -214,6 +226,20 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 <script>
+// Fermer le menu boutiques en cliquant ailleurs
+document.addEventListener('click', function(e) {
+  var dd = document.getElementById('storesDropdown');
+  if (dd && !e.target.closest('#storesMenu')) dd.style.display = 'none';
+});
+document.addEventListener('DOMContentLoaded', function() {
+  var dd = document.getElementById('storesDropdown');
+  if (dd) {
+    var observer = new MutationObserver(function() {
+      dd.style.display = dd.classList.contains('open') ? 'block' : 'none';
+    });
+    observer.observe(dd, { attributes: true, attributeFilter: ['class'] });
+  }
+});
 {% if user.is_authenticated %}
 // Mise à jour du compteur de messages non lus en temps réel
 function updateUnreadCountMain() {

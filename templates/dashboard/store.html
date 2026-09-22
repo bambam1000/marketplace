@@ -1,30 +1,115 @@
-{% extends 'dashboard/base.html' %}
+{% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Ma Boutique{% endblock %}
 {% block dash %}
-<div class="dash-header"><h1>🏪 Ma Boutique</h1></div>
-<div class="dash-card">
-<form method="post" enctype="multipart/form-data">{% csrf_token %}
-<div class="form-row"><div class="form-group"><label>Nom de la boutique</label><input type="text" name="name" value="{{ store.name }}" class="form-control"></div><div class="form-group"><label>Email</label><input type="email" name="email" value="{{ store.email }}" class="form-control"></div></div>
-<div class="form-row"><div class="form-group"><label>Téléphone</label><input type="tel" name="phone" value="{{ store.phone }}" class="form-control" placeholder="+237 677 123 456"></div><div class="form-group"><label>WhatsApp <small style="color:var(--text3);">(avec indicatif pays)</small></label><input type="tel" name="whatsapp" value="{{ store.whatsapp }}" class="form-control" placeholder="237677123456"></div></div>
-<div class="form-row"><div class="form-group"><label>Ville</label><input type="text" name="city" value="{{ store.city }}" class="form-control"></div></div>
-<div class="form-group"><label>Description</label><textarea name="description" class="form-control" rows="3">{{ store.description }}</textarea></div>
+<style>
+.store-hero { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; overflow: hidden; margin-bottom: 20px; box-shadow: var(--dash-shadow); }
+.store-hero-banner { height: 140px; background: var(--dash-bg); position: relative; }
+.store-hero-banner img { width: 100%; height: 100%; object-fit: cover; }
+.store-hero-body { display: flex; align-items: center; gap: 16px; padding: 0 24px 18px; margin-top: -32px; position: relative; }
+.store-hero-logo { width: 72px; height: 72px; border-radius: 12px; background: #fff; border: 3px solid #fff; box-shadow: var(--dash-shadow-lg); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: var(--dash-accent); overflow: hidden; flex-shrink: 0; }
+.store-hero-logo img { width: 100%; height: 100%; object-fit: cover; }
+.store-section { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 22px; margin-bottom: 16px; box-shadow: var(--dash-shadow); }
+.store-section h3 { margin: 0 0 16px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.store-section h3 i { color: var(--dash-accent); }
+.completion-bar { height: 6px; background: var(--dash-bg); border-radius: 10px; overflow: hidden; }
+.completion-fill { height: 100%; background: linear-gradient(90deg, var(--dash-accent), var(--dash-accent-light)); border-radius: 10px; }
+.mini-stat { text-align: center; padding: 10px; background: var(--dash-bg); border-radius: 6px; }
+.mini-stat .v { font-size: 17px; font-weight: 800; }
+.mini-stat .l { font-size: 10px; color: var(--dash-text3); }
+</style>
 
-<div class="form-group">
-<label>🔍 Adresse complète <small style="color:var(--text3);">(tapez pour voir les suggestions)</small></label>
-<input type="text" name="address" id="addressInput" value="{{ store.address }}" class="form-control" placeholder="Ex: Rue de la liberté, Douala, Cameroun">
-<small style="color:var(--text3);font-size:11px;margin-top:4px;display:block;">Sélectionnez l'adresse dans la liste pour récupérer les coordonnées GPS automatiquement</small>
+<!-- ═══ Aperçu de la boutique ═══ -->
+<div class="store-hero">
+    <div class="store-hero-banner">
+        {% if store.banner %}<img src="{{ store.banner.url }}">{% endif %}
+    </div>
+    <div class="store-hero-body">
+        <div class="store-hero-logo">
+            {% if store.logo %}<img src="{{ store.logo.url }}">{% else %}{{ store.name|truncatechars:2 }}{% endif %}
+        </div>
+        <div style="flex:1;">
+            <div style="font-size:18px;font-weight:800;">{{ store.name }} {% if store.is_verified %}<i class="fa-solid fa-circle-check" style="color:var(--dash-green);font-size:14px;"></i>{% endif %}</div>
+            <div style="font-size:12px;color:var(--dash-text3);">{{ store.city }}, {{ store.country }} · Depuis {{ store.year_established }}</div>
+        </div>
+        <a href="{% url 'store:detail' store.slug %}" target="_blank" class="btn btn-orange btn-sm"><i class="fa-solid fa-arrow-up-right-from-square"></i> Voir ma boutique en ligne</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:0 24px 20px;">
+        <div class="mini-stat"><div class="v">{{ products_count }}</div><div class="l">Produits</div></div>
+        <div class="mini-stat"><div class="v">{{ total_sales }}</div><div class="l">Ventes</div></div>
+        <div class="mini-stat"><div class="v" style="color:var(--dash-yellow);"><i class="fa-solid fa-star" style="font-size:12px;"></i> {{ rating }}</div><div class="l">Note</div></div>
+        <div class="mini-stat">
+            <div class="v" style="color:var(--dash-accent);">{{ completion }}%</div>
+            <div class="l">Profil complété</div>
+            <div class="completion-bar" style="margin-top:6px;"><div class="completion-fill" style="width:{{ completion }}%;"></div></div>
+        </div>
+    </div>
 </div>
-<div class="form-row">
-<div class="form-group"><label>Latitude GPS</label><input type="number" step="0.000001" name="latitude" id="latitude" value="{{ store.latitude }}" class="form-control" placeholder="4.0511" readonly style="background:#f9fafb;"></div>
-<div class="form-group"><label>Longitude GPS</label><input type="number" step="0.000001" name="longitude" id="longitude" value="{{ store.longitude }}" class="form-control" placeholder="9.7679" readonly style="background:#f9fafb;"></div>
+
+<form method="post" enctype="multipart/form-data">
+{% csrf_token %}
+
+<!-- ═══ Informations générales ═══ -->
+<div class="store-section">
+    <h3><i class="fa-solid fa-store"></i> Informations générales</h3>
+    <div class="form-row">
+        <div class="form-group"><label>Nom de la boutique *</label><input type="text" name="name" value="{{ store.name }}" class="form-control" required></div>
+        <div class="form-group"><label>Ville</label><input type="text" name="city" value="{{ store.city }}" class="form-control"></div>
+    </div>
+    <div class="form-group"><label>Description</label><textarea name="description" class="form-control" rows="3" placeholder="Présentez votre boutique aux clients...">{{ store.description }}</textarea></div>
 </div>
 
-<div id="mapPreview" style="height:300px;border-radius:8px;border:1px solid var(--border2);margin-bottom:1rem;display:none;"></div>
+<!-- ═══ Contact ═══ -->
+<div class="store-section">
+    <h3><i class="fa-solid fa-phone"></i> Contact & réseaux</h3>
+    <div class="form-row">
+        <div class="form-group"><label>Téléphone</label><input type="tel" name="phone" value="{{ store.phone }}" class="form-control" placeholder="+237 677 123 456"></div>
+        <div class="form-group"><label>WhatsApp <small style="color:var(--dash-text3);">(avec indicatif)</small></label><input type="tel" name="whatsapp" value="{{ store.whatsapp }}" class="form-control" placeholder="237677123456"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Email</label><input type="email" name="email" value="{{ store.email }}" class="form-control"></div>
+        <div class="form-group"><label>Horaires d'ouverture</label><input type="text" name="opening_hours" value="{{ store.opening_hours }}" class="form-control" placeholder="Ex: Lun-Sam 8h-18h"></div>
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Facebook</label><input type="url" name="facebook" value="{{ store.facebook }}" class="form-control" placeholder="https://facebook.com/..."></div>
+        <div class="form-group"><label>Instagram</label><input type="url" name="instagram" value="{{ store.instagram }}" class="form-control" placeholder="https://instagram.com/..."></div>
+    </div>
+</div>
 
-<div class="form-row"><div class="form-group"><label>Logo</label><input type="file" name="logo" class="form-control" accept="image/*">{% if store.logo %}<img src="{{ store.logo.url }}" style="max-width:100px;margin-top:8px;border-radius:8px;">{% endif %}</div><div class="form-group"><label>Bannière</label><input type="file" name="banner" class="form-control" accept="image/*">{% if store.banner %}<img src="{{ store.banner.url }}" style="max-width:200px;margin-top:8px;border-radius:8px;">{% endif %}</div></div>
-<button class="btn btn-orange">Enregistrer</button>
+<!-- ═══ Localisation ═══ -->
+<div class="store-section">
+    <h3><i class="fa-solid fa-location-dot"></i> Localisation</h3>
+    <div class="form-group">
+        <label>Adresse complète <small style="color:var(--dash-text3);">(tapez pour voir les suggestions)</small></label>
+        <input type="text" name="address" id="addressInput" value="{{ store.address }}" class="form-control" placeholder="Ex: Rue de la liberté, Douala">
+    </div>
+    <div class="form-row">
+        <div class="form-group"><label>Latitude GPS</label><input type="number" step="0.000001" name="latitude" id="latitude" value="{{ store.latitude }}" class="form-control" readonly style="background:var(--dash-bg);"></div>
+        <div class="form-group"><label>Longitude GPS</label><input type="number" step="0.000001" name="longitude" id="longitude" value="{{ store.longitude }}" class="form-control" readonly style="background:var(--dash-bg);"></div>
+    </div>
+    <div id="mapPreview" style="height:280px;border-radius:6px;border:1px solid var(--dash-border);display:none;"></div>
+</div>
+
+<!-- ═══ Images ═══ -->
+<div class="store-section">
+    <h3><i class="fa-solid fa-image"></i> Images</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Logo</label>
+            <input type="file" name="logo" class="form-control" accept="image/*">
+            {% if store.logo %}<img src="{{ store.logo.url }}" style="max-width:90px;margin-top:8px;border-radius:6px;">{% endif %}
+        </div>
+        <div class="form-group">
+            <label>Bannière</label>
+            <input type="file" name="banner" class="form-control" accept="image/*">
+            {% if store.banner %}<img src="{{ store.banner.url }}" style="max-width:180px;margin-top:8px;border-radius:6px;">{% endif %}
+        </div>
+    </div>
+</div>
+
+<div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:20px;">
+    <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer les modifications</button>
+</div>
 </form>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -41,15 +126,9 @@ suggestionsDiv.style.cssText = 'position:absolute;background:#fff;border:1px sol
 addressInput.parentElement.style.position = 'relative';
 addressInput.parentElement.appendChild(suggestionsDiv);
 
-// Recherche d'adresse avec OpenStreetMap Nominatim (GRATUIT)
 addressInput.addEventListener('input', function() {
     const query = this.value.trim();
-
-    if (query.length < 3) {
-        suggestionsDiv.style.display = 'none';
-        return;
-    }
-
+    if (query.length < 3) { suggestionsDiv.style.display = 'none'; return; }
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=cm&limit=10&addressdetails=1`)
@@ -60,78 +139,38 @@ addressInput.addEventListener('input', function() {
                     suggestionsDiv.style.display = 'block';
                     return;
                 }
-
-                suggestionsDiv.innerHTML = '';
-                data.forEach(place => {
-                    const item = document.createElement('div');
-                    item.style.cssText = 'padding:12px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background 0.2s;';
-                    item.innerHTML = `<div style="font-weight:600;color:#111;">${place.display_name.split(',')[0]}</div><div style="font-size:12px;color:#666;margin-top:2px;">${place.display_name}</div>`;
-
-                    item.addEventListener('mouseenter', () => item.style.background = '#f9fafb');
-                    item.addEventListener('mouseleave', () => item.style.background = '#fff');
-
-                    item.addEventListener('click', () => {
-                        addressInput.value = place.display_name;
-                        document.getElementById('latitude').value = parseFloat(place.lat).toFixed(6);
-                        document.getElementById('longitude').value = parseFloat(place.lon).toFixed(6);
-                        suggestionsDiv.style.display = 'none';
-
-                        showMapPreview(parseFloat(place.lat), parseFloat(place.lon));
-                        showSuccessMessage();
-                    });
-
-                    suggestionsDiv.appendChild(item);
-                });
-
+                suggestionsDiv.innerHTML = data.map(item =>
+                    `<div class="suggestion-item" data-lat="${item.lat}" data-lon="${item.lon}" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #eee;font-size:13px;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background=''">${item.display_name}</div>`
+                ).join('');
                 suggestionsDiv.style.display = 'block';
-            })
-            .catch(err => {
-                console.error('Erreur de recherche:', err);
+                document.querySelectorAll('.suggestion-item').forEach(el => {
+                    el.addEventListener('click', function() {
+                        addressInput.value = this.textContent;
+                        document.getElementById('latitude').value = parseFloat(this.dataset.lat).toFixed(6);
+                        document.getElementById('longitude').value = parseFloat(this.dataset.lon).toFixed(6);
+                        suggestionsDiv.style.display = 'none';
+                        showMap(parseFloat(this.dataset.lat), parseFloat(this.dataset.lon));
+                    });
+                });
             });
-    }, 500);
+    }, 400);
 });
 
-// Fermer les suggestions si on clique ailleurs
-document.addEventListener('click', (e) => {
-    if (!addressInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-        suggestionsDiv.style.display = 'none';
-    }
-});
-
-function showMapPreview(lat, lng) {
+function showMap(lat, lon) {
     const mapDiv = document.getElementById('mapPreview');
     mapDiv.style.display = 'block';
-
-    if (map) {
-        map.remove();
+    if (!map) {
+        map = L.map('mapPreview').setView([lat, lon], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        marker = L.marker([lat, lon]).addTo(map);
+    } else {
+        map.setView([lat, lon], 15);
+        marker.setLatLng([lat, lon]);
     }
-
-    map = L.map('mapPreview').setView([lat, lng], 15);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    marker = L.marker([lat, lng]).addTo(map)
-        .bindPopup('📍 Emplacement de votre boutique')
-        .openPopup();
 }
 
-function showSuccessMessage() {
-    const msg = document.createElement('div');
-    msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:#fff;padding:12px 20px;border-radius:8px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
-    msg.innerHTML = '✓ Coordonnées GPS récupérées !';
-    document.body.appendChild(msg);
-    setTimeout(() => msg.remove(), 3000);
-}
-
-// Afficher la carte si coordonnées existantes
-window.addEventListener('load', () => {
-    const lat = parseFloat(document.getElementById('latitude').value);
-    const lng = parseFloat(document.getElementById('longitude').value);
-    if (lat && lng) {
-        showMapPreview(lat, lng);
-    }
-});
+{% if store.latitude and store.longitude %}
+showMap({{ store.latitude }}, {{ store.longitude }});
+{% endif %}
 </script>
 {% endblock %}

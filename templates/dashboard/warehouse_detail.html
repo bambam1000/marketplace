@@ -1,0 +1,156 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}{{ warehouse.name }}{% endblock %}
+{% block dash %}
+<style>
+.wh-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0 20px; }
+.wh-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.wh-link-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 18px; display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; box-shadow: var(--dash-shadow); transition: var(--dash-transition); }
+.wh-link-card:hover { box-shadow: var(--dash-shadow-hover); transform: translateY(-2px); border-color: var(--dash-accent); }
+.wh-link-card .ic { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.wh-link-card .t { font-weight: 700; font-size: 14px; }
+.wh-link-card .s { font-size: 11px; color: var(--dash-text3); }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+.rec-item { display: grid; grid-template-columns: 1fr 90px 36px; gap: 8px; margin-bottom: 8px; }
+</style>
+
+<a href="{% url 'dashboard:warehouses' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour aux entrepôts</a>
+
+<div class="dash-header" style="margin-top:12px;margin-bottom:0;">
+    <div>
+        <h1><i class="fa-solid fa-warehouse" style="color:var(--dash-accent);"></i> {{ warehouse.name }} {% if warehouse.is_default %}<span class="tag tag-orange">Principal</span>{% endif %}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ warehouse.code }} · {{ warehouse.city }}{% if warehouse.address %} · {{ warehouse.address }}{% endif %}</p>
+    </div>
+</div>
+
+<!-- ═══ Actions de stock ═══ -->
+<div class="wh-actions">
+    <button type="button" class="btn btn-orange" onclick="openModal('transferModal')"><i class="fa-solid fa-truck-arrow-right"></i> Transfert</button>
+</div>
+
+<!-- ═══ Cartes de navigation (filtrées par cet entrepôt) ═══ -->
+<div class="wh-cards">
+    <a href="{% url 'dashboard:warehouse_orders' warehouse.pk %}" class="wh-link-card">
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-box"></i></div>
+        <div><div class="t">Commandes</div><div class="s">Commandes de cet entrepôt</div></div>
+    </a>
+    <a href="{% url 'dashboard:products' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-tag"></i></div>
+        <div><div class="t">Produits</div><div class="s">Produits de cet entrepôt</div></div>
+    </a>
+    <a href="{% url 'dashboard:warehouse_employees' warehouse.pk %}" class="wh-link-card">
+        <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-user-tie"></i></div>
+        <div><div class="t">Employés</div><div class="s">Équipe de l'entrepôt</div></div>
+    </a>
+    <a href="{% url 'dashboard:sales' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-chart-line"></i></div>
+        <div><div class="t">Ventes</div><div class="s">Ventes de cet entrepôt</div></div>
+    </a>
+    <a href="{% url 'invoicing:invoices' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-receipt"></i></div>
+        <div><div class="t">Facturation</div><div class="s">Factures de cet entrepôt</div></div>
+    </a>
+    <a href="{% url 'dashboard:inventory' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-boxes-stacked"></i></div>
+        <div><div class="t">Inventaire</div><div class="s">Mouvements de cet entrepôt</div></div>
+    </a>
+    <a href="{% url 'dashboard:warehouse_stores' warehouse.pk %}" class="wh-link-card">
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-store"></i></div>
+        <div><div class="t">Boutiques</div><div class="s">{{ warehouse.linked_stores.count|add:1 }} boutique{{ warehouse.linked_stores.count|pluralize:"s" }} alimentée{{ warehouse.linked_stores.count|pluralize:"s" }}</div></div>
+    </a>
+    <a href="{% url 'dashboard:warehouse_stock' warehouse.pk %}" class="wh-link-card">
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-boxes-stacked"></i></div>
+        <div><div class="t">Stock</div><div class="s">{{ stocks|length }} produit{{ stocks|length|pluralize:"s" }} en stock</div></div>
+    </a>
+    <a href="{% url 'dashboard:warehouse_accounting' warehouse.pk %}" class="wh-link-card">
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-chart-line"></i></div>
+        <div><div class="t">Comptabilité</div><div class="s">Revenus, dépenses, résultat</div></div>
+    </a>
+    <a href="{% url 'dashboard:warehouse_expenses' warehouse.pk %}" class="wh-link-card">
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-money-bill-wave"></i></div>
+        <div><div class="t">Dépenses</div><div class="s">Dépenses de l'entrepôt</div></div>
+    </a>
+</div>
+
+<!-- ═══ Modale Transfert ═══ -->
+<div class="dmodal" id="transferModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-truck-arrow-right" style="color:var(--dash-accent);"></i> Transfert depuis {{ warehouse.name }}</h3>
+            <button type="button" class="dmodal-close" onclick="closeModal('transferModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" action="{% url 'dashboard:transfers' %}">
+            {% csrf_token %}
+            <input type="hidden" name="from_warehouse" value="{{ warehouse.pk }}">
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Vers l'entrepôt *</label>
+                    <select name="to_warehouse" class="form-control" required>
+                        {% for wh in other_warehouses %}<option value="{{ wh.id }}">{{ wh.name }} ({{ wh.code }})</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Produits à transférer *</label>
+                    <div id="trfItems">
+                        <div class="rec-item">
+                            <select name="product[]" class="form-control" required>
+                                <option value="">Sélectionner...</option>
+                                {% for s in stocks %}<option value="{{ s.product.id }}">{{ s.product.name }} (ici: {{ s.quantity }})</option>{% endfor %}
+                            </select>
+                            <input type="number" name="quantity[]" class="form-control" min="1" value="1" required>
+                            <button type="button" onclick="removeRecItem(this)" style="background:none;border:none;color:var(--dash-red);cursor:pointer;"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addTrfItem()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('transferModal')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Créer le transfert</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.dmodal').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.querySelectorAll('.dmodal').forEach(function(m) { m.classList.remove('open'); });
+});
+function addTrfItem() {
+    var c = document.getElementById('trfItems');
+    var row = c.querySelector('.rec-item').cloneNode(true);
+    row.querySelector('select').selectedIndex = 0;
+    row.querySelector('input').value = 1;
+    c.appendChild(row);
+}
+function addRetItem() {
+    var c = document.getElementById('retItems');
+    var row = c.querySelector('.rec-item').cloneNode(true);
+    row.querySelector('select').selectedIndex = 0;
+    row.querySelector('input').value = 1;
+    c.appendChild(row);
+}
+function removeRecItem(btn) {
+    var c = btn.closest('.rec-item').parentElement;
+    if (c.querySelectorAll('.rec-item').length > 1) btn.closest('.rec-item').remove();
+}
+</script>
+{% endblock %}

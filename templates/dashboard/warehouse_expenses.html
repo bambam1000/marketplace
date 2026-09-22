@@ -1,0 +1,100 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Dépenses — {{ warehouse.name }}{% endblock %}
+{% block dash %}
+<style>
+.exp-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.exp-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.exp-filters select, .exp-filters input { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 12px; font-family: inherit; }
+.exp-filters select:focus, .exp-filters input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 440px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+</style>
+
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+
+<div class="dash-header" style="margin-top:12px;">
+    <div>
+        <h1><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-accent);"></i> Dépenses — {{ warehouse.name }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ expenses|length }} dépense{{ expenses|length|pluralize:"s" }} · Total : <strong style="color:var(--dash-red);">{{ total|intcomma }} F</strong></p>
+    </div>
+    <button type="button" class="btn btn-orange" onclick="document.getElementById('expenseModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle dépense</button>
+</div>
+
+<div class="dash-card">
+    <div class="exp-toolbar">
+        <form method="get" class="exp-filters" id="expFilterForm">
+            <select name="category" onchange="document.getElementById('expFilterForm').submit()">
+                <option value="">Toutes catégories</option>
+                {% for code, label in categories %}<option value="{{ code }}" {% if category_filter == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+            <input type="date" name="from" value="{{ date_from }}" onchange="document.getElementById('expFilterForm').submit()">
+            <span style="font-size:12px;color:var(--dash-text3);">→</span>
+            <input type="date" name="to" value="{{ date_to }}" onchange="document.getElementById('expFilterForm').submit()">
+            {% if category_filter or date_from or date_to %}
+            <a href="{% url 'dashboard:warehouse_expenses' warehouse.pk %}" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead><tr><th>Description</th><th>Catégorie</th><th>Date</th><th>Montant</th><th>Par</th></tr></thead>
+        <tbody>
+            {% for e in expenses %}
+            <tr>
+                <td style="font-weight:600;">{{ e.description }}</td>
+                <td><span class="tag tag-orange">{{ e.get_category_display }}</span></td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ e.date|date:"d/m/Y" }}</td>
+                <td style="font-weight:700;color:var(--dash-red);">-{{ e.amount|intcomma }} F</td>
+                <td style="font-size:12px;">{% if e.created_by %}{{ e.created_by.display_name }}{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-money-bill-wave"></i></div>
+                <div style="color:var(--dash-text3);">Aucune dépense enregistrée</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- ═══ Modale nouvelle dépense ═══ -->
+<div class="dmodal" id="expenseModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-accent);"></i> Nouvelle dépense</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('expenseModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" action="{% url 'dashboard:warehouse_accounting' warehouse.pk %}">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Catégorie *</label>
+                    <select name="category" class="form-control">
+                        {% for code, label in categories %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group"><label>Description *</label><input type="text" name="description" class="form-control" required placeholder="Ex: Loyer septembre"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group"><label>Montant (F) *</label><input type="number" name="amount" class="form-control" min="1" required></div>
+                    <div class="form-group"><label>Date</label><input type="date" name="date" class="form-control" value="{{ today }}"></div>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('expenseModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.getElementById('expenseModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('expenseModal').classList.remove('open'); });
+</script>
+{% endblock %}

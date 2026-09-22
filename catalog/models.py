@@ -107,15 +107,28 @@ class Product(models.Model):
             return 'low'
         return 'ok'
 
-    def adjust_stock(self, quantity, movement_type, user=None, reason='', reference=''):
-        """Ajuste le stock et enregistre le mouvement."""
+    def adjust_stock(self, quantity, movement_type, user=None, reason='', reference='', warehouse=None, update_global=True):
+        """Ajuste le stock et enregistre le mouvement. Synchronise l'entrepôt concerné.
+        update_global=False pour les transferts (le stock global ne change pas)."""
         before = self.stock
-        self.stock = max(0, self.stock + quantity)
-        self.save(update_fields=['stock'])
+        if update_global:
+            self.stock = max(0, self.stock + quantity)
+            self.save(update_fields=['stock'])
+        # Synchroniser le stock de l'entrepôt (par défaut si non précisé)
+        try:
+            from inventory.models import Warehouse, ProductStock
+            wh = warehouse or Warehouse.objects.filter(store=self.store, is_default=True).first()
+            if wh:
+                ps, _ = ProductStock.objects.get_or_create(product=self, warehouse=wh)
+                ps.quantity = max(0, ps.quantity + quantity)
+                ps.save(update_fields=['quantity'])
+        except Exception:
+            pass
         return StockMovement.objects.create(
             product=self, store=self.store, movement_type=movement_type,
             quantity=quantity, stock_before=before, stock_after=self.stock,
             reason=reason, reference=reference, created_by=user,
+            warehouse=warehouse,
         )
 
     @property
@@ -167,6 +180,7 @@ class StockMovement(models.Model):
     ]
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_movements')
     store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='stock_movements')
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.SET_NULL, null=True, blank=True, related_name='movements')
     movement_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     quantity = models.IntegerField(help_text='Positif = entrée, négatif = sortie')
     stock_before = models.PositiveIntegerField()

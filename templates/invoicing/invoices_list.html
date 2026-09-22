@@ -1,6 +1,15 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Facturation{% endblock %}
 {% block dash %}
+{% if warehouse %}
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+<div class="dash-header" style="margin-top:12px;">
+    <div>
+        <h1><i class="fa-solid fa-receipt" style="color:var(--dash-accent);"></i> Facturation — {{ warehouse.name }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">Factures de cet entrepôt</p>
+    </div>
+</div>
+{% endif %}
 <style>
 .inv-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
 .inv-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }

@@ -67,6 +67,7 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('catalog.Product', on_delete=models.CASCADE)
     store = models.ForeignKey('store.Store', on_delete=models.CASCADE)
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.SET_NULL, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=12, decimal_places=0)
     color = models.CharField(max_length=50, blank=True)

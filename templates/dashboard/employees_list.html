@@ -1,0 +1,263 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Liste des employés{% endblock %}
+{% block dash %}
+<style>
+.emp-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.emp-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--dash-accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+.emp-actions-menu { position: relative; display: inline-block; }
+.emp-dropdown { display: none; position: fixed; background: #fff; border: 1px solid var(--dash-border); border-radius: 6px; box-shadow: var(--dash-shadow-lg); min-width: 170px; z-index: 1500; overflow: hidden; }
+.emp-dropdown.open { display: block; }
+.emp-dropdown a, .emp-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; font-size: 13px; color: var(--dash-text2); text-decoration: none; background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.emp-dropdown a:hover, .emp-dropdown button:hover { background: var(--dash-bg); color: var(--dash-text); }
+.emp-dropdown i { width: 16px; text-align: center; color: var(--dash-text3); }
+.dots-btn { background: none; border: none; cursor: pointer; color: var(--dash-text3); padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+.dots-btn:hover { background: var(--dash-bg); color: var(--dash-text); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <a href="{% url 'dashboard:employees' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Employés</a>
+        <h1><i class="fa-solid fa-user-tie" style="color:var(--dash-accent);"></i> Liste des employés</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ members|length }} membre{{ members|length|pluralize:"s" }} de l'équipe</p>
+    </div>
+    <button type="button" class="btn btn-orange" onclick="document.getElementById('addModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Ajouter un employé</button>
+</div>
+
+<div class="dash-card">
+    <div class="emp-toolbar">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <a href="{% url 'dashboard:employees_list' %}" class="btn btn-outline btn-sm" {% if not warehouse_filter %}style="background:var(--dash-accent);color:#fff;border-color:var(--dash-accent);"{% endif %}>Tous</a>
+            {% for w in warehouses %}
+            <a href="?warehouse={{ w.pk }}" class="btn btn-outline btn-sm" {% if warehouse_filter == w.pk|stringformat:'i' %}style="background:var(--dash-accent);color:#fff;border-color:var(--dash-accent);"{% endif %}><i class="fa-solid fa-warehouse"></i> {{ w.name }}</a>
+            {% endfor %}
+        </div>
+        <form method="get" style="position:relative;">
+            {% if warehouse_filter %}<input type="hidden" name="warehouse" value="{{ warehouse_filter }}">{% endif %}
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Nom, utilisateur..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:220px;">
+        </form>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>Employé</th><th>Rôle</th><th>Entrepôt</th><th>Salaire</th><th>Statut</th><th style="text-align:right;">Actions</th></tr>
+        </thead>
+        <tbody>
+            <!-- Propriétaire -->
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="emp-avatar" style="background:var(--dash-purple);">{{ owner.first_name|first|upper }}{{ owner.last_name|first|upper }}</div>
+                        <div>
+                            <div style="font-weight:700;">{{ owner.display_name }} <i class="fa-solid fa-crown" style="color:var(--dash-accent);font-size:11px;" title="Propriétaire"></i></div>
+                            <div style="font-size:11px;color:var(--dash-text3);">@{{ owner.username }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="tag" style="background:rgba(122,90,248,.1);color:var(--dash-purple);">Propriétaire</span></td>
+                <td style="color:var(--dash-text3);">—</td>
+                <td style="color:var(--dash-text3);">—</td>
+                <td><span class="status-badge st-delivered">Actif</span></td>
+                <td style="text-align:right;color:var(--dash-text3);font-size:12px;">—</td>
+            </tr>
+            {% for m in members %}
+            <tr>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="emp-avatar">{{ m.user.first_name|first|upper }}{{ m.user.last_name|first|upper }}</div>
+                        <div>
+                            <div style="font-weight:700;">{{ m.user.display_name }}</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">@{{ m.user.username }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    {% if m.role %}<span class="tag" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-shield-halved"></i> {{ m.role.name }}</span>
+                    {% else %}<span style="color:var(--dash-text3);font-size:12px;">Aucun</span>{% endif %}
+                </td>
+                <td>
+                    {% if m.warehouse %}<i class="fa-solid fa-warehouse" style="color:var(--dash-accent);font-size:11px;"></i> {{ m.warehouse.name }}
+                    {% else %}<span style="color:var(--dash-text3);font-size:12px;">Tous</span>{% endif %}
+                </td>
+                <td style="font-weight:600;">{{ m.salary|floatformat:0 }} FCFA</td>
+                <td>
+                    {% if m.is_active %}<span class="status-badge st-delivered">Actif</span>
+                    {% else %}<span class="status-badge st-cancelled">Inactif</span>{% endif %}
+                </td>
+                <td style="text-align:right;">
+                    <div class="emp-actions-menu">
+                        <button class="dots-btn" onclick="toggleEmpMenu(event, {{ m.pk }})"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="emp-dropdown" id="empMenu{{ m.pk }}">
+                            <a href="{% url 'dashboard:employee_detail' m.pk %}"><i class="fa-solid fa-eye"></i> Voir le profil</a>
+                            {% if m.is_active %}
+                            <button type="button" style="color:var(--dash-red);" onclick="openToggleModal({{ m.pk }}, '{{ m.user.display_name|escapejs }}', true)"><i class="fa-solid fa-ban" style="color:var(--dash-red);"></i> Désactiver</button>
+                            {% else %}
+                            <button type="button" style="color:var(--dash-green);" onclick="openToggleModal({{ m.pk }}, '{{ m.user.display_name|escapejs }}', false)"><i class="fa-solid fa-check" style="color:var(--dash-green);"></i> Activer</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-users"></i></div>
+                <div style="color:var(--dash-text3);">Aucun employé</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Modale Ajouter -->
+<div class="dmodal" id="addModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-user-plus" style="color:var(--dash-accent);"></i> Ajouter un employé</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('addModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Prénom</label>
+                        <input type="text" name="first_name" class="form-control" placeholder="Prénom">
+                    </div>
+                    <div class="form-group">
+                        <label>Nom</label>
+                        <input type="text" name="last_name" class="form-control" placeholder="Nom">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Nom d'utilisateur *</label>
+                    <input type="text" name="username" class="form-control" placeholder="nom.utilisateur" required>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Mot de passe *</label>
+                        <div style="position:relative;">
+                            <input type="password" name="password" id="pwd1" class="form-control" placeholder="Min. 6 caractères" style="padding-right:36px;">
+                            <button type="button" onclick="togglePwd('pwd1',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--dash-text3);"><i class="fa-solid fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirmer *</label>
+                        <div style="position:relative;">
+                            <input type="password" name="password_confirm" id="pwd2" class="form-control" placeholder="Confirmer" style="padding-right:36px;">
+                            <button type="button" onclick="togglePwd('pwd2',this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--dash-text3);"><i class="fa-solid fa-eye"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Rôle</label>
+                        <select name="role" class="form-control">
+                            <option value="">— Aucun —</option>
+                            {% for r in roles %}<option value="{{ r.pk }}">{{ r.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Entrepôt</label>
+                        <select name="warehouse" class="form-control">
+                            <option value="">— Tous —</option>
+                            {% for w in warehouses %}<option value="{{ w.pk }}">{{ w.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Salaire mensuel (FCFA)</label>
+                    <input type="number" name="salary" class="form-control" placeholder="0" min="0" value="0">
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('addModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-plus"></i> Ajouter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modale Activer / Désactiver -->
+<div class="dmodal" id="toggleModal">
+    <div class="dmodal-box" style="max-width:420px;">
+        <div class="dmodal-body" style="text-align:center;">
+            <div id="toggleIcon" style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;"></div>
+            <h3 id="toggleTitle" style="font-size:16px;margin-bottom:8px;"></h3>
+            <p id="toggleText" style="font-size:13px;color:var(--dash-text3);margin-bottom:0;"></p>
+        </div>
+        <div class="dmodal-foot" style="justify-content:center;">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('toggleModal').classList.remove('open')">Annuler</button>
+            <form method="post" id="toggleForm" style="margin:0;">{% csrf_token %}
+                <button type="submit" id="toggleBtn" class="btn"></button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePwd(id, btn) {
+    const input = document.getElementById(id);
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
+    else { input.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+}
+
+function toggleEmpMenu(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById('empMenu' + id);
+    var wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.emp-dropdown').forEach(function(d) { d.classList.remove('open'); });
+    if (wasOpen) return;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var menuHeight = 120;
+    var top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight) { top = rect.top - menuHeight - 6; }
+    menu.style.top = top + 'px';
+    menu.style.left = (rect.right - 170) + 'px';
+    menu.classList.add('open');
+}
+document.addEventListener('click', function() {
+    document.querySelectorAll('.emp-dropdown').forEach(function(d) { d.classList.remove('open'); });
+});
+
+function openToggleModal(id, name, isActive) {
+    var icon = document.getElementById('toggleIcon');
+    var title = document.getElementById('toggleTitle');
+    var text = document.getElementById('toggleText');
+    var btn = document.getElementById('toggleBtn');
+    if (isActive) {
+        icon.style.background = 'rgba(239,68,68,.1)'; icon.style.color = 'var(--dash-red)';
+        icon.innerHTML = '<i class="fa-solid fa-ban"></i>';
+        title.textContent = 'Désactiver cet employé ?';
+        text.innerHTML = '« <strong>' + name + '</strong> » n\'aura plus accès au tableau de bord.<br>Vous pourrez le réactiver à tout moment.';
+        btn.style.background = 'var(--dash-red)'; btn.style.color = '#fff';
+        btn.innerHTML = '<i class="fa-solid fa-ban"></i> Désactiver';
+    } else {
+        icon.style.background = 'rgba(18,183,106,.1)'; icon.style.color = 'var(--dash-green)';
+        icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        title.textContent = 'Activer cet employé ?';
+        text.innerHTML = '« <strong>' + name + '</strong> » retrouvera l\'accès au tableau de bord.';
+        btn.style.background = 'var(--dash-green)'; btn.style.color = '#fff';
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Activer';
+    }
+    document.getElementById('toggleForm').action = "{% url 'dashboard:employee_toggle' 0 %}".replace('/0/', '/' + id + '/');
+    document.getElementById('toggleModal').classList.add('open');
+}
+
+document.querySelectorAll('.dmodal').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.querySelectorAll('.dmodal').forEach(function(m) { m.classList.remove('open'); });
+});
+</script>
+{% endblock %}

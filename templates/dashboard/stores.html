@@ -1,0 +1,94 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Mes Boutiques{% endblock %}
+{% block dash %}
+<style>
+.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.st-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 20px; box-shadow: var(--dash-shadow); transition: var(--dash-transition); }
+.st-card:hover { box-shadow: var(--dash-shadow-hover); transform: translateY(-2px); }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 460px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-store" style="color:var(--dash-accent);"></i> Mes Boutiques</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ stores|length }} boutique{{ stores|length|pluralize:"s" }}</p>
+    </div>
+    <button type="button" class="btn btn-orange" onclick="document.getElementById('storeModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle boutique</button>
+</div>
+
+<div class="st-grid">
+    {% for s in stores %}
+    <div class="st-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,106,0,.1);color:var(--dash-accent);display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;flex-shrink:0;">
+                {% if s.logo %}<img src="{{ s.logo.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}<i class="fa-solid fa-store"></i>{% endif %}
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:15px;">{{ s.name }}</div>
+                <div style="font-size:11px;color:var(--dash-text3);">{{ s.city }} · {{ s.product_count }} produit{{ s.product_count|pluralize:"s" }}</div>
+            </div>
+            {% if s.is_verified %}<i class="fa-solid fa-circle-check" style="color:var(--dash-green);"></i>{% endif %}
+        </div>
+        <div style="display:flex;gap:8px;">
+            <a href="{% url 'store:detail' s.slug %}" target="_blank" class="btn btn-outline btn-sm" style="flex:1;"><i class="fa-solid fa-eye"></i> Voir</a>
+            <a href="{% url 'dashboard:store' %}" class="btn btn-outline btn-sm" style="flex:1;"><i class="fa-solid fa-gear"></i> Gérer</a>
+        </div>
+    </div>
+    {% empty %}
+    <div class="dash-card" style="grid-column:1/-1;text-align:center;padding:3rem;">
+        <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-store"></i></div>
+        <div style="color:var(--dash-text3);">Aucune boutique</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modale nouvelle boutique -->
+<div class="dmodal" id="storeModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-store" style="color:var(--dash-accent);"></i> Nouvelle boutique</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('storeModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" action="{% url 'dashboard:store' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_store">
+            <div class="dmodal-body">
+                <div class="form-group"><label>Nom de la boutique *</label><input type="text" name="name" class="form-control" required></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group"><label>Ville</label><input type="text" name="city" class="form-control" value="Douala"></div>
+                    <div class="form-group"><label>Téléphone</label><input type="tel" name="phone" class="form-control"></div>
+                </div>
+                <div class="form-group">
+                    <label>Entrepôt associé</label>
+                    <select name="warehouse" class="form-control">
+                        <option value="">— Aucun —</option>
+                        {% for wh in warehouses %}<option value="{{ wh.id }}">{{ wh.name }} ({{ wh.code }})</option>{% endfor %}
+                    </select>
+                    <small style="font-size:11px;color:var(--dash-text3);">Les produits de cet entrepôt seront disponibles dans cette boutique.</small>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                        <input type="checkbox" name="is_active" checked> Visible sur la plateforme
+                    </label>
+                    <small style="font-size:11px;color:var(--dash-text3);">Décochez pour créer la boutique sans la publier.</small>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('storeModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Créer</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.getElementById('storeModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('storeModal').classList.remove('open'); });
+</script>
+{% endblock %}

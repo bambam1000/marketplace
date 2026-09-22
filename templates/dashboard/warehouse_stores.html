@@ -1,0 +1,32 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Boutiques — {{ warehouse.name }}{% endblock %}
+{% block dash %}
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+
+<div class="dash-header" style="margin-top:12px;">
+    <div>
+        <h1><i class="fa-solid fa-store" style="color:var(--dash-accent);"></i> Boutiques — {{ warehouse.name }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">Boutiques alimentées par cet entrepôt</p>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+    <!-- Boutique principale -->
+    <a href="{% url 'store:detail' warehouse.store.slug %}" target="_blank" class="dash-card" style="padding:20px;text-decoration:none;color:inherit;display:flex;align-items:center;gap:14px;">
+        <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,106,0,.1);color:var(--dash-accent);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;"><i class="fa-solid fa-store"></i></div>
+        <div>
+            <div style="font-weight:700;font-size:15px;">{{ warehouse.store.name }}</div>
+            <div style="font-size:11px;color:var(--dash-text3);">Boutique principale · {{ warehouse.store.city }}</div>
+        </div>
+    </a>
+    {% for s in warehouse.linked_stores.all %}
+    <a href="{% url 'store:detail' s.slug %}" target="_blank" class="dash-card" style="padding:20px;text-decoration:none;color:inherit;display:flex;align-items:center;gap:14px;">
+        <div style="width:48px;height:48px;border-radius:10px;background:rgba(46,144,250,.1);color:var(--dash-blue);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;"><i class="fa-solid fa-store"></i></div>
+        <div>
+            <div style="font-weight:700;font-size:15px;">{{ s.name }}</div>
+            <div style="font-size:11px;color:var(--dash-text3);">{{ s.city }}</div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

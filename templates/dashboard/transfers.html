@@ -1,0 +1,231 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Transferts de stock{% endblock %}
+{% block dash %}
+<style>
+.trf-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.trf-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.trf-filters a { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; color: var(--dash-text2); border: 1.5px solid var(--dash-border); }
+.trf-filters a.active { background: var(--dash-accent); color: #fff; border-color: var(--dash-accent); }
+#filterMenu { position: fixed !important; }
+#filterMenu.open { display: block !important; }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+.trf-item { display: grid; grid-template-columns: 1fr 90px 36px; gap: 8px; margin-bottom: 8px; }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-right-left" style="color:var(--dash-accent);"></i> Mouvements entre entrepôts</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ transfers|length }} transfert{{ transfers|length|pluralize:"s" }} effectué{{ transfers|length|pluralize:"s" }}</p>
+    </div>
+    <button type="button" class="btn btn-orange" onclick="document.getElementById('trfModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouveau transfert</button>
+</div>
+
+<div class="dash-card">
+    <div class="trf-toolbar">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <!-- Toggle filtres -->
+            <div style="position:relative;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleFilterMenu(event)">
+                    <i class="fa-solid fa-filter"></i> Filtres {% if status_filter or type_filter or date_from or date_to %}<span style="background:var(--dash-accent);color:#fff;border-radius:50%;width:8px;height:8px;display:inline-block;margin-left:4px;"></span>{% endif %}
+                </button>
+                <div id="filterMenu" style="display:none;position:absolute;top:calc(100% + 6px);left:0;background:#fff;border:1px solid var(--dash-border);border-radius:8px;box-shadow:var(--dash-shadow-lg);min-width:220px;z-index:500;padding:10px;">
+                    <div style="font-size:10px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;padding:6px 10px;">Type</div>
+                    <a href="{% url 'dashboard:transfers' %}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if not type_filter %}background:var(--dash-bg);font-weight:600;{% endif %}">Tous</a>
+                    <a href="?ttype=transfer" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if type_filter == 'transfer' %}background:var(--dash-bg);font-weight:600;{% endif %}"><i class="fa-solid fa-truck-arrow-right"></i> Transferts</a>
+                    <a href="?ttype=return" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if type_filter == 'return' %}background:var(--dash-bg);font-weight:600;{% endif %}"><i class="fa-solid fa-rotate-left"></i> Retours</a>
+                    <div style="font-size:10px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;padding:10px 10px 6px;border-top:1px solid var(--dash-border);margin-top:6px;">Statut</div>
+                    {% for code, label in status_choices %}
+                    <a href="?status={{ code }}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if status_filter == code %}background:var(--dash-bg);font-weight:600;{% endif %}">{{ label }}</a>
+                    {% endfor %}
+                    <div style="border-top:1px solid var(--dash-border);margin-top:6px;padding-top:8px;">
+                        <button type="button" onclick="document.getElementById('filterMenu').style.display='none';document.getElementById('dateModal').classList.add('open')" style="width:100%;padding:8px 10px;font-size:13px;border:none;background:none;text-align:left;cursor:pointer;color:var(--dash-accent);font-weight:600;border-radius:6px;"><i class="fa-solid fa-calendar"></i> Filtrer par date...</button>
+                    </div>
+                </div>
+            </div>
+            {% if status_filter or type_filter or date_from or date_to %}
+            <a href="{% url 'dashboard:transfers' %}" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser</a>
+            {% endif %}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <form method="get" style="position:relative;">
+                {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+                {% if type_filter %}<input type="hidden" name="ttype" value="{{ type_filter }}">{% endif %}
+                {% if date_from %}<input type="hidden" name="from" value="{{ date_from }}">{% endif %}
+                {% if date_to %}<input type="hidden" name="to" value="{{ date_to }}">{% endif %}
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Référence, entrepôt..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:220px;">
+            </form>
+            <a href="{% url 'dashboard:transfers_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-file-pdf"></i> PDF</a>
+            <a href="{% url 'dashboard:transfers_excel' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+        </div>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead>
+            <tr><th>Référence</th><th>De</th><th>Vers</th><th>Produits</th><th>Statut</th><th>Date</th><th style="text-align:right;">Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for t in transfers %}
+            <tr>
+                <td style="font-weight:700;">{{ t.reference }}
+                    {% if t.transfer_type == 'return' %}<span class="tag" style="background:rgba(122,90,248,.1);color:var(--dash-purple);font-size:10px;">Retour</span>{% endif %}
+                </td>
+                <td>{{ t.from_warehouse.name }}</td>
+                <td>{{ t.to_warehouse.name }}</td>
+                <td>{{ t.items.count }} produit{{ t.items.count|pluralize:"s" }}</td>
+                <td>
+                    {% if t.status == 'received' %}<span class="status-badge st-delivered">Reçu</span>
+                    {% elif t.status == 'in_transit' %}<span class="status-badge st-shipped">En transit</span>
+                    {% elif t.status == 'cancelled' %}<span class="status-badge st-cancelled">Annulé</span>
+                    {% else %}<span class="status-badge st-pending">Brouillon</span>{% endif %}
+                </td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ t.created_at|date:"d/m/Y" }}</td>
+                <td style="text-align:right;">
+                    {% if t.status == 'draft' %}
+                    <form method="post" action="{% url 'dashboard:transfer_action' t.pk 'confirm' %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm btn-orange"><i class="fa-solid fa-check"></i> Confirmer</button>{% endif %}
+                    {% if t.status == 'in_transit' %}
+                    <form method="post" action="{% url 'dashboard:transfer_action' t.pk 'receive' %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-box-open"></i> Réceptionner</button></form>{% endif %}
+                    {% if t.status == 'draft' or t.status == 'in_transit' %}
+                    <form method="post" action="{% url 'dashboard:transfer_action' t.pk 'cancel' %}" style="display:inline;" onsubmit="return confirm('Annuler ce transfert ?');">{% csrf_token %}<button class="btn btn-sm btn-outline" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i></button></form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-truck-arrow-right"></i></div>
+                <div style="color:var(--dash-text3);">Aucun transfert</div>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Modale filtre par date -->
+<div class="dmodal" id="dateModal">
+    <div class="dmodal-box" style="max-width:400px;">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-calendar" style="color:var(--dash-accent);"></i> Filtrer par date</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('dateModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="get">
+            {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+            {% if type_filter %}<input type="hidden" name="ttype" value="{{ type_filter }}">{% endif %}
+            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Du</label>
+                    <input type="date" name="from" class="form-control" value="{{ date_from }}">
+                </div>
+                <div class="form-group">
+                    <label>Au</label>
+                    <input type="date" name="to" class="form-control" value="{{ date_to }}">
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('dateModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Appliquer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modale nouveau transfert -->
+<div class="dmodal" id="trfModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-truck-arrow-right" style="color:var(--dash-accent);"></i> Nouveau transfert</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('trfModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Type de mouvement *</label>
+                    <select name="transfer_type" class="form-control">
+                        <option value="transfer">Transfert (envoi vers un autre entrepôt)</option>
+                        <option value="return">Retour (retour de marchandise transférée)</option>
+                    </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>De l'entrepôt *</label>
+                        <select name="from_warehouse" class="form-control" required>
+                            {% for wh in warehouses %}<option value="{{ wh.id }}">{{ wh.name }} ({{ wh.code }})</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Vers l'entrepôt *</label>
+                        <select name="to_warehouse" class="form-control" required>
+                            {% for wh in warehouses %}<option value="{{ wh.id }}">{{ wh.name }} ({{ wh.code }})</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Produits *</label>
+                    <div id="trfItems">
+                        <div class="trf-item">
+                            <select name="product[]" class="form-control" required>
+                                <option value="">Sélectionner...</option>
+                                {% for p in products %}<option value="{{ p.id }}">{{ p.name }} (stock: {{ p.stock }})</option>{% endfor %}
+                            </select>
+                            <input type="number" name="quantity[]" class="form-control" min="1" value="1" required>
+                            <button type="button" onclick="removeTrfItem(this)" style="background:none;border:none;color:var(--dash-red);cursor:pointer;"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addTrfItem()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('trfModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Créer le transfert</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+// Toggle du menu filtres en position fixe (évite d'être coupé par le tableau)
+function toggleFilterMenu(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('filterMenu');
+    if (menu.classList.contains('open')) {
+        menu.classList.remove('open');
+        return;
+    }
+    var rect = e.currentTarget.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.style.left = rect.left + 'px';
+    menu.classList.add('open');
+}
+
+// Fermer le menu filtres en cliquant ailleurs
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('filterMenu');
+    if (menu && menu.classList.contains('open') && !menu.contains(e.target)) {
+        menu.classList.remove('open');
+    }
+});
+
+function addTrfItem() {
+    var c = document.getElementById('trfItems');
+    var row = c.querySelector('.trf-item').cloneNode(true);
+    row.querySelector('select').selectedIndex = 0;
+    row.querySelector('input').value = 1;
+    c.appendChild(row);
+}
+function removeTrfItem(btn) {
+    var c = document.getElementById('trfItems');
+    if (c.querySelectorAll('.trf-item').length > 1) btn.closest('.trf-item').remove();
+}
+document.getElementById('trfModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('trfModal').classList.remove('open'); });
+</script>
+{% endblock %}

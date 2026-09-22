@@ -114,6 +114,33 @@ class Expense(models.Model):
         return f"{self.description} - {self.amount}F"
 
 
+class WarehouseExpense(models.Model):
+    """Dépense liée à un entrepôt"""
+    CATEGORY_CHOICES = [
+        ('rent', 'Loyer'),
+        ('salary', 'Salaires'),
+        ('transport', 'Transport'),
+        ('supplies', 'Fournitures'),
+        ('utilities', 'Électricité/Eau'),
+        ('marketing', 'Marketing'),
+        ('other', 'Autre'),
+    ]
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.CASCADE, related_name='expenses')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    description = models.CharField(max_length=300)
+    amount = models.DecimalField(max_digits=15, decimal_places=0)
+    date = models.DateField()
+    receipt = models.FileField(upload_to='expenses/', blank=True, null=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.warehouse.code} — {self.description} ({self.amount}F)"
+
+
 class PlatformStats(models.Model):
     """Snapshot quotidien des stats plateforme"""
     date = models.DateField(unique=True)

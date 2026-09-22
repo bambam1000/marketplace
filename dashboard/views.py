@@ -23,11 +23,29 @@ def seller_or_admin_required(view_func):
         user = request.user
         is_admin = user.is_superuser or user.role == 'admin'
         is_seller = user.is_seller and hasattr(user, 'store')
-        if not (is_admin or is_seller):
+        is_member = user.store_memberships.filter(is_active=True).exists()
+        if not (is_admin or is_seller or is_member):
             django_messages.error(request, "Accès réservé aux vendeurs et administrateurs.")
             return redirect('dashboard:index')
         return view_func(request, *args, **kwargs)
     return wrapper
+
+
+def store_permission_required(permission):
+    """Vérifie qu'un employé a la permission requise. Le propriétaire a tous les droits."""
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            user = request.user
+            if user.is_superuser or user.role == 'admin' or hasattr(user, 'store'):
+                return view_func(request, *args, **kwargs)
+            member = user.store_memberships.filter(is_active=True).first()
+            if member and member.has_permission(permission):
+                return view_func(request, *args, **kwargs)
+            django_messages.error(request, "Vous n'avez pas cette permission.")
+            return redirect('dashboard:index')
+        return wrapper
+    return decorator
 
 
 @login_required
@@ -35,8 +53,9 @@ def index(request):
     user = request.user
     is_admin = user.is_superuser or user.role == 'admin'
     is_seller = user.is_seller and hasattr(user, 'store')
-    # Les acheteurs n'ont pas accès au dashboard
-    if not (is_admin or is_seller):
+    is_member = user.store_memberships.filter(is_active=True).exists()
+    # Les acheteurs n'ont pas accès au dashboard (sauf employés de boutique)
+    if not (is_admin or is_seller or is_member):
         django_messages.error(request, "Le tableau de bord est réservé aux vendeurs.")
         return redirect('home')
     now = timezone.now()
@@ -163,12 +182,30 @@ def dash_orders(request):
     q = request.GET.get('q', '').strip()
     if q:
         orders = orders.filter(Q(order_number__icontains=q) | Q(buyer__username__icontains=q) | Q(buyer__first_name__icontains=q) | Q(buyer__last_name__icontains=q))
+
+    # Filtres date
+    from datetime import datetime
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    if date_from:
+        try:
+            orders = orders.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            orders = orders.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+
     total_revenue = OrderItem.objects.filter(order__in=orders, order__is_paid=True).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
     return render(request, 'dashboard/orders.html', {
         'orders': orders.select_related('buyer').order_by('-created_at'),
         'status_choices': Order.STATUS_CHOICES,
         'current_status': status,
         'search_query': q,
+        'date_from': date_from,
+        'date_to': date_to,
         'total': orders.count(),
         'pending': orders.filter(status='pending').count(),
         'delivered': orders.filter(status='delivered').count(),
@@ -222,6 +259,12 @@ def dash_order_detail(request, order_number):
     return render(request, 'dashboard/order_detail.html', {'order': order})
 
 
+def get_user_warehouse(request):
+    """Retourne l'entrepôt de l'employé connecté, ou None pour le propriétaire/admin."""
+    member = request.user.store_memberships.filter(is_active=True).first()
+    return member.warehouse if member and member.warehouse else None
+
+
 @login_required
 @seller_or_admin_required
 def dash_products(request):
@@ -229,6 +272,19 @@ def dash_products(request):
         products = request.user.store.products.all()
     else:
         products = Product.objects.all()
+
+    # Filtre par entrepôt (paramètre ou entrepôt de l'employé)
+    from inventory.models import Warehouse
+    warehouse_id = request.GET.get('warehouse')
+    member_warehouse = get_user_warehouse(request)
+    if member_warehouse:
+        warehouse_id = member_warehouse.id
+    current_warehouse = None
+    if warehouse_id:
+        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
+        if current_warehouse:
+            products = products.filter(warehouse_stocks__warehouse=current_warehouse).distinct()
+
     q = request.GET.get('q', '').strip()
     if q:
         products = products.filter(name__icontains=q)
@@ -246,6 +302,8 @@ def dash_products(request):
         'categories': Category.objects.filter(is_active=True),
         'search_query': q,
         'stock_filter': stock_filter,
+        'warehouse': current_warehouse,
+        'current_warehouse': current_warehouse,
         'total': len(products),
         'active': sum(1 for p in products if p.is_active),
         'low': sum(1 for p in products if p.is_low_stock),
@@ -352,6 +410,17 @@ def dash_sales(request):
     else:
         items = OrderItem.objects.filter(order__is_paid=True)
 
+    # Filtre par entrepôt
+    from inventory.models import Warehouse
+    warehouse_id = request.GET.get('warehouse')
+    member_warehouse = get_user_warehouse(request)
+    if member_warehouse:
+        warehouse_id = member_warehouse.id
+    current_warehouse = None
+    if warehouse_id:
+        items = items.filter(warehouse_id=warehouse_id)
+        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
+
     q = request.GET.get('q', '').strip()
     if q:
         items = items.filter(Q(product__name__icontains=q) | Q(order__order_number__icontains=q))
@@ -373,6 +442,7 @@ def dash_sales(request):
         'avg_basket': avg_basket,
         'search_query': q,
         'my_products': store.products.filter(is_active=True, stock__gt=0) if store else [],
+        'warehouse': current_warehouse,
         'payment_choices': Order.PAYMENT_CHOICES,
     })
 
@@ -411,6 +481,9 @@ def dash_sale_create(request):
             django_messages.error(request, 'Ajoutez au moins un produit.')
             return redirect('dashboard:sales')
 
+        from inventory.models import Warehouse
+        warehouse = Warehouse.objects.filter(store=store, is_default=True).first()
+
         total = sum(p.price * q for p, q in lines)
         order = Order.objects.create(
             buyer=request.user,
@@ -427,10 +500,10 @@ def dash_sale_create(request):
             notes=f'Vente directe — {customer_name}',
         )
         for product, qty in lines:
-            OrderItem.objects.create(order=order, product=product, store=store, quantity=qty, price=product.price)
+            OrderItem.objects.create(order=order, product=product, store=store, warehouse=warehouse, quantity=qty, price=product.price)
             product.orders_count += qty
             product.save(update_fields=['orders_count'])
-            product.adjust_stock(-qty, 'sale', user=request.user, reason='Vente directe', reference=order.order_number)
+            product.adjust_stock(-qty, 'sale', user=request.user, reason='Vente directe', reference=order.order_number, warehouse=warehouse)
 
         django_messages.success(request, f'Vente {order.order_number} enregistrée : {len(lines)} produit(s), {total:,} F.')
     return redirect('dashboard:sales')
@@ -537,6 +610,769 @@ def dash_rfq_detail(request, rfq_id):
     })
 
 
+# ======== ENTREPÔTS ========
+@login_required
+@seller_or_admin_required
+def dash_warehouses(request):
+    """Liste des entrepôts + création"""
+    from inventory.models import Warehouse
+    store = getattr(request.user, 'store', None)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+
+    if request.method == 'POST':
+        if not store:
+            django_messages.error(request, "Vous devez avoir une boutique.")
+            return redirect('dashboard:warehouses')
+        wh = Warehouse.objects.create(
+            store=store,
+            name=request.POST.get('name'),
+            code=request.POST.get('code', '').upper(),
+            address=request.POST.get('address', ''),
+            city=request.POST.get('city', store.city),
+        )
+        # Lier à des boutiques supplémentaires du même propriétaire
+        linked = request.POST.getlist('linked_stores')
+        if linked:
+            wh.linked_stores.set(Store.objects.filter(pk__in=linked, owner=request.user))
+        django_messages.success(request, 'Entrepôt créé !')
+        return redirect('dashboard:warehouses')
+
+    warehouses = Warehouse.objects.all() if is_admin else (store.warehouses.all() if store else Warehouse.objects.none())
+    other_stores = Store.objects.filter(owner=request.user).exclude(pk=store.pk) if store else []
+    return render(request, 'dashboard/warehouses.html', {
+        'warehouses': warehouses,
+        'other_stores': other_stores,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_detail(request, pk):
+    """Détail d'un entrepôt : stocks par produit"""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+
+    stocks = warehouse.stocks.select_related('product').order_by('product__name')
+    q = request.GET.get('q', '').strip()
+    if q:
+        stocks = stocks.filter(product__name__icontains=q)
+
+    return render(request, 'dashboard/warehouse_detail.html', {
+        'warehouse': warehouse,
+        'stocks': stocks,
+        'search_query': q,
+        'products': warehouse.store.products.filter(is_active=True),
+        'other_warehouses': warehouse.store.warehouses.filter(is_active=True).exclude(pk=warehouse.pk),
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_reception(request, pk):
+    """Réception de marchandises dans un entrepôt (entrée de stock)"""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+
+    if request.method == 'POST':
+        product_ids = request.POST.getlist('product[]')
+        quantities = request.POST.getlist('quantity[]')
+        reason = request.POST.get('reason', '').strip() or 'Réception marchandises'
+        count = 0
+        for i, pid in enumerate(product_ids):
+            if not pid:
+                continue
+            product = get_object_or_404(Product, pk=pid, store=warehouse.store)
+            qty = int(quantities[i]) if i < len(quantities) else 0
+            if qty > 0:
+                product.adjust_stock(qty, 'in', user=request.user, reason=reason,
+                                     reference=warehouse.code, warehouse=warehouse)
+                count += 1
+        if count:
+            django_messages.success(request, f'Réception enregistrée : {count} produit(s) ajouté(s) à {warehouse.name}.')
+        else:
+            django_messages.error(request, 'Aucun produit valide.')
+    return redirect('dashboard:warehouse_detail', pk=pk)
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_employees(request, pk):
+    """Employés assignés à un entrepôt précis"""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+
+    members = warehouse.store.members.filter(warehouse=warehouse).select_related('user', 'role')
+    return render(request, 'dashboard/warehouse_employees.html', {
+        'warehouse': warehouse,
+        'members': members,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_orders(request, pk):
+    """Commandes contenant des produits d'un entrepôt"""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+
+    orders = Order.objects.filter(items__warehouse=warehouse).distinct().select_related('buyer').order_by('-created_at')
+    status = request.GET.get('status', '')
+    if status:
+        orders = orders.filter(status=status)
+    q = request.GET.get('q', '').strip()
+    if q:
+        orders = orders.filter(Q(order_number__icontains=q) | Q(buyer__username__icontains=q))
+
+    return render(request, 'dashboard/warehouse_orders.html', {
+        'warehouse': warehouse,
+        'orders': orders,
+        'status_choices': Order.STATUS_CHOICES,
+        'current_status': status,
+        'search_query': q,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_stores(request, pk):
+    """Boutiques alimentées par un entrepôt"""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+    return render(request, 'dashboard/warehouse_stores.html', {'warehouse': warehouse})
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_stock(request, pk):
+    """Stock détaillé d'un entrepôt"""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+
+    stocks = warehouse.stocks.select_related('product').order_by('product__name')
+    q = request.GET.get('q', '').strip()
+    if q:
+        stocks = stocks.filter(product__name__icontains=q)
+    return render(request, 'dashboard/warehouse_stock.html', {
+        'warehouse': warehouse,
+        'stocks': stocks,
+        'search_query': q,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_accounting(request, pk):
+    """Comptabilité d'un entrepôt : revenus, dépenses, résultat"""
+    from inventory.models import Warehouse
+    from accounting.models import WarehouseExpense
+    from datetime import datetime
+
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+
+    # Ajouter une dépense
+    if request.method == 'POST':
+        WarehouseExpense.objects.create(
+            warehouse=warehouse,
+            category=request.POST.get('category', 'other'),
+            description=request.POST.get('description'),
+            amount=int(request.POST.get('amount', 0)),
+            date=request.POST.get('date') or timezone.now().date(),
+            created_by=request.user,
+        )
+        django_messages.success(request, 'Dépense enregistrée.')
+        return redirect('dashboard:warehouse_accounting', pk=pk)
+
+    # Période (mois en cours par défaut)
+    now = timezone.now()
+    month = int(request.GET.get('month', now.month))
+    year = int(request.GET.get('year', now.year))
+
+    # Revenus de l'entrepôt (ventes payées)
+    revenue = OrderItem.objects.filter(
+        warehouse=warehouse, order__is_paid=True,
+        order__created_at__month=month, order__created_at__year=year,
+    ).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
+
+    # Commissions (10%)
+    from decimal import Decimal
+    commission = int(revenue * Decimal('0.10'))
+
+    # Dépenses de l'entrepôt
+    expenses = warehouse.expenses.filter(date__month=month, date__year=year)
+    total_expenses = expenses.aggregate(t=Sum('amount'))['t'] or 0
+
+    # Résultat net
+    net_profit = revenue - commission - total_expenses
+
+    # Revenus par mois (6 derniers mois) pour le graphique
+    monthly = []
+    for i in range(5, -1, -1):
+        d = now - timedelta(days=30 * i)
+        rev = OrderItem.objects.filter(
+            warehouse=warehouse, order__is_paid=True,
+            order__created_at__month=d.month, order__created_at__year=d.year,
+        ).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
+        monthly.append({'label': d.strftime('%b'), 'revenue': int(rev)})
+
+    return render(request, 'dashboard/warehouse_accounting.html', {
+        'warehouse': warehouse,
+        'revenue': revenue,
+        'commission': commission,
+        'total_expenses': total_expenses,
+        'net_profit': net_profit,
+        'expenses': expenses,
+        'monthly': monthly,
+        'current_month': month,
+        'current_year': year,
+        'months': [(i, timezone.datetime(2000, i, 1).strftime('%B')) for i in range(1, 13)],
+        'years': range(now.year - 2, now.year + 1),
+        'expense_categories': WarehouseExpense.CATEGORY_CHOICES,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_expenses(request, pk):
+    """Liste des dépenses d'un entrepôt avec filtres"""
+    from inventory.models import Warehouse
+    from accounting.models import WarehouseExpense
+    from datetime import datetime
+
+    warehouse = get_object_or_404(Warehouse, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and warehouse.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
+
+    expenses = warehouse.expenses.all()
+
+    # Filtres
+    category = request.GET.get('category', '')
+    if category:
+        expenses = expenses.filter(category=category)
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    if date_from:
+        try:
+            expenses = expenses.filter(date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            expenses = expenses.filter(date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+
+    total = expenses.aggregate(t=Sum('amount'))['t'] or 0
+
+    return render(request, 'dashboard/warehouse_expenses.html', {
+        'warehouse': warehouse,
+        'expenses': expenses,
+        'total': total,
+        'category_filter': category,
+        'date_from': date_from,
+        'date_to': date_to,
+        'categories': WarehouseExpense.CATEGORY_CHOICES,
+        'today': timezone.now().date().isoformat(),
+    })
+
+
+# ======== TRANSFERTS ========
+@login_required
+@seller_or_admin_required
+def dash_transfers(request):
+    """Liste des transferts + création"""
+    from inventory.models import StockTransfer, TransferItem, Warehouse
+    store = getattr(request.user, 'store', None)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+
+    if request.method == 'POST':
+        if not store:
+            django_messages.error(request, "Vous devez avoir une boutique.")
+            return redirect('dashboard:transfers')
+        from_wh = get_object_or_404(Warehouse, pk=request.POST.get('from_warehouse'), store=store)
+        to_wh = get_object_or_404(Warehouse, pk=request.POST.get('to_warehouse'), store=store)
+        if from_wh == to_wh:
+            django_messages.error(request, "Les deux entrepôts doivent être différents.")
+            return redirect('dashboard:transfers')
+
+        transfer = StockTransfer.objects.create(
+            store=store, from_warehouse=from_wh, to_warehouse=to_wh,
+            transfer_type=request.POST.get('transfer_type', 'transfer'),
+            notes=request.POST.get('notes', ''), created_by=request.user,
+        )
+        product_ids = request.POST.getlist('product[]')
+        quantities = request.POST.getlist('quantity[]')
+        for i, pid in enumerate(product_ids):
+            if pid:
+                qty = int(quantities[i]) if i < len(quantities) else 1
+                if qty > 0:
+                    TransferItem.objects.create(transfer=transfer, product_id=pid, quantity=qty)
+        django_messages.success(request, f'Transfert {transfer.reference} créé en brouillon.')
+        return redirect('dashboard:transfers')
+
+    transfers = StockTransfer.objects.all() if is_admin else (store.transfers.all() if store else StockTransfer.objects.none())
+    status = request.GET.get('status', '')
+    if status:
+        transfers = transfers.filter(status=status)
+    ttype = request.GET.get('ttype', '')
+    if ttype:
+        transfers = transfers.filter(transfer_type=ttype)
+
+    # Recherche par référence
+    q = request.GET.get('q', '').strip()
+    if q:
+        transfers = transfers.filter(Q(reference__icontains=q) | Q(from_warehouse__name__icontains=q) | Q(to_warehouse__name__icontains=q))
+
+    # Filtres date
+    from datetime import datetime
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    if date_from:
+        try:
+            transfers = transfers.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            transfers = transfers.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+
+    return render(request, 'dashboard/transfers.html', {
+        'transfers': transfers.select_related('from_warehouse', 'to_warehouse'),
+        'warehouses': store.warehouses.filter(is_active=True) if store else [],
+        'products': store.products.filter(is_active=True) if store else [],
+        'status_filter': status,
+        'status_choices': StockTransfer.STATUS_CHOICES,
+        'type_filter': ttype,
+        'search_query': q,
+        'date_from': date_from,
+        'date_to': date_to,
+    })
+
+
+def _filtered_transfers(request):
+    """Transferts filtrés selon les paramètres GET."""
+    from inventory.models import StockTransfer
+    from datetime import datetime
+    store = getattr(request.user, 'store', None)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    transfers = StockTransfer.objects.all() if is_admin else (store.transfers.all() if store else StockTransfer.objects.none())
+    status = request.GET.get('status', '')
+    if status:
+        transfers = transfers.filter(status=status)
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    if date_from:
+        try:
+            transfers = transfers.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            transfers = transfers.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    return transfers.select_related('from_warehouse', 'to_warehouse', 'created_by')
+
+
+@login_required
+@seller_or_admin_required
+def dash_transfers_export_pdf(request):
+    """Export PDF des transferts filtrés"""
+    from django.http import HttpResponse
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    import io
+
+    transfers = _filtered_transfers(request)[:500]
+    buffer = io.BytesIO()
+    p = canvas.Canvas(buffer, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    p.setFont('Helvetica-Bold', 16)
+    p.drawString(15*mm, height - 18*mm, 'AfriMarket — Mouvements entre entrepôts')
+    p.setFont('Helvetica', 9)
+    p.drawString(15*mm, height - 24*mm, f'Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — {transfers.count()} transfert(s)')
+    p.line(15*mm, height - 27*mm, width - 15*mm, height - 27*mm)
+
+    y = height - 36*mm
+    p.setFont('Helvetica-Bold', 8)
+    headers = ['Référence', 'De', 'Vers', 'Produits', 'Statut', 'Créé le', 'Par']
+    cols = [15, 50, 95, 140, 165, 200, 235]
+    for x, h in zip(cols, headers):
+        p.drawString(x*mm, y, h)
+    p.line(15*mm, y - 2*mm, width - 15*mm, y - 2*mm)
+    y -= 8*mm
+
+    p.setFont('Helvetica', 8)
+    for t in transfers:
+        if y < 15*mm:
+            p.showPage()
+            y = height - 20*mm
+            p.setFont('Helvetica', 8)
+        row = [
+            t.reference,
+            t.from_warehouse.name[:25],
+            t.to_warehouse.name[:25],
+            str(t.items.count()),
+            t.get_status_display(),
+            t.created_at.strftime('%d/%m/%Y'),
+            (t.created_by.display_name if t.created_by else '—')[:20],
+        ]
+        for x, val in zip(cols, row):
+            p.drawString(x*mm, y, str(val))
+        y -= 6*mm
+
+    p.showPage()
+    p.save()
+    buffer.seek(0)
+    response = HttpResponse(buffer, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="mouvements_entrepots.pdf"'
+    return response
+
+
+@login_required
+@seller_or_admin_required
+def dash_transfers_export_excel(request):
+    """Export Excel des transferts filtrés"""
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+
+    transfers = _filtered_transfers(request)[:1000]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Mouvements'
+    ws.append(['Référence', 'De', 'Vers', 'Produits', 'Quantité totale', 'Statut', 'Créé le', 'Par'])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for t in transfers:
+        ws.append([
+            t.reference,
+            t.from_warehouse.name,
+            t.to_warehouse.name,
+            t.items.count(),
+            sum(i.quantity for i in t.items.all()),
+            t.get_status_display(),
+            t.created_at.strftime('%d/%m/%Y %H:%M'),
+            t.created_by.display_name if t.created_by else '',
+        ])
+    for col, w in zip('ABCDEFGH', [12, 25, 25, 10, 14, 12, 16, 18]):
+        ws.column_dimensions[col].width = w
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="mouvements_entrepots.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+@seller_or_admin_required
+def dash_transfer_action(request, pk, action):
+    """Confirmer / recevoir / annuler un transfert"""
+    from inventory.models import StockTransfer
+    transfer = get_object_or_404(StockTransfer, pk=pk)
+    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    if not is_admin and transfer.store != request.user.store:
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:transfers')
+
+    if request.method == 'POST':
+        if action == 'confirm' and transfer.confirm():
+            django_messages.success(request, f'{transfer.reference} confirmé — stock sorti de {transfer.from_warehouse.name}.')
+        elif action == 'receive' and transfer.receive():
+            django_messages.success(request, f'{transfer.reference} reçu dans {transfer.to_warehouse.name}.')
+        elif action == 'cancel' and transfer.cancel():
+            django_messages.success(request, f'{transfer.reference} annulé.')
+        else:
+            django_messages.error(request, 'Action impossible dans cet état.')
+    return redirect('dashboard:transfers')
+
+
+@login_required
+@seller_or_admin_required
+def dash_stores(request):
+    """Liste des boutiques de l'utilisateur"""
+    from inventory.models import Warehouse
+    stores = request.user.stores.all()
+    warehouses = Warehouse.objects.filter(store__owner=request.user, is_active=True)
+    return render(request, 'dashboard/stores.html', {
+        'stores': stores,
+        'warehouses': warehouses,
+    })
+
+
+# ======== EMPLOYÉS & RÔLES ========
+@login_required
+@seller_or_admin_required
+def dash_employees(request):
+    """Page d'accueil Employés : 3 cartes (Employés, Rôles, Paie)"""
+    store = getattr(request.user, 'store', None)
+    if not store:
+        django_messages.error(request, "Vous devez avoir une boutique.")
+        return redirect('dashboard:index')
+    return render(request, 'dashboard/employees.html', {
+        'members_count': store.members.filter(is_active=True).count(),
+        'roles_count': store.roles.filter(is_active=True).count(),
+        'payslips_count': store.members.filter(payslips__isnull=False).values('payslips').distinct().count(),
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_employees_list(request):
+    """Liste des employés avec ajout"""
+    from store.models import StoreMember, StoreRole
+    store = getattr(request.user, 'store', None)
+    if not store:
+        django_messages.error(request, "Vous devez avoir une boutique.")
+        return redirect('dashboard:index')
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+        password_confirm = request.POST.get('password_confirm', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        role_id = request.POST.get('role') or None
+        warehouse_id = request.POST.get('warehouse') or None
+
+        if not username:
+            django_messages.error(request, "Le nom d'utilisateur est requis.")
+            return redirect('dashboard:employees_list')
+
+        user = User.objects.filter(username=username).first()
+        if user is None:
+            # Créer le compte employé avec mot de passe
+            if not password or len(password) < 6:
+                django_messages.error(request, "Mot de passe requis (min. 6 caractères) pour créer le compte.")
+                return redirect('dashboard:employees_list')
+            if password != password_confirm:
+                django_messages.error(request, "Les mots de passe ne correspondent pas.")
+                return redirect('dashboard:employees_list')
+            user = User.objects.create_user(
+                username=username, password=password,
+                first_name=first_name, last_name=last_name,
+                role='buyer',
+            )
+            django_messages.success(request, f'Compte créé pour {user.display_name}.')
+        elif user == request.user:
+            django_messages.error(request, "Vous êtes déjà le propriétaire.")
+            return redirect('dashboard:employees_list')
+
+        salary = int(request.POST.get('salary', 0) or 0)
+        member, created = StoreMember.objects.get_or_create(
+            store=store, user=user,
+            defaults={'role_id': role_id, 'warehouse_id': warehouse_id, 'salary': salary}
+        )
+        if not created:
+            member.role_id = role_id
+            member.warehouse_id = warehouse_id
+            member.salary = salary
+            member.is_active = True
+            member.save()
+        django_messages.success(request, f'{user.display_name} fait maintenant partie de votre équipe.')
+        return redirect('dashboard:employees_list')
+
+    members = store.members.select_related('user', 'role', 'warehouse')
+    warehouse_id = request.GET.get('warehouse', '')
+    if warehouse_id:
+        members = members.filter(warehouse_id=warehouse_id)
+    search_query = request.GET.get('q', '').strip()
+    if search_query:
+        from django.db.models import Q
+        members = members.filter(
+            Q(user__username__icontains=search_query) |
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query)
+        )
+
+    return render(request, 'dashboard/employees_list.html', {
+        'members': members,
+        'owner': store.owner,
+        'roles': store.roles.filter(is_active=True),
+        'warehouses': store.warehouses.filter(is_active=True),
+        'warehouse_filter': warehouse_id,
+        'search_query': search_query,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_employee_toggle(request, pk):
+    """Activer/désactiver un employé"""
+    from store.models import StoreMember
+    member = get_object_or_404(StoreMember, pk=pk, store=request.user.store)
+    if request.method == 'POST':
+        member.is_active = not member.is_active
+        member.save()
+        django_messages.success(request, f'{member.user.display_name} {"activé" if member.is_active else "désactivé"}.')
+    return redirect('dashboard:employees_list')
+
+
+@login_required
+@seller_or_admin_required
+def dash_roles(request):
+    """Gestion des rôles et permissions"""
+    from store.models import StoreRole
+    store = getattr(request.user, 'store', None)
+    if not store:
+        django_messages.error(request, "Vous devez avoir une boutique.")
+        return redirect('dashboard:index')
+
+    if request.method == 'POST':
+        role_id = request.POST.get('role_id')
+        permissions = request.POST.getlist('permissions')
+        if role_id:
+            role = get_object_or_404(StoreRole, pk=role_id, store=store)
+            role.name = request.POST.get('name', role.name)
+            role.permissions = permissions
+            role.save()
+            django_messages.success(request, f'Rôle "{role.name}" mis à jour.')
+        else:
+            StoreRole.objects.create(
+                store=store,
+                name=request.POST.get('name'),
+                permissions=permissions,
+            )
+            django_messages.success(request, 'Rôle créé !')
+        return redirect('dashboard:roles')
+
+    return render(request, 'dashboard/roles.html', {
+        'roles': store.roles.all(),
+        'permission_choices': StoreRole.PERMISSION_CHOICES,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_employee_detail(request, pk):
+    """Détail d'un employé : infos + bulletins de paie"""
+    from store.models import StoreMember
+    member = get_object_or_404(StoreMember, pk=pk, store=request.user.store)
+    return render(request, 'dashboard/employee_detail.html', {
+        'member': member,
+        'payslips': member.payslips.all(),
+    })
+
+
+# ======== PAIE DES EMPLOYÉS ========
+@login_required
+@seller_or_admin_required
+def dash_payroll(request):
+    """Liste des bulletins de paie"""
+    from store.models import Payslip
+    store = getattr(request.user, 'store', None)
+    if not store:
+        django_messages.error(request, "Vous devez avoir une boutique.")
+        return redirect('dashboard:index')
+
+    payslips = Payslip.objects.filter(member__store=store).select_related('member', 'member__user')
+
+    month = request.GET.get('month', '')
+    year = request.GET.get('year', '')
+    if month:
+        payslips = payslips.filter(month=month)
+    if year:
+        payslips = payslips.filter(year=year)
+
+    return render(request, 'dashboard/payroll.html', {
+        'payslips': payslips,
+        'month_filter': month,
+        'year_filter': year,
+        'months': [(i, timezone.datetime(2000, i, 1).strftime('%B')) for i in range(1, 13)],
+        'years': range(timezone.now().year - 2, timezone.now().year + 1),
+        'members': store.members.filter(is_active=True).select_related('user'),
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_payslip_create(request):
+    """Créer un bulletin de paie"""
+    from store.models import Payslip, StoreMember
+    store = getattr(request.user, 'store', None)
+    if not store:
+        return redirect('dashboard:index')
+
+    if request.method == 'POST':
+        from store.models import PayslipLine
+        member = get_object_or_404(StoreMember, pk=request.POST.get('member'), store=store)
+        month = int(request.POST.get('month'))
+        year = int(request.POST.get('year'))
+        # Vérifier si déjà existant
+        if Payslip.objects.filter(member=member, month=month, year=year).exists():
+            django_messages.error(request, 'Un bulletin existe déjà pour cet employé ce mois-ci.')
+            return redirect('dashboard:payroll')
+        payslip = Payslip.objects.create(
+            member=member,
+            month=month,
+            year=year,
+            base_salary=int(request.POST.get('base_salary', member.salary or 0)),
+            notes=request.POST.get('notes', ''),
+            created_by=request.user,
+        )
+        # Lignes de primes et retenues
+        line_types = request.POST.getlist('line_type[]')
+        line_labels = request.POST.getlist('line_label[]')
+        line_amounts = request.POST.getlist('line_amount[]')
+        for i, ltype in enumerate(line_types):
+            label = line_labels[i].strip() if i < len(line_labels) else ''
+            amount = int(line_amounts[i]) if i < len(line_amounts) and line_amounts[i] else 0
+            if label and amount > 0:
+                PayslipLine.objects.create(payslip=payslip, line_type=ltype, label=label, amount=amount)
+        django_messages.success(request, f'Bulletin {payslip.reference} créé !')
+    return redirect('dashboard:payroll')
+
+
+@login_required
+@seller_or_admin_required
+def dash_payslip_action(request, pk, action):
+    """Valider / marquer payé un bulletin"""
+    from store.models import Payslip
+    payslip = get_object_or_404(Payslip, pk=pk, member__store=request.user.store)
+    if request.method == 'POST':
+        if action == 'validate' and payslip.status == 'draft':
+            payslip.status = 'validated'
+            payslip.save()
+            django_messages.success(request, f'{payslip.reference} validé.')
+        elif action == 'pay' and payslip.status == 'validated':
+            payslip.mark_paid()
+            django_messages.success(request, f'{payslip.reference} marqué comme payé.')
+    return redirect('dashboard:payroll')
+
+
 # ======== GESTION DE STOCK ========
 @login_required
 @seller_or_admin_required
@@ -552,6 +1388,12 @@ def dash_inventory(request):
     q = request.GET.get('q', '').strip()
     if q:
         movements = movements.filter(product__name__icontains=q)
+    warehouse_id = request.GET.get('warehouse')
+    current_warehouse = None
+    if warehouse_id:
+        from inventory.models import Warehouse
+        movements = movements.filter(warehouse_id=warehouse_id)
+        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
     mtype = request.GET.get('type', '')
     if mtype:
         movements = movements.filter(movement_type=mtype)
@@ -568,14 +1410,38 @@ def dash_inventory(request):
         except ValueError:
             pass
 
+    # Résumé par produit : ventes, entrées, sorties, stock actuel
+    from catalog.models import Product
+    product_stats = []
+    if current_warehouse:
+        product_ids = movements.values_list('product_id', flat=True).distinct()
+        for pid in product_ids:
+            product = Product.objects.filter(pk=pid).first()
+            if not product:
+                continue
+            mvts = movements.filter(product_id=pid)
+            sales = mvts.filter(movement_type='sale').aggregate(t=Sum('quantity'))['t'] or 0
+            entries = mvts.filter(movement_type='in').aggregate(t=Sum('quantity'))['t'] or 0
+            exits = mvts.filter(movement_type='out').aggregate(t=Sum('quantity'))['t'] or 0
+            stock = product.warehouse_stocks.filter(warehouse=current_warehouse).first()
+            product_stats.append({
+                'product': product,
+                'sales': abs(sales),
+                'entries': entries,
+                'exits': abs(exits),
+                'current_stock': stock.quantity if stock else 0,
+            })
+
     return render(request, 'dashboard/inventory.html', {
         'movements': movements.select_related('product', 'created_by')[:100],
         'search_query': q,
+        'warehouse': current_warehouse,
         'type_filter': mtype,
         'date_from': date_from,
         'date_to': date_to,
         'type_choices': StockMovement.TYPE_CHOICES,
         'total_movements': movements.count(),
+        'product_stats': product_stats,
     })
 
 
@@ -930,6 +1796,26 @@ def dash_store(request):
     if not store:
         django_messages.error(request, 'Vous n\'avez pas de boutique.')
         return redirect('dashboard:index')
+
+    # Créer une nouvelle boutique
+    if request.method == 'POST' and request.POST.get('action') == 'create_store':
+        from inventory.models import Warehouse
+        new_store = Store.objects.create(
+            owner=request.user,
+            name=request.POST.get('name'),
+            city=request.POST.get('city', 'Douala'),
+            phone=request.POST.get('phone', ''),
+            is_active='is_active' in request.POST,
+        )
+        # Lier à l'entrepôt choisi
+        warehouse_id = request.POST.get('warehouse')
+        if warehouse_id:
+            wh = Warehouse.objects.filter(pk=warehouse_id, store__owner=request.user).first()
+            if wh:
+                wh.linked_stores.add(new_store)
+        django_messages.success(request, f'Boutique "{new_store.name}" créée !')
+        return redirect('dashboard:stores')
+
     if request.method == 'POST':
         store.name = request.POST.get('name', store.name)
         store.description = request.POST.get('description', '')
@@ -940,11 +1826,26 @@ def dash_store(request):
         store.city = request.POST.get('city', '')
         store.latitude = request.POST.get('latitude') or None
         store.longitude = request.POST.get('longitude') or None
+        store.opening_hours = request.POST.get('opening_hours', '')
+        store.facebook = request.POST.get('facebook', '')
+        store.instagram = request.POST.get('instagram', '')
         if request.FILES.get('logo'): store.logo = request.FILES['logo']
         if request.FILES.get('banner'): store.banner = request.FILES['banner']
         store.save()
         django_messages.success(request, 'Boutique mise à jour !')
-    return render(request, 'dashboard/store.html', {'store': store})
+
+    # Score de complétion du profil
+    fields = [store.name, store.description, store.phone, store.email, store.address,
+              store.city, store.logo, store.banner, store.whatsapp, store.opening_hours]
+    completion = int(sum(1 for f in fields if f) / len(fields) * 100)
+
+    return render(request, 'dashboard/store.html', {
+        'store': store,
+        'completion': completion,
+        'products_count': store.products.count(),
+        'total_sales': store.total_sales,
+        'rating': store.rating,
+    })
 
 
 # ======== ADMIN USER MANAGEMENT ========

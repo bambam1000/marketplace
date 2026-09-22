@@ -68,6 +68,14 @@ def invoices_list(request):
     store = request.user.store
     invoices = Invoice.objects.filter(store=store).select_related('customer', 'order')
 
+    # Filtre par entrepôt
+    warehouse_id = request.GET.get('warehouse')
+    current_warehouse = None
+    if warehouse_id:
+        from inventory.models import Warehouse
+        invoices = invoices.filter(warehouse_id=warehouse_id)
+        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
+
     # Filtres
     status = request.GET.get('status')
     if status:
@@ -107,6 +115,7 @@ def invoices_list(request):
         'recent_sales': recent_sales,
         'today': timezone.now().date().isoformat(),
         'my_products': store.products.filter(is_active=True),
+        'warehouse': current_warehouse,
     }
     return render(request, 'invoicing/invoices_list.html', context)
 
@@ -176,11 +185,12 @@ def invoice_from_order(request, order_number):
         messages.info(request, 'Une facture existe déjà pour cette commande.')
         return redirect('invoicing:invoice_detail', pk=existing.pk)
 
-    # Créer la facture
+    # Créer la facture (hérite l'entrepôt de la commande)
     invoice = Invoice.objects.create(
         store=store,
         invoice_number=settings_obj.get_next_invoice_number(),
         order=order,
+        warehouse=order.items.first().warehouse if order.items.exists() else None,
         customer=order.buyer,
         customer_name=order.buyer.get_full_name() or order.buyer.username,
         customer_email=order.buyer.email,

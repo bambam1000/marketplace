@@ -31,8 +31,21 @@ def store_list(request):
 
 
 def store_detail(request, slug):
+    from catalog.models import Category
     store = get_object_or_404(Store, slug=slug, is_active=True)
     products = store.products.filter(is_active=True)
+
+    # Recherche dans la boutique
+    q = request.GET.get('q', '').strip()
+    if q:
+        products = products.filter(name__icontains=q)
+
+    # Filtre par catégorie (catégories présentes dans la boutique)
+    categories = Category.objects.filter(products__store=store, products__is_active=True).distinct()
+    category_slug = request.GET.get('category', '')
+    if category_slug:
+        products = products.filter(category__slug=category_slug)
+
     sort = request.GET.get('sort', '-created_at')
     if sort == 'price':
         products = products.order_by('price')
@@ -40,4 +53,11 @@ def store_detail(request, slug):
         products = products.order_by('-price')
     elif sort == 'popular':
         products = products.order_by('-orders_count')
-    return render(request, 'store/detail.html', {'store': store, 'products': products})
+    return render(request, 'store/detail.html', {
+        'store': store,
+        'products': products,
+        'categories': categories,
+        'search_query': q,
+        'current_category': category_slug,
+        'current_sort': sort,
+    })

@@ -1,6 +1,9 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Inventaire — Mouvements de stock{% endblock %}
 {% block dash %}
+{% if warehouse %}
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+{% endif %}
 <style>
 .mv-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
 .mv-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -29,41 +32,67 @@
     </div>
 </div>
 
+{% if product_stats %}
+<!-- ═══ Résumé par produit ═══ -->
+<div class="dash-card" style="margin-bottom:20px;">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);">
+        <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-chart-bar" style="color:var(--dash-accent);"></i> Résumé par produit</h3>
+    </div>
+    <div class="dash-table-responsive">
+    <table class="dash-table">
+        <thead><tr><th>Produit</th><th>Ventes</th><th>Entrées</th><th>Sorties</th><th>Stock actuel</th></tr></thead>
+        <tbody>
+            {% for ps in product_stats %}
+            <tr>
+                <td style="font-weight:600;">{{ ps.product.name|truncatechars:35 }}</td>
+                <td style="color:var(--dash-green);font-weight:700;">{{ ps.sales }}</td>
+                <td style="color:var(--dash-blue);font-weight:600;">+{{ ps.entries }}</td>
+                <td style="color:var(--dash-red);font-weight:600;">-{{ ps.exits }}</td>
+                <td style="font-weight:800;">{{ ps.current_stock }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endif %}
+
 <div class="dash-card">
-    <!-- Filtres -->
-    <form method="get" class="mv-toolbar">
-        <div class="mv-filters">
-            <div>
-                <label>Du</label><br>
-                <input type="date" name="from" value="{{ date_from }}">
-            </div>
-            <div>
-                <label>Au</label><br>
-                <input type="date" name="to" value="{{ date_to }}">
-            </div>
-            <div>
-                <label>Type</label><br>
-                <select name="type">
-                    <option value="">Tous</option>
+    <!-- Filtres style transferts -->
+    <div class="mv-toolbar">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <div style="position:relative;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleInvFilterMenu(event)">
+                    <i class="fa-solid fa-filter"></i> Filtres {% if type_filter or date_from or date_to %}<span style="background:var(--dash-accent);color:#fff;border-radius:50%;width:8px;height:8px;display:inline-block;margin-left:4px;"></span>{% endif %}
+                </button>
+                <div id="invFilterMenu" style="display:none;position:fixed;background:#fff;border:1px solid var(--dash-border);border-radius:8px;box-shadow:var(--dash-shadow-lg);min-width:220px;z-index:1500;padding:10px;">
+                    <div style="font-size:10px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;padding:6px 10px;">Type de mouvement</div>
+                    <a href="?{% if warehouse %}warehouse={{ warehouse.pk }}{% endif %}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if not type_filter %}background:var(--dash-bg);font-weight:600;{% endif %}">Tous</a>
                     {% for code, label in type_choices %}
-                    <option value="{{ code }}" {% if type_filter == code %}selected{% endif %}>{{ label }}</option>
+                    <a href="?type={{ code }}{% if warehouse %}&warehouse={{ warehouse.pk }}{% endif %}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if type_filter == code %}background:var(--dash-bg);font-weight:600;{% endif %}">{{ label }}</a>
                     {% endfor %}
-                </select>
+                    <div style="border-top:1px solid var(--dash-border);margin-top:6px;padding-top:8px;">
+                        <button type="button" onclick="document.getElementById('invFilterMenu').style.display='none';document.getElementById('invDateModal').classList.add('open');" style="width:100%;padding:8px 10px;font-size:13px;border:none;background:none;text-align:left;cursor:pointer;color:var(--dash-accent);font-weight:600;border-radius:6px;"><i class="fa-solid fa-calendar"></i> Filtrer par date...</button>
+                    </div>
+                </div>
             </div>
-            <div>
-                <label>Produit</label><br>
-                <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher...">
-            </div>
-            <div style="align-self:end;">
-                <button type="submit" class="btn btn-orange btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrer</button>
-                <a href="{% url 'dashboard:inventory' %}" class="btn btn-outline btn-sm">Réinitialiser</a>
-            </div>
+            {% if type_filter or date_from or date_to %}
+            <a href="?{% if warehouse %}warehouse={{ warehouse.pk }}{% endif %}" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser</a>
+            {% endif %}
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <form method="get" style="position:relative;">
+                {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
+                {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
+                {% if date_from %}<input type="hidden" name="from" value="{{ date_from }}">{% endif %}
+                {% if date_to %}<input type="hidden" name="to" value="{{ date_to }}">{% endif %}
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un produit..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:220px;">
+            </form>
             <a href="{% url 'dashboard:movements_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-file-pdf"></i> PDF</a>
             <a href="{% url 'dashboard:movements_excel' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
         </div>
-    </form>
+    </div>
 
     <!-- Tableau des mouvements -->
     <div class="dash-table-responsive">
@@ -99,6 +128,29 @@
     </div>
 </div>
 
+<!-- ═══ Modale filtre par date ═══ -->
+<div class="dmodal" id="invDateModal">
+    <div class="dmodal-box" style="max-width:400px;">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-calendar" style="color:var(--dash-accent);"></i> Filtrer par date</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('invDateModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="get">
+            {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
+            {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
+            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+            <div class="dmodal-body">
+                <div class="form-group"><label>Du</label><input type="date" name="from" class="form-control" value="{{ date_from }}"></div>
+                <div class="form-group"><label>Au</label><input type="date" name="to" class="form-control" value="{{ date_to }}"></div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('invDateModal').classList.remove('open')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Appliquer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- ═══ Modale Détail ═══ -->
 <div class="dmodal" id="detailModal">
     <div class="dmodal-box">
@@ -115,6 +167,27 @@
 </div>
 
 <script>
+// Toggle du menu filtres
+function toggleInvFilterMenu(e) {
+    e.stopPropagation();
+    var menu = document.getElementById('invFilterMenu');
+    if (menu.style.display === 'block') { menu.style.display = 'none'; return; }
+    var rect = e.currentTarget.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.style.left = rect.left + 'px';
+    menu.style.display = 'block';
+}
+document.addEventListener('click', function(e) {
+    var menu = document.getElementById('invFilterMenu');
+    if (menu && menu.style.display === 'block' && !menu.contains(e.target)) menu.style.display = 'none';
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        document.getElementById('invFilterMenu').style.display = 'none';
+        document.getElementById('invDateModal').classList.remove('open');
+    }
+});
+
 var MOVEMENTS = {
 {% for m in movements %}
 {{ m.id }}: {
