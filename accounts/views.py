@@ -53,6 +53,20 @@ def register_view(request):
                     is_default=True,
                 )
             login(request, user)
+            # Email de bienvenue + notification interne
+            from messaging.utils import notify
+            if role == 'seller':
+                msg = 'Votre boutique a été créée avec un entrepôt principal. Complétez votre profil et ajoutez vos premiers produits pour commencer à vendre.'
+            else:
+                msg = 'Parcourez des milliers de produits, commandez en toute sécurité et suivez vos commandes en temps réel.'
+            notify(
+                user, 'account',
+                'Bienvenue sur AfriMarket !',
+                msg,
+                url='/',
+                send_email=True,
+                email_subject='Bienvenue sur AfriMarket !',
+            )
             messages.success(request, 'Bienvenue ! Votre compte a été créé.')
             return redirect('home')
     return render(request, 'accounts/register.html')
@@ -130,19 +144,35 @@ def password_reset_view(request):
             # Send email (if email is configured)
             if user.email:
                 try:
-                    send_mail(
+                    from django.core.mail import EmailMessage
+                    html = f'''<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:#ff6a00;padding:24px;text-align:center;">
+        <div style="color:#fff;font-size:22px;font-weight:800;">AfriMarket</div>
+    </div>
+    <div style="padding:32px 28px;color:#333;font-size:14px;line-height:1.7;">
+        <p>Bonjour {user.first_name or user.username},</p>
+        <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
+        <div style="text-align:center;margin:24px 0;">
+            <a href="{reset_url}" style="display:inline-block;background:#ff6a00;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">Créer un nouveau mot de passe</a>
+        </div>
+        <p style="font-size:12px;color:#98a2b3;">Ce lien est valide pendant 24 heures. Si vous n'avez pas fait cette demande, ignorez ce message.</p>
+    </div>
+    <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
+        AfriMarket · Douala, Cameroun
+    </div>
+</div>
+</body></html>'''
+                    email = EmailMessage(
                         'Réinitialisation de votre mot de passe — AfriMarket',
-                        f'Bonjour {user.username},\n\n'
-                        f'Vous avez demandé la réinitialisation de votre mot de passe.\n\n'
-                        f'Cliquez sur ce lien pour créer un nouveau mot de passe :\n{reset_url}\n\n'
-                        f'Ce lien est valide pendant 24 heures.\n\n'
-                        f'Si vous n\'avez pas fait cette demande, ignorez ce message.\n\n'
-                        f'Cordialement,\nL\'équipe AfriMarket',
+                        html,
                         settings.DEFAULT_FROM_EMAIL,
                         [user.email],
-                        fail_silently=True,
                     )
-                except:
+                    email.content_subtype = 'html'
+                    email.send(fail_silently=True)
+                except Exception:
                     pass
 
             messages.success(request,

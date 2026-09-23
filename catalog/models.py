@@ -124,6 +124,19 @@ class Product(models.Model):
                 ps.save(update_fields=['quantity'])
         except Exception:
             pass
+        # Alerte stock faible : notifier le vendeur quand on passe sous le seuil
+        if update_global and quantity < 0 and self.low_stock_threshold:
+            if before > self.low_stock_threshold and self.stock <= self.low_stock_threshold:
+                try:
+                    from messaging.utils import notify
+                    notify(
+                        self.store.owner, 'stock',
+                        f'Stock faible : {self.name}',
+                        f'Il ne reste que {self.stock} unité(s) de « {self.name} » (seuil : {self.low_stock_threshold}). Pensez à réapprovisionner.',
+                        url='/dashboard/produits/',
+                    )
+                except Exception:
+                    pass
         return StockMovement.objects.create(
             product=self, store=self.store, movement_type=movement_type,
             quantity=quantity, stock_before=before, stock_after=self.stock,

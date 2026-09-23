@@ -45,6 +45,8 @@ urlpatterns = [
     path('clients/export/', views.dash_customers_export, name='customers_export'),
     path('boutique/', views.dash_stores, name='stores'),
     path('boutique/parametres/', views.dash_store, name='store'),
+    path('parametres/', views.dash_settings, name='settings'),
+    path('notifications/', views.dash_notifications, name='notifications'),
     # Admin only
     path('utilisateurs/', views.admin_users, name='users'),
     path('utilisateurs/<int:pk>/', views.admin_user_detail, name='user_detail'),

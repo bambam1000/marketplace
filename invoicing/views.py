@@ -322,14 +322,56 @@ def invoice_send(request, pk):
         pdf_filename = f"facture_{invoice.invoice_number}.pdf"
         invoice.pdf_file.save(pdf_filename, ContentFile(pdf_buffer.read()), save=True)
 
-    # TODO: Implémenter l'envoi par email
-    # send_invoice_email(invoice)
+    # Envoyer la facture par email au client (PDF en pièce jointe)
+    if invoice.customer_email:
+        try:
+            from django.core.mail import EmailMessage
+            html = f'''<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:#ff6a00;padding:24px;text-align:center;">
+        <div style="color:#fff;font-size:22px;font-weight:800;">{invoice.store.name}</div>
+    </div>
+    <div style="padding:32px 28px;color:#333;font-size:14px;line-height:1.7;">
+        <p>Bonjour {invoice.customer_name},</p>
+        <p>Veuillez trouver ci-joint votre facture <strong>{invoice.invoice_number}</strong> d'un montant de <strong>{invoice.total_amount:.0f} FCFA</strong>.</p>
+        <p>Merci de votre confiance.</p>
+    </div>
+    <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
+        {invoice.store.name} · AfriMarket
+    </div>
+</div>
+</body></html>'''
+            email = EmailMessage(
+                f'Facture {invoice.invoice_number} — {invoice.store.name}',
+                html,
+                settings.DEFAULT_FROM_EMAIL,
+                [invoice.customer_email],
+            )
+            email.content_subtype = 'html'
+            if invoice.pdf_file:
+                invoice.pdf_file.open('rb')
+                email.attach(f'facture_{invoice.invoice_number}.pdf', invoice.pdf_file.read(), 'application/pdf')
+                invoice.pdf_file.close()
+            email.send(fail_silently=True)
+        except Exception:
+            pass
+
+    # Notification interne si le client a un compte
+    if invoice.customer:
+        from messaging.utils import notify
+        notify(
+            invoice.customer, 'invoice',
+            f'Facture {invoice.invoice_number} reçue',
+            f'{invoice.store.name} vous a envoyé une facture de {invoice.total_amount:.0f} FCFA.',
+            url=f'/commandes/',
+        )
 
     invoice.status = 'sent'
     invoice.sent_at = timezone.now()
     invoice.save()
 
-    messages.success(request, f'Facture {invoice.invoice_number} marquée comme envoyée !')
+    messages.success(request, f'Facture {invoice.invoice_number} envoyée au client !')
     return redirect('invoicing:invoice_detail', pk=pk)
 
 
@@ -341,6 +383,16 @@ def invoice_mark_paid(request, pk):
 
     invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
     invoice.mark_as_paid()
+    # Notifier le client du paiement confirmé
+    if invoice.customer:
+        from messaging.utils import notify
+        notify(
+            invoice.customer, 'payment',
+            f'Paiement confirmé — {invoice.invoice_number}',
+            f'Votre paiement de {invoice.total_amount:.0f} FCFA a bien été reçu par {invoice.store.name}. Merci !',
+            url='/commandes/',
+            send_email=True,
+        )
     messages.success(request, f'Facture {invoice.invoice_number} marquée comme payée !')
     return redirect('invoicing:invoice_detail', pk=pk)
 

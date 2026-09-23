@@ -258,6 +258,26 @@ def checkout(request):
             lp.add_points(amount)
 
         save_cart(request, {})
+
+        # Notifications : client (email) + vendeurs concernés
+        from messaging.utils import notify
+        notify(
+            request.user, 'order',
+            f'Commande {order.order_number} confirmée',
+            f'Votre commande de {order.total_amount:.0f} FCFA a été enregistrée. Nous vous tiendrons informé de son avancement.',
+            url=f'/commandes/{order.order_number}/',
+            send_email=True,
+            email_subject=f'Confirmation de commande {order.order_number} — AfriMarket',
+        )
+        for st in store_totals.keys():
+            notify(
+                st.owner, 'order',
+                f'Nouvelle commande {order.order_number}',
+                f'{request.user.display_name} a commandé pour {order.total_amount:.0f} FCFA.',
+                url=f'/dashboard/commandes/{order.order_number}/',
+                send_email=True,
+            )
+
         messages.success(request, f'Commande {order.order_number} créée !')
         return redirect('orders:success', order_number=order.order_number)
 

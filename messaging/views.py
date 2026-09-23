@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.db.models import Q
-from .models import Conversation, Message
+from .models import Conversation, Message, Notification
 from accounts.models import User
 
 @login_required
@@ -100,3 +100,32 @@ def get_new_messages(request, conversation_id):
         'messages': messages_data,
         'count': len(messages_data)
     })
+
+
+# ========== NOTIFICATIONS ==========
+@login_required
+def notifications_list(request):
+    """Centre de notifications"""
+    notifs = Notification.objects.filter(user=request.user)
+    # Marquer comme lues à l'affichage de la page
+    notifs.filter(is_read=False).update(is_read=True)
+    return render(request, 'messaging/notifications.html', {'notifications': notifs[:100]})
+
+
+@login_required
+def notification_mark_read(request, pk):
+    """Marque une notification comme lue et redirige vers sa cible"""
+    notif = get_object_or_404(Notification, pk=pk, user=request.user)
+    notif.is_read = True
+    notif.save(update_fields=['is_read'])
+    if notif.url:
+        return redirect(notif.url)
+    return redirect('messaging:notifications')
+
+
+@login_required
+def notifications_mark_all_read(request):
+    """Marque toutes les notifications comme lues"""
+    if request.method == 'POST':
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return redirect(request.META.get('HTTP_REFERER', 'messaging:notifications'))

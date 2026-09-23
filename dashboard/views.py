@@ -250,6 +250,21 @@ def dash_order_detail(request, order_number):
                     wallet.total_commission_paid += commission
                     wallet.save()
             order.save()
+            # Notifier le client du changement de statut
+            from messaging.utils import notify
+            status_labels = {
+                'confirmed': 'confirmée', 'processing': 'en préparation',
+                'shipped': 'expédiée', 'delivered': 'livrée', 'cancelled': 'annulée',
+            }
+            label = status_labels.get(new_status)
+            if label:
+                notify(
+                    order.buyer, 'order',
+                    f'Commande {order.order_number} {label}',
+                    f'Votre commande de {order.total_amount:.0f} FCFA est maintenant {label}.',
+                    url=f'/commandes/{order.order_number}/',
+                    send_email=True,
+                )
             django_messages.success(request, f'Statut mis à jour.')
         tracking = request.POST.get('tracking_number')
         if tracking:
@@ -1186,6 +1201,17 @@ def dash_employees_list(request):
                 first_name=first_name, last_name=last_name,
                 role='buyer',
             )
+            # Envoyer les identifiants par email si l'employé a un email
+            if user.email:
+                from messaging.utils import notify
+                notify(
+                    user, 'account',
+                    f'Vous avez rejoint {store.name}',
+                    f'{request.user.display_name} vous a ajouté à son équipe.\n\nVos identifiants de connexion :\nNom d\'utilisateur : {username}\nMot de passe : {password}\n\nConnectez-vous pour accéder au tableau de bord.',
+                    url='/compte/connexion/',
+                    send_email=True,
+                    email_subject=f'Vos identifiants {store.name} — AfriMarket',
+                )
             django_messages.success(request, f'Compte créé pour {user.display_name}.')
         elif user == request.user:
             django_messages.error(request, "Vous êtes déjà le propriétaire.")
@@ -1845,6 +1871,101 @@ def dash_store(request):
         'products_count': store.products.count(),
         'total_sales': store.total_sales,
         'rating': store.rating,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_notifications(request):
+    """Centre de notifications du dashboard"""
+    from messaging.models import Notification
+    notifs = Notification.objects.filter(user=request.user)
+    notifs.filter(is_read=False).update(is_read=True)
+    return render(request, 'dashboard/notifications.html', {'notifications': notifs[:100]})
+
+
+@login_required
+@seller_or_admin_required
+def dash_settings(request):
+    """Page de paramétrage : boutique, facturation, compte"""
+    from invoicing.models import InvoiceSettings
+    store = getattr(request.user, 'store', None)
+    if not store:
+        django_messages.error(request, "Vous devez avoir une boutique.")
+        return redirect('dashboard:index')
+
+    invoice_settings, _ = InvoiceSettings.objects.get_or_create(
+        store=store,
+        defaults={
+            'company_name': store.name,
+            'address': store.address,
+            'city': store.city,
+            'phone': store.phone,
+            'email': store.email,
+        }
+    )
+
+    if request.method == 'POST':
+        section = request.POST.get('section')
+
+        if section == 'invoicing':
+            s = invoice_settings
+            s.company_name = request.POST.get('company_name', '')
+            s.tax_id = request.POST.get('tax_id', '')
+            s.registration_number = request.POST.get('registration_number', '')
+            s.address = request.POST.get('address', '')
+            s.city = request.POST.get('city', '')
+            s.country = request.POST.get('country', 'Cameroun')
+            s.phone = request.POST.get('phone', '')
+            s.email = request.POST.get('email', '')
+            s.website = request.POST.get('website', '')
+            s.apply_tva = 'apply_tva' in request.POST
+            s.tva_rate = request.POST.get('tva_rate', 19.25)
+            s.invoice_prefix = request.POST.get('invoice_prefix', 'FAC')
+            s.header_text = request.POST.get('header_text', '')
+            s.footer_text = request.POST.get('footer_text', '')
+            s.payment_terms = request.POST.get('payment_terms', '')
+            s.bank_details = request.POST.get('bank_details', '')
+            s.signature_name = request.POST.get('signature_name', '')
+            s.signature_title = request.POST.get('signature_title', '')
+            if request.FILES.get('logo'):
+                s.logo = request.FILES['logo']
+            if request.FILES.get('signature'):
+                s.signature = request.FILES['signature']
+            s.save()
+            django_messages.success(request, 'Paramètres de facturation enregistrés.')
+
+        elif section == 'account':
+            user = request.user
+            user.first_name = request.POST.get('first_name', '')
+            user.last_name = request.POST.get('last_name', '')
+            user.email = request.POST.get('email', '')
+            user.phone = request.POST.get('phone', '')
+            user.save()
+            new_password = request.POST.get('new_password', '').strip()
+            if new_password:
+                if not user.check_password(request.POST.get('current_password', '')):
+                    django_messages.error(request, 'Mot de passe actuel incorrect.')
+                    return redirect('dashboard:settings')
+                if len(new_password) < 6:
+                    django_messages.error(request, 'Le nouveau mot de passe doit faire au moins 6 caractères.')
+                    return redirect('dashboard:settings')
+                if new_password != request.POST.get('confirm_password', ''):
+                    django_messages.error(request, 'Les mots de passe ne correspondent pas.')
+                    return redirect('dashboard:settings')
+                user.set_password(new_password)
+                user.save()
+                from django.contrib.auth import update_session_auth_hash
+                update_session_auth_hash(request, user)
+                django_messages.success(request, 'Compte et mot de passe mis à jour.')
+            else:
+                django_messages.success(request, 'Informations du compte enregistrées.')
+
+        return redirect('dashboard:settings')
+
+    return render(request, 'dashboard/settings.html', {
+        'store': store,
+        'invoice_settings': invoice_settings,
     })
 
 

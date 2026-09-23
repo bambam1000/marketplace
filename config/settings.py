@@ -60,6 +60,7 @@ TEMPLATES = [
                 'cart.context_processors.cart_context',
                 'catalog.context_processors.categories_context',
                 'messaging.context_processors.unread_messages_count',
+                'messaging.context_processors.notifications_context',
             ],
         },
     },

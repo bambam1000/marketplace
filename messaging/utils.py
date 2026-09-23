@@ -1,7 +1,42 @@
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings
 from django.urls import reverse
+
+
+def notify(user, notif_type, title, message, url='', send_email=False, email_subject=None):
+    """Crée une notification interne et envoie optionnellement un email brandé.
+
+    Args:
+        user: destinataire (User)
+        notif_type: 'order', 'rfq', 'stock', 'payment', 'employee', 'system'...
+        title: titre court
+        message: texte de la notification
+        url: lien interne (ex: reverse(...))
+        send_email: envoyer aussi par email
+        email_subject: sujet de l'email (défaut: title)
+    """
+    from .models import Notification
+    notif = Notification.objects.create(
+        user=user, notif_type=notif_type, title=title, message=message, url=url
+    )
+    if send_email and user.email:
+        try:
+            html = render_to_string('emails/notification.html', {
+                'user': user, 'title': title, 'message': message,
+                'url': f"{settings.SITE_URL}{url}" if url else settings.SITE_URL,
+            })
+            email = EmailMessage(
+                subject=email_subject or f'{title} — AfriMarket',
+                body=html,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[user.email],
+            )
+            email.content_subtype = 'html'
+            email.send(fail_silently=True)
+        except Exception:
+            pass
+    return notif
 
 
 def send_new_message_notification(message):

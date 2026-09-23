@@ -1,0 +1,29 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Notifications{% endblock %}
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-regular fa-bell" style="color:var(--dash-accent);"></i> Notifications</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ notifications|length }} notification{{ notifications|length|pluralize:"s" }}</p>
+    </div>
+</div>
+
+<div class="dash-card" style="padding:0;overflow:hidden;">
+    {% for n in notifications %}
+    <a href="{% if n.url %}{{ n.url }}{% else %}#{% endif %}" style="display:flex;gap:12px;padding:14px 18px;border-bottom:1px solid var(--dash-border);text-decoration:none;color:inherit;{% if not n.is_read %}background:rgba(255,106,0,.04);{% endif %}">
+        <span style="width:40px;height:40px;border-radius:10px;background:rgba(255,106,0,.1);color:var(--dash-accent);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="fa-solid {{ n.icon }}"></i></span>
+        <span style="flex:1;min-width:0;">
+            <span style="display:block;font-size:14px;font-weight:{% if not n.is_read %}700{% else %}600{% endif %};">{{ n.title }}</span>
+            <span style="display:block;font-size:13px;color:var(--dash-text3);margin-top:2px;">{{ n.message }}</span>
+            <span style="display:block;font-size:11px;color:var(--dash-text3);margin-top:4px;">{{ n.created_at|date:"d/m/Y à H:i" }}</span>
+        </span>
+        {% if not n.is_read %}<span style="width:10px;height:10px;border-radius:50%;background:var(--dash-accent);flex-shrink:0;margin-top:8px;"></span>{% endif %}
+    </a>
+    {% empty %}
+    <div style="text-align:center;padding:4rem;color:var(--dash-text3);">
+        <i class="fa-regular fa-bell" style="font-size:40px;opacity:.25;display:block;margin-bottom:12px;"></i>
+        Aucune notification pour le moment
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

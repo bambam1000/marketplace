@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:#ff6a00;padding:24px;text-align:center;">
+        <div style="color:#fff;font-size:22px;font-weight:800;">AfriMarket</div>
+    </div>
+    <div style="padding:32px 28px;color:#333;font-size:14px;line-height:1.7;">
+        <p>Bonjour {{ user.first_name|default:user.username }},</p>
+        <h2 style="font-size:18px;color:#101828;margin:0 0 10px;">{{ title }}</h2>
+        <p style="white-space:pre-line;">{{ message }}</p>
+        {% if url %}
+        <div style="text-align:center;margin:24px 0;">
+            <a href="{{ url }}" style="display:inline-block;background:#ff6a00;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;">Voir les détails</a>
+        </div>
+        {% endif %}
+    </div>
+    <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
+        AfriMarket · Douala, Cameroun
+    </div>
+</div>
+</body></html>

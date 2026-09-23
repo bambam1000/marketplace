@@ -32,7 +32,7 @@ def create_rfq(request):
             messages.error(request, 'Vous devez être connecté pour soumettre une demande de devis.')
             return redirect('accounts:login')
 
-        RFQ.objects.create(
+        rfq = RFQ.objects.create(
             buyer=request.user,
             product_name=request.POST.get('product_name'),
             category_id=request.POST.get('category') or None,
@@ -41,6 +41,16 @@ def create_rfq(request):
             target_price=request.POST.get('target_price') or None,
             unit=request.POST.get('unit', 'pièce'),
         )
+        # Notifier tous les vendeurs de la nouvelle demande
+        from messaging.utils import notify
+        from accounts.models import User as U
+        for seller in U.objects.filter(role='seller', is_active=True):
+            notify(
+                seller, 'rfq',
+                'Nouvelle demande de devis',
+                f'{request.user.display_name} recherche : {rfq.product_name} ({rfq.quantity} {rfq.unit}).',
+                url=f'/commandes/devis/{rfq.pk}/',
+            )
         messages.success(request, 'Votre demande de devis a été envoyée !')
         return redirect('orders:my_rfqs')
     return render(request, 'orders/rfq_form.html', {'categories': categories})
@@ -135,6 +145,15 @@ def submit_quote(request, rfq_id):
             rfq.status = 'quoted'
             rfq.save()
 
+        # Notifier l'acheteur de l'offre reçue
+        from messaging.utils import notify
+        notify(
+            rfq.buyer, 'rfq',
+            f'Offre reçue pour « {rfq.product_name} »',
+            f'{request.user.store.name} vous propose {total_price} FCFA ({price_per_unit} FCFA/{rfq.unit}).',
+            url=f'/commandes/mes-devis/',
+            send_email=True,
+        )
         messages.success(request, 'Votre devis a été soumis avec succès !')
         return redirect('orders:rfq_detail', rfq_id=rfq_id)
 
@@ -162,6 +181,15 @@ def accept_quote(request, quote_id):
     # Rejeter les autres devis
     Quote.objects.filter(rfq=quote.rfq).exclude(pk=quote_id).update(status='rejected')
 
+    # Notifier le vendeur
+    from messaging.utils import notify
+    notify(
+        quote.seller, 'rfq',
+        'Votre devis a été accepté !',
+        f'{quote.rfq.buyer.display_name} a accepté votre offre de {quote.total_price} FCFA pour « {quote.rfq.product_name} ».',
+        url=f'/dashboard/devis/',
+        send_email=True,
+    )
     messages.success(request, f'Vous avez accepté le devis de {quote.store.name}. Le vendeur va vous contacter.')
     return redirect('orders:my_rfqs')
 

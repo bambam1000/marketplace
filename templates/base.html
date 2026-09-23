@@ -84,6 +84,13 @@
 <span class="header-icon-label">Messages</span>
 {% if unread_messages_count > 0 %}<span class="badge" id="messagesBadgeMain">{{ unread_messages_count }}</span>{% endif %}
 </a>
+{% if user.is_authenticated %}
+<a href="{% url 'messaging:notifications' %}" class="header-icon">
+<i class="fa-regular fa-bell"></i>
+<span class="header-icon-label">Notifs</span>
+{% if unread_notifications_count > 0 %}<span class="badge">{{ unread_notifications_count }}</span>{% endif %}
+</a>
+{% endif %}
 <a href="{% url 'catalog:wishlist' %}" class="header-icon">
 <i class="fa-regular fa-heart"></i>
 <span class="header-icon-label">Favoris</span>
