@@ -1935,6 +1935,19 @@ def dash_settings(request):
             s.save()
             django_messages.success(request, 'Paramètres de facturation enregistrés.')
 
+        elif section == 'notifications':
+            from messaging.models import NotificationPreference
+            prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+            prefs.internal_enabled = 'internal_enabled' in request.POST
+            prefs.email_order = 'email_order' in request.POST
+            prefs.email_rfq = 'email_rfq' in request.POST
+            prefs.email_invoice = 'email_invoice' in request.POST
+            prefs.email_payment = 'email_payment' in request.POST
+            prefs.email_stock = 'email_stock' in request.POST
+            prefs.email_account = 'email_account' in request.POST
+            prefs.save()
+            django_messages.success(request, 'Préférences de notification enregistrées.')
+
         elif section == 'account':
             user = request.user
             user.first_name = request.POST.get('first_name', '')
@@ -1963,9 +1976,13 @@ def dash_settings(request):
 
         return redirect('dashboard:settings')
 
+    from messaging.models import NotificationPreference
+    notif_prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+
     return render(request, 'dashboard/settings.html', {
         'store': store,
         'invoice_settings': invoice_settings,
+        'notif_prefs': notif_prefs,
     })
 
 

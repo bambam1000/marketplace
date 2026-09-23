@@ -1,58 +1,6 @@
 {% extends 'base.html' %}{% load humanize %}{% load catalog_extras %}
 {% block title %}AfriMarket — La Marketplace Africaine{% endblock %}
 {% block content %}
-<div class="hero-section">
-<div class="hero-grid">
-<div class="hero-sidebar">
-{% for cat in categories %}<a href="{% url 'catalog:category' slug=cat.slug %}"><span class="cat-icon"><i class="{{ cat.icon|to_fa }}"></i></span>{{ cat.name }}</a>{% endfor %}
-</div>
-<div class="hero-banner hero-slider" id="heroSlider">
-<div class="slider-track">
-{% if banners %}
-{% for banner in banners %}
-<div class="slider-slide{% if forloop.first %} active{% endif %}" style="background-image:url('{{ banner.image.url }}');">
-<div class="slider-overlay"></div>
-<div class="slider-content">
-<h1>{{ banner.title|linebreaksbr }}</h1>
-{% if banner.subtitle %}<p>{{ banner.subtitle }}</p>{% endif %}
-<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-{% if banner.button_text %}<a href="{{ banner.button_url }}" class="btn btn-lg" style="background:#fff;color:var(--orange);font-weight:700;">{{ banner.button_text }}</a>{% endif %}
-{% if banner.button2_text %}<a href="{{ banner.button2_url }}" class="btn btn-lg btn-outline" style="border-color:rgba(255,255,255,.5);color:#fff;">{{ banner.button2_text }}</a>{% endif %}
-</div>
-</div>
-</div>
-{% endfor %}
-{% else %}
-<div class="slider-slide active" style="background:linear-gradient(135deg,#ff6a00,#ff8533,#ffad66);">
-<div class="slider-content">
-<h1>La Marketplace<br>N°1 d'Afrique Centrale</h1>
-<p>Des milliers de produits. Vendeurs vérifiés. Paiement Mobile Money.</p>
-<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-<a href="{% url 'catalog:product_list' %}" class="btn btn-lg" style="background:#fff;color:var(--orange);font-weight:700;">Explorer les produits</a>
-<a href="{% url 'orders:create_rfq' %}" class="btn btn-lg btn-outline" style="border-color:rgba(255,255,255,.5);color:#fff;">Demander un devis</a>
-</div>
-</div>
-</div>
-{% endif %}
-</div>
-{% if banners|length > 1 %}
-<button class="slider-btn slider-prev" onclick="slideHero(-1)">&#10094;</button>
-<button class="slider-btn slider-next" onclick="slideHero(1)">&#10095;</button>
-<div class="slider-dots">
-{% for banner in banners %}<span class="slider-dot{% if forloop.first %} active{% endif %}" onclick="goToSlide({{ forloop.counter0 }})"></span>{% endfor %}
-</div>
-{% endif %}
-</div>
-<div class="hero-right">
-{% if user.is_authenticated and user.is_seller and user.store %}
-<a href="{% url 'store:detail' slug=user.store.slug %}" class="hero-card"><div class="ic" style="color:var(--orange);"><i class="fa-solid fa-store"></i></div><h4>Accéder à votre boutique</h4><p>Gérer mes produits</p></a>
-{% else %}
-<a href="{% url 'accounts:register' %}" class="hero-card"><div class="ic" style="color:var(--orange);"><i class="fa-solid fa-store"></i></div><h4>Vendre sur AfriMarket</h4><p>Boutique gratuite</p></a>
-{% endif %}
-<a href="{% url 'orders:my_rfqs' %}" class="hero-card"><div class="ic" style="color:var(--orange);"><i class="fa-solid fa-file-invoice"></i></div><h4>Mes demandes de devis</h4><p>Recevez des offres</p></a>
-<a href="{% url 'catalog:flash_deals' %}" class="hero-card"><div class="ic" style="color:var(--orange);"><i class="fa-solid fa-bolt"></i></div><h4>Flash Deals</h4><p>Offres limitées</p></a>
-</div></div></div>
-<div class="section" style="padding-top:0;padding-bottom:.5rem;"><div class="advantages-bar"><div class="adv-item"><div class="adv-icon" style="color:var(--orange);"><i class="fa-solid fa-shield-halved"></i></div><div class="adv-title">Trade Assurance</div><div class="adv-desc">Protection acheteur</div></div><div class="adv-item"><div class="adv-icon" style="color:var(--orange);"><i class="fa-solid fa-credit-card"></i></div><div class="adv-title">Paiement Sécurisé</div><div class="adv-desc">Plusieurs options</div></div><div class="adv-item"><div class="adv-icon" style="color:var(--orange);"><i class="fa-regular fa-comments"></i></div><div class="adv-title">Support 24/7</div><div class="adv-desc">Assistance rapide</div></div><div class="adv-item"><div class="adv-icon" style="color:var(--orange);"><i class="fa-solid fa-circle-check"></i></div><div class="adv-title">Vendeurs Vérifiés</div><div class="adv-desc">Boutiques certifiées</div></div></div></div>
 {% if active_campaigns %}
 <div class="section" style="padding-top:.5rem;">
 <div class="section-head"><h2><i class="fa-solid fa-bullhorn" style="color:var(--orange);"></i> Campagnes en cours</h2></div>
@@ -80,23 +28,5 @@
 {% block extra_js %}
 <script>
 (function(){let t=31452;function u(){t=Math.max(0,t-1);const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;['fh','fm','fs'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=String([h,m,s][i]).padStart(2,'0');});};u();setInterval(u,1000);})();
-
-(function(){
-  const slides=document.querySelectorAll('.slider-slide');
-  const dots=document.querySelectorAll('.slider-dot');
-  if(slides.length<=1)return;
-  let cur=0,timer;
-  function show(n){
-    slides[cur].classList.remove('active');
-    if(dots[cur])dots[cur].classList.remove('active');
-    cur=(n+slides.length)%slides.length;
-    slides[cur].classList.add('active');
-    if(dots[cur])dots[cur].classList.add('active');
-  }
-  window.slideHero=function(d){show(cur+d);resetTimer();};
-  window.goToSlide=function(n){show(n);resetTimer();};
-  function resetTimer(){clearInterval(timer);timer=setInterval(function(){show(cur+1);},5000);}
-  resetTimer();
-})();
 </script>
 {% endblock %}

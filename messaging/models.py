@@ -68,3 +68,30 @@ class Notification(models.Model):
             'account': 'fa-user',
             'system': 'fa-bell',
         }.get(self.notif_type, 'fa-bell')
+
+
+class NotificationPreference(models.Model):
+    """Préférences de notification par utilisateur"""
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notification_prefs')
+    # Notifications internes (cloche)
+    internal_enabled = models.BooleanField(default=True, verbose_name="Notifications internes")
+    # Emails par type d'événement
+    email_order = models.BooleanField(default=True, verbose_name="Commandes")
+    email_rfq = models.BooleanField(default=True, verbose_name="Devis")
+    email_invoice = models.BooleanField(default=True, verbose_name="Factures")
+    email_payment = models.BooleanField(default=True, verbose_name="Paiements")
+    email_stock = models.BooleanField(default=False, verbose_name="Alertes stock")
+    email_account = models.BooleanField(default=True, verbose_name="Compte")
+
+    def __str__(self):
+        return f"Préférences notif — {self.user.username}"
+
+    def allows_email(self, notif_type):
+        return {
+            'order': self.email_order,
+            'rfq': self.email_rfq,
+            'invoice': self.email_invoice,
+            'payment': self.email_payment,
+            'stock': self.email_stock,
+            'account': self.email_account,
+        }.get(notif_type, True)

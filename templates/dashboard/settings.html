@@ -21,6 +21,7 @@
 
 <div class="set-tabs">
     <button type="button" class="set-tab active" onclick="showTab('invoicing', this)"><i class="fa-solid fa-receipt"></i> Facturation</button>
+    <button type="button" class="set-tab" onclick="showTab('notifications', this)"><i class="fa-regular fa-bell"></i> Notifications</button>
     <button type="button" class="set-tab" onclick="showTab('account', this)"><i class="fa-solid fa-user"></i> Compte</button>
 </div>
 
@@ -127,6 +128,52 @@
                 </div>
             </div>
             <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
+        </div>
+    </form>
+</div>
+
+<!-- ═══ NOTIFICATIONS ═══ -->
+<div class="set-panel" id="panel-notifications">
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="notifications">
+        <div class="dash-card" style="padding:20px;max-width:640px;">
+            <div class="set-section-title">Notifications internes (cloche)</div>
+            <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:10px 0;">
+                <input type="checkbox" name="internal_enabled" {% if notif_prefs.internal_enabled %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                <div>
+                    <div style="font-weight:600;">Notifications dans le tableau de bord</div>
+                    <div style="font-size:11px;color:var(--dash-text3);">Afficher les notifications dans la cloche et le centre de notifications</div>
+                </div>
+            </label>
+            <div class="set-section-title">Recevoir un email pour…</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;">
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="email_order" {% if notif_prefs.email_order %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                    <span><i class="fa-solid fa-box" style="color:var(--dash-accent);width:16px;"></i> Commandes</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="email_rfq" {% if notif_prefs.email_rfq %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                    <span><i class="fa-solid fa-file-invoice" style="color:var(--dash-accent);width:16px;"></i> Devis</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="email_invoice" {% if notif_prefs.email_invoice %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                    <span><i class="fa-solid fa-receipt" style="color:var(--dash-accent);width:16px;"></i> Factures</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="email_payment" {% if notif_prefs.email_payment %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                    <span><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-accent);width:16px;"></i> Paiements</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="email_stock" {% if notif_prefs.email_stock %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                    <span><i class="fa-solid fa-boxes-stacked" style="color:var(--dash-accent);width:16px;"></i> Alertes stock</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="email_account" {% if notif_prefs.email_account %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                    <span><i class="fa-solid fa-user" style="color:var(--dash-accent);width:16px;"></i> Compte</span>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-orange" style="margin-top:16px;"><i class="fa-solid fa-check"></i> Enregistrer</button>
         </div>
     </form>
 </div>

@@ -16,11 +16,15 @@ def notify(user, notif_type, title, message, url='', send_email=False, email_sub
         send_email: envoyer aussi par email
         email_subject: sujet de l'email (défaut: title)
     """
-    from .models import Notification
-    notif = Notification.objects.create(
-        user=user, notif_type=notif_type, title=title, message=message, url=url
-    )
-    if send_email and user.email:
+    from .models import Notification, NotificationPreference
+    prefs, _ = NotificationPreference.objects.get_or_create(user=user)
+
+    notif = None
+    if prefs.internal_enabled:
+        notif = Notification.objects.create(
+            user=user, notif_type=notif_type, title=title, message=message, url=url
+        )
+    if send_email and user.email and prefs.allows_email(notif_type):
         try:
             html = render_to_string('emails/notification.html', {
                 'user': user, 'title': title, 'message': message,
