@@ -18,7 +18,7 @@
 <div class="topbar">
 <div class="topbar-inner">
 <div class="topbar-links">
-<a href="{% url 'accounts:register' %}"><i class="fa-solid fa-store"></i> Vendre sur AfriMarket</a>
+<a href="{% url 'seller_landing' %}"><i class="fa-solid fa-store"></i> Vendre sur AfriMarket</a>
 <span class="topbar-sep"></span>
 {% if user.is_authenticated %}
 <a href="{% url 'orders:my_rfqs' %}"><i class="fa-solid fa-clipboard-list"></i> Mes demandes de devis</a>

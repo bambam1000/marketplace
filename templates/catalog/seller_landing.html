@@ -1,0 +1,317 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Devenir Vendeur — AfriMarket</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root { --orange: #ff6a00; --orange-dark: #e55f00; --text1: #101828; --text2: #475467; --text3: #98a2b3; --bg: #fff; --bg-soft: #fff7f0; --border: #eaecf0; }
+body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--bg); }
+.container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Navbar ── */
+.lp-nav { position: sticky; top: 0; background: rgba(255,255,255,.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; }
+.lp-nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.lp-logo { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800; color: var(--text1); text-decoration: none; }
+.lp-logo .ic { width: 32px; height: 32px; border-radius: 9px; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.lp-logo span { color: var(--orange); }
+.lp-links { display: flex; gap: 28px; align-items: center; }
+.lp-links a { font-size: 14px; font-weight: 500; color: var(--text2); text-decoration: none; transition: color .2s; }
+.lp-links a:hover { color: var(--orange); }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; transition: all .2s; }
+.btn-orange { background: var(--orange); color: #fff; }
+.btn-orange:hover { background: var(--orange-dark); transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--orange); border: 1.5px solid var(--orange); }
+.btn-outline:hover { background: var(--orange); color: #fff; }
+.btn-white { background: #fff; color: var(--orange); }
+.btn-white:hover { background: #fff7f0; }
+
+/* ── Hero ── */
+.lp-hero { padding: 70px 0 80px; background: linear-gradient(180deg, #fff 0%, var(--bg-soft) 100%); position: relative; overflow: hidden; }
+.lp-hero::before { content: ''; position: absolute; width: 500px; height: 500px; border-radius: 50%; background: rgba(255,106,0,.06); top: -150px; right: -150px; }
+.lp-hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; position: relative; }
+.lp-hero h1 { font-size: 44px; font-weight: 900; line-height: 1.15; margin-bottom: 18px; }
+.lp-hero h1 span { color: var(--orange); }
+.lp-hero p { font-size: 16px; color: var(--text2); line-height: 1.7; margin-bottom: 28px; max-width: 480px; }
+.lp-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.lp-hero-visual { display: flex; justify-content: center; }
+.lp-hero-visual .visual-box { width: 100%; max-width: 420px; height: 300px; background: linear-gradient(135deg, var(--orange), #ffad66); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 90px; color: rgba(255,255,255,.9); box-shadow: 0 30px 60px rgba(255,106,0,.25); position: relative; }
+.lp-hero-visual .float-card { position: absolute; background: #fff; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.12); padding: 12px 16px; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; color: var(--text1); }
+.float-card .fic { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.fc1 { top: 30px; left: -30px; }
+.fc2 { bottom: 40px; right: -24px; }
+
+/* ── Sections ── */
+.lp-section { padding: 80px 0; }
+.lp-section.soft { background: var(--bg-soft); }
+.lp-section-head { text-align: center; max-width: 560px; margin: 0 auto 48px; }
+.lp-section-head h2 { font-size: 30px; font-weight: 800; margin-bottom: 12px; }
+.lp-section-head p { font-size: 15px; color: var(--text2); line-height: 1.7; }
+
+/* ── Services ── */
+.lp-services { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.lp-service { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 26px 22px; transition: all .25s; }
+.lp-service:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.08); border-color: var(--orange); }
+.lp-service .sic { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 16px; }
+.lp-service h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.lp-service p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+/* ── Solutions ── */
+.lp-solutions { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
+.lp-solutions-visual { height: 320px; background: linear-gradient(135deg, #ff8533, var(--orange)); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 80px; color: rgba(255,255,255,.9); }
+.lp-solutions h2 { font-size: 28px; font-weight: 800; margin-bottom: 20px; }
+.lp-check { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; font-size: 14px; color: var(--text2); }
+.lp-check i { width: 22px; height: 22px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+.lp-check strong { color: var(--text1); }
+
+/* ── Packs ── */
+.lp-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.lp-plan { background: #fff; border: 1.5px solid var(--border); border-radius: 16px; padding: 28px 24px; position: relative; transition: all .25s; display: flex; flex-direction: column; }
+.lp-plan:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.08); }
+.lp-plan.popular { border-color: var(--orange); box-shadow: 0 16px 40px rgba(255,106,0,.15); }
+.lp-plan .pop-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--orange); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: .5px; }
+.lp-plan h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.lp-plan .price { font-size: 30px; font-weight: 900; color: var(--orange); margin: 12px 0 4px; }
+.lp-plan .price small { font-size: 13px; font-weight: 600; color: var(--text3); }
+.lp-plan .plan-desc { font-size: 12px; color: var(--text3); margin-bottom: 16px; }
+.lp-plan ul { list-style: none; flex: 1; margin-bottom: 20px; }
+.lp-plan li { font-size: 13px; color: var(--text2); padding: 6px 0; display: flex; gap: 8px; align-items: flex-start; }
+.lp-plan li i { color: var(--orange); font-size: 11px; margin-top: 3px; }
+
+/* ── Témoignages ── */
+.lp-testis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.lp-testi { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+.lp-testi .stars { color: #f79009; font-size: 12px; margin-bottom: 12px; }
+.lp-testi p { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 16px; }
+.lp-testi .who { display: flex; align-items: center; gap: 10px; }
+.lp-testi .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+.lp-testi .who .n { font-size: 13px; font-weight: 700; }
+.lp-testi .who .r { font-size: 11px; color: var(--text3); }
+
+/* ── CTA ── */
+.lp-cta { background: linear-gradient(135deg, var(--orange), #ff8533); border-radius: 20px; padding: 50px; text-align: center; color: #fff; }
+.lp-cta h2 { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
+.lp-cta p { opacity: .9; margin-bottom: 24px; font-size: 15px; }
+
+/* ── Footer ── */
+.lp-footer { background: var(--text1); color: #98a2b3; padding: 40px 0; margin-top: 80px; }
+.lp-footer-inner { display: flex; justify-content: space-between; align-items: center; font-size: 13px; flex-wrap: wrap; gap: 12px; }
+.lp-footer a { color: #98a2b3; text-decoration: none; margin-left: 20px; }
+.lp-footer a:hover { color: #fff; }
+
+@media (max-width: 900px) {
+    .lp-hero-grid, .lp-solutions { grid-template-columns: 1fr; }
+    .lp-services, .lp-testis { grid-template-columns: 1fr 1fr; }
+    .lp-links { display: none; }
+    .lp-hero h1 { font-size: 32px; }
+    .lp-cta { padding: 36px 24px; }
+}
+@media (max-width: 560px) {
+    .lp-services, .lp-testis { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ Navbar ═══ -->
+<nav class="lp-nav">
+    <div class="container lp-nav-inner">
+        <a href="{% url 'home' %}" class="lp-logo">
+            <span class="ic"><i class="fa-solid fa-store"></i></span>
+            Afri<span>Market</span>
+        </a>
+        <div class="lp-links">
+            <a href="#services">Solutions</a>
+            <a href="#packs">Packs</a>
+            <a href="#temoignages">Témoignages</a>
+            <a href="{% url 'home' %}">Visiter le site</a>
+        </div>
+        <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange"><i class="fa-solid fa-store"></i> Devenir vendeur</a>
+    </div>
+</nav>
+
+<!-- ═══ Hero ═══ -->
+<section class="lp-hero">
+    <div class="container lp-hero-grid">
+        <div>
+            <h1>Nous créons des <span>solutions</span> pour votre business</h1>
+            <p>Vendez en ligne avec AfriMarket : boutique personnalisée, gestion de stock par entrepôts, facturation professionnelle, marketing intégré et paiement Mobile Money. Tout ce qu'il faut pour grandir.</p>
+            <div class="lp-hero-actions">
+                <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange"><i class="fa-solid fa-rocket"></i> Commencer gratuitement</a>
+                <a href="#services" class="btn btn-outline">Découvrir</a>
+            </div>
+        </div>
+        <div class="lp-hero-visual">
+            <div class="visual-box">
+                <i class="fa-solid fa-store"></i>
+                <div class="float-card fc1">
+                    <span class="fic" style="background:rgba(18,183,106,.1);color:#12b76a;"><i class="fa-solid fa-chart-line"></i></span>
+                    <div>+2 450 FCFA<br><span style="font-weight:500;color:var(--text3);font-size:11px;">Vente du jour</span></div>
+                </div>
+                <div class="float-card fc2">
+                    <span class="fic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-box"></i></span>
+                    <div>Nouvelle commande<br><span style="font-weight:500;color:var(--text3);font-size:11px;">il y a 2 min</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Services ═══ -->
+<section class="lp-section" id="services">
+    <div class="container">
+        <div class="lp-section-head">
+            <h2>Nous offrons les meilleurs services</h2>
+            <p>Une plateforme complète pour gérer et développer votre activité en ligne.</p>
+        </div>
+        <div class="lp-services">
+            <div class="lp-service">
+                <div class="sic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-store"></i></div>
+                <h3>Boutique en ligne</h3>
+                <p>Votre boutique personnalisée avec logo, bannière et réseaux sociaux. Multi-boutiques supportées.</p>
+            </div>
+            <div class="lp-service">
+                <div class="sic" style="background:rgba(18,183,106,.1);color:#12b76a;"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <h3>Stock & Entrepôts</h3>
+                <p>Gestion de stock par entrepôt, transferts, alertes de stock faible et inventaire complet.</p>
+            </div>
+            <div class="lp-service">
+                <div class="sic" style="background:rgba(122,90,248,.1);color:#7a5af8;"><i class="fa-solid fa-receipt"></i></div>
+                <h3>Facturation</h3>
+                <p>Factures PDF professionnelles avec TVA, votre logo et vos mentions légales. Envoyées par email.</p>
+            </div>
+            <div class="lp-service">
+                <div class="sic" style="background:rgba(46,144,250,.1);color:#2e90fa;"><i class="fa-solid fa-bullhorn"></i></div>
+                <h3>Marketing</h3>
+                <p>Codes promo, campagnes, email marketing, WhatsApp et programme de fidélité intégrés.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Solutions ═══ -->
+<section class="lp-section soft">
+    <div class="container lp-solutions">
+        <div class="lp-solutions-visual"><i class="fa-solid fa-chart-pie"></i></div>
+        <div>
+            <h2>Des solutions simples !</h2>
+            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Tableau de bord complet</strong> — ventes, commandes, clients et analytics en un coup d'œil</div></div>
+            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Équipe & rôles</strong> — ajoutez des employés avec des permissions par entrepôt</div></div>
+            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Paie intégrée</strong> — bulletins de paie avec primes et retenues</div></div>
+            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Paiement Mobile Money</strong> — MTN & Orange Money, cash à la livraison</div></div>
+            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Notifications en temps réel</strong> — commandes, devis, stock, par email et dans le dashboard</div></div>
+            <div style="margin-top:24px;display:flex;gap:12px;">
+                <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange">Commencer</a>
+                <a href="#packs" class="btn btn-outline">Voir les packs</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Packs ═══ -->
+<section class="lp-section" id="packs">
+    <div class="container">
+        <div class="lp-section-head">
+            <h2>Nos Packs Vendeurs</h2>
+            <p>Choisissez l'offre adaptée à votre ambition. Changez de pack à tout moment.</p>
+        </div>
+        <div class="lp-plans">
+            {% for plan in plans %}
+            <div class="lp-plan {% if plan.is_popular %}popular{% endif %}">
+                {% if plan.is_popular %}<span class="pop-badge">Populaire</span>{% endif %}
+                <h3>{{ plan.name }}</h3>
+                <div class="price">{{ plan.price_monthly|floatformat:0 }} F <small>/ mois</small></div>
+                {% if plan.description %}<div class="plan-desc">{{ plan.description|truncatewords:12 }}</div>{% endif %}
+                <ul>
+                    <li><i class="fa-solid fa-check"></i> {{ plan.max_products }} produits max</li>
+                    <li><i class="fa-solid fa-check"></i> Commission {{ plan.commission_rate|floatformat:0 }}% par vente</li>
+                    {% if plan.can_flash_deal %}<li><i class="fa-solid fa-check"></i> Ventes flash</li>{% endif %}
+                    {% if plan.can_boost %}<li><i class="fa-solid fa-check"></i> Boosts produits{% if plan.boost_credits_monthly %} ({{ plan.boost_credits_monthly }}/mois){% endif %}</li>{% endif %}
+                    {% if plan.can_analytics %}<li><i class="fa-solid fa-check"></i> Analytics avancés</li>{% endif %}
+                    {% if plan.can_bulk_upload %}<li><i class="fa-solid fa-check"></i> Import en masse</li>{% endif %}
+                    {% if plan.can_priority_support %}<li><i class="fa-solid fa-check"></i> Support prioritaire</li>{% endif %}
+                    {% if plan.can_custom_store %}<li><i class="fa-solid fa-check"></i> Boutique personnalisée</li>{% endif %}
+                </ul>
+                <a href="{% url 'accounts:register' %}?role=seller" class="btn {% if plan.is_popular %}btn-orange{% else %}btn-outline{% endif %}" style="justify-content:center;">Choisir {{ plan.name }}</a>
+            </div>
+            {% empty %}
+            <div class="lp-plan">
+                <h3>Gratuit</h3>
+                <div class="price">0 F <small>/ mois</small></div>
+                <ul>
+                    <li><i class="fa-solid fa-check"></i> Boutique complète</li>
+                    <li><i class="fa-solid fa-check"></i> Gestion de stock</li>
+                    <li><i class="fa-solid fa-check"></i> Facturation</li>
+                </ul>
+                <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange" style="justify-content:center;">Commencer</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Témoignages ═══ -->
+<section class="lp-section soft" id="temoignages">
+    <div class="container">
+        <div class="lp-section-head">
+            <h2>Ce que disent nos vendeurs</h2>
+            <p>Ils ont lancé leur boutique sur AfriMarket.</p>
+        </div>
+        <div class="lp-testis">
+            <div class="lp-testi">
+                <div class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                <p>« J'ai créé ma boutique en 5 minutes. La gestion du stock par entrepôt a changé ma façon de travailler. »</p>
+                <div class="who">
+                    <div class="avatar">MN</div>
+                    <div><div class="n">Marie Ngo</div><div class="r">Boutique Mode, Douala</div></div>
+                </div>
+            </div>
+            <div class="lp-testi">
+                <div class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                <p>« Les campagnes WhatsApp m'ont permis de fidéliser mes clients. Mes ventes ont doublé en 3 mois. »</p>
+                <div class="who">
+                    <div class="avatar" style="background:#7a5af8;">JK</div>
+                    <div><div class="n">Jean Kamdem</div><div class="r">Électronique, Yaoundé</div></div>
+                </div>
+            </div>
+            <div class="lp-testi">
+                <div class="stars"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></div>
+                <p>« Les factures professionnelles avec TVA ont impressionné mes clients B2B. Très complet. »</p>
+                <div class="who">
+                    <div class="avatar" style="background:#12b76a;">FT</div>
+                    <div><div class="n">Fatima Tchoupo</div><div class="r">Cosmétiques, Bafoussam</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="lp-section" style="padding-top:0;">
+    <div class="container">
+        <div class="lp-cta">
+            <h2>Prêt à vous lancer ?</h2>
+            <p>Créez votre boutique gratuitement et commencez à vendre dès aujourd'hui.</p>
+            <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-white"><i class="fa-solid fa-rocket"></i> Créer ma boutique</a>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Footer ═══ -->
+<footer class="lp-footer">
+    <div class="container lp-footer-inner">
+        <div>© 2026 AfriMarket — La Marketplace Africaine</div>
+        <div>
+            <a href="{% url 'home' %}">Accueil</a>
+            <a href="{% url 'faq' %}">FAQ</a>
+            <a href="{% url 'contact' %}">Contact</a>
+        </div>
+    </div>
+</footer>
+
+</body>
+</html>

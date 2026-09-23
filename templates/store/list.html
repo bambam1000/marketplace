@@ -2,8 +2,9 @@
 {% block title %}Tous les vendeurs — AfriMarket{% endblock %}
 {% block content %}
 <div class="section">
-<div class="section-head" style="margin-bottom:1.5rem;">
+<div class="section-head" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;">
 <h2>Tous les vendeurs ({{ total }})</h2>
+<a href="{% url 'seller_landing' %}" class="btn btn-orange" style="color:#fff !important;background:var(--orange);"><i class="fa-solid fa-store" style="color:#fff;"></i> Devenir vendeur</a>
 </div>
 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1.2rem;">
 <form method="get" style="display:flex;gap:8px;flex:1;min-width:250px;">

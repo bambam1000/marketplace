@@ -281,3 +281,10 @@ def search_autocomplete(request):
         })
 
     return JsonResponse({'suggestions': suggestions})
+
+
+def seller_landing(request):
+    """Landing page de présentation pour les vendeurs"""
+    from billing.models import SubscriptionPlan
+    plans = SubscriptionPlan.objects.filter(is_active=True)
+    return render(request, 'catalog/seller_landing.html', {'plans': plans})

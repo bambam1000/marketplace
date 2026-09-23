@@ -90,9 +90,9 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
                     <div class="role-card selected" id="roleBuyer" onclick="selectRole('buyer')">
                         <i class="fa-solid fa-cart-shopping"></i> Acheteur
                     </div>
-                    <div class="role-card" id="roleSeller" onclick="selectRole('seller')">
+                    <a href="{% url 'seller_landing' %}" class="role-card" style="text-decoration:none;">
                         <i class="fa-solid fa-store"></i> Vendeur
-                    </div>
+                    </a>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -131,8 +131,14 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
 function selectRole(role) {
     document.getElementById('role').value = role;
     document.getElementById('roleBuyer').classList.toggle('selected', role === 'buyer');
-    document.getElementById('roleSeller').classList.toggle('selected', role === 'seller');
+    var sellerCard = document.getElementById('roleSeller');
+    if (sellerCard) sellerCard.classList.toggle('selected', role === 'seller');
     document.getElementById('store-field').style.display = role === 'seller' ? 'block' : 'none';
+}
+// Pré-remplir le rôle depuis l'URL (?role=seller)
+if (new URLSearchParams(window.location.search).get('role') === 'seller') {
+    document.getElementById('role').value = 'seller';
+    document.getElementById('store-field').style.display = 'block';
 }
 </script>
 </body>
