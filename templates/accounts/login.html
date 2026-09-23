@@ -9,87 +9,92 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Inter', sans-serif; min-height: 100vh; background: #fff; }
-.auth-split { display: flex; min-height: 100vh; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Inter', sans-serif; background: #fff; }
+.auth-split { display: flex; height: 100vh; }
 
-/* ── Panneau gauche (formulaire) ── */
-.auth-left { flex: 1; display: flex; flex-direction: column; padding: 40px 60px; position: relative; z-index: 2; background: #fff; }
-.auth-logo { font-size: 22px; font-weight: 800; color: #101828; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-.auth-logo .logo-ic { width: 34px; height: 34px; border-radius: 10px; background: #ff6a00; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; }
-.auth-logo span { color: #ff6a00; }
-.auth-form-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 380px; width: 100%; margin: 0 auto; }
-.auth-welcome { font-size: 15px; color: #667085; margin-bottom: 4px; }
-.auth-title { font-size: 34px; font-weight: 800; color: #101828; margin-bottom: 28px; }
-.auth-title span { color: #ff6a00; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 12px; font-weight: 600; color: #667085; margin-bottom: 6px; }
+/* ── Panneau gauche (orange) ── */
+.auth-left {
+    flex: 1;
+    background: linear-gradient(160deg, #ff6a00 0%, #ff8533 60%, #ffad66 100%);
+    color: #fff;
+    padding: 60px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+.auth-left::before { content: ''; position: absolute; width: 400px; height: 400px; border-radius: 50%; background: rgba(255,255,255,.06); top: -120px; left: -120px; }
+.auth-left::after { content: ''; position: absolute; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,255,255,.05); bottom: -80px; right: -60px; }
+.auth-logo { display: inline-flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; color: #fff; text-decoration: none; position: relative; z-index: 1; }
+.auth-logo .logo-ic { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.2); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.auth-left-content { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 1; }
+.auth-left h1 { font-size: 34px; font-weight: 800; margin-bottom: 14px; }
+.auth-left .subtitle { font-size: 14px; font-weight: 600; opacity: .95; margin-bottom: 10px; }
+.auth-left p { font-size: 14px; line-height: 1.8; opacity: .85; max-width: 380px; }
+
+/* ── Panneau droit (formulaire) ── */
+.auth-right { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; background: #fff; }
+.auth-form { width: 100%; max-width: 360px; }
+.auth-form h2 { font-size: 24px; font-weight: 800; color: #101828; text-align: center; margin-bottom: 6px; }
+.auth-form .sub { font-size: 13px; color: #667085; text-align: center; margin-bottom: 28px; }
+.form-group { margin-bottom: 14px; }
 .form-control { width: 100%; padding: 12px 14px; border: 1.5px solid #eaecf0; border-radius: 8px; font-size: 14px; font-family: inherit; transition: border-color .2s, box-shadow .2s; }
 .form-control:focus { outline: none; border-color: #ff6a00; box-shadow: 0 0 0 3px rgba(255,106,0,.1); }
+.form-control::placeholder { color: #98a2b3; }
 .password-wrapper { position: relative; }
 .password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #98a2b3; font-size: 15px; }
 .password-toggle:hover { color: #101828; }
-.auth-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 13px; }
+.auth-row { display: flex; justify-content: flex-end; margin-bottom: 18px; font-size: 13px; }
 .auth-row a { color: #ff6a00; text-decoration: none; font-weight: 600; }
 .auth-row a:hover { text-decoration: underline; }
-.btn-auth { width: 100%; padding: 13px; background: #ff6a00; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; letter-spacing: 1px; cursor: pointer; font-family: inherit; transition: background .2s, transform .1s; text-transform: uppercase; }
+.btn-auth { width: 100%; padding: 13px; background: #ff6a00; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .2s; }
 .btn-auth:hover { background: #e55f00; }
-.btn-auth:active { transform: scale(.99); }
-.auth-switch { text-align: center; font-size: 13px; color: #667085; margin-top: 20px; }
+.auth-switch { text-align: center; font-size: 13px; color: #667085; margin-top: 22px; }
 .auth-switch a { color: #ff6a00; font-weight: 600; text-decoration: none; }
 .auth-switch a:hover { text-decoration: underline; }
-.auth-footer { display: flex; justify-content: center; gap: 6px; font-size: 12px; color: #98a2b3; padding-top: 20px; }
-.auth-footer a { color: #98a2b3; text-decoration: none; }
-.auth-footer a:hover { color: #ff6a00; }
 .alert-error { background: #fef3f2; border: 1px solid #fecdca; color: #b42318; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
 
-/* ── Panneau droit (orange incurvé) ── */
-.auth-right { flex: 1.1; background: linear-gradient(160deg, #ff6a00 0%, #ff8533 60%, #ffad66 100%); border-radius: 0 0 0 120px; color: #fff; padding: 60px; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; }
-.auth-right::before { content: ''; position: absolute; width: 400px; height: 400px; border-radius: 50%; background: rgba(255,255,255,.06); top: -120px; right: -120px; }
-.auth-right::after { content: ''; position: absolute; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,255,255,.05); bottom: -80px; left: -60px; }
-.auth-right h2 { font-size: 26px; font-weight: 800; margin-bottom: 16px; position: relative; z-index: 1; }
-.auth-right p { font-size: 14px; line-height: 1.8; opacity: .92; margin-bottom: 28px; position: relative; z-index: 1; }
-.auth-features h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; position: relative; z-index: 1; }
-.auth-features ul { list-style: none; position: relative; z-index: 1; }
-.auth-features li { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; line-height: 1.6; margin-bottom: 14px; opacity: .95; }
-.auth-features li i { width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 2px; }
-.auth-illustration { position: absolute; bottom: 30px; right: 40px; font-size: 60px; opacity: .15; z-index: 0; }
-
-@media (max-width: 900px) {
-    .auth-split { flex-direction: column; }
-    .auth-right { border-radius: 40px 40px 0 0; padding: 36px 28px; order: 2; }
-    .auth-left { padding: 28px; }
+@media (max-width: 860px) {
+    .auth-left { display: none; }
 }
 </style>
 </head>
 <body>
 <div class="auth-split">
-    <!-- Gauche : formulaire -->
+    <!-- Gauche : présentation -->
     <div class="auth-left">
         <a href="{% url 'home' %}" class="auth-logo">
             <span class="logo-ic"><i class="fa-solid fa-store"></i></span>
-            Afri<span>Market</span>
+            AfriMarket
         </a>
-        <div class="auth-form-wrap">
-            <div class="auth-welcome">Bienvenue sur</div>
-            <h1 class="auth-title">Afri<span>Market</span></h1>
+        <div class="auth-left-content">
+            <h1>Bonjour !</h1>
+            <div class="subtitle">Bienvenue sur la marketplace N°1 d'Afrique Centrale</div>
+            <p>Achetez auprès de vendeurs vérifiés, payez par Mobile Money et suivez vos commandes en temps réel. Vendez avec votre boutique, votre entrepôt et vos outils marketing intégrés.</p>
+        </div>
+    </div>
+
+    <!-- Droite : formulaire -->
+    <div class="auth-right">
+        <div class="auth-form">
+            <h2>Bon retour</h2>
+            <div class="sub">Connectez-vous à votre compte acheteur ou vendeur.</div>
 
             {% if messages %}{% for msg in messages %}<div class="alert-error">{{ msg }}</div>{% endfor %}{% endif %}
 
             <form method="post" id="loginForm">
                 {% csrf_token %}
                 <div class="form-group">
-                    <label>Nom d'utilisateur</label>
-                    <input type="text" name="username" class="form-control" required autofocus placeholder="Votre nom d'utilisateur">
+                    <input type="text" name="username" class="form-control" required autofocus placeholder="Nom d'utilisateur">
                 </div>
                 <div class="form-group">
-                    <label>Mot de passe</label>
                     <div class="password-wrapper">
-                        <input type="password" name="password" id="passwordInput" class="form-control" required style="padding-right:42px;" placeholder="••••••••">
+                        <input type="password" name="password" id="passwordInput" class="form-control" required style="padding-right:42px;" placeholder="Mot de passe">
                         <button type="button" class="password-toggle" onclick="togglePassword()"><i class="fa-solid fa-eye" id="eyeIcon"></i></button>
                     </div>
                 </div>
                 <div class="auth-row">
-                    <span></span>
                     <a href="{% url 'accounts:password_reset' %}">Mot de passe oublié ?</a>
                 </div>
                 <button type="submit" class="btn-auth">Connexion</button>
@@ -97,24 +102,6 @@ body { font-family: 'Inter', sans-serif; min-height: 100vh; background: #fff; }
 
             <div class="auth-switch">Pas encore de compte ? <a href="{% url 'accounts:register' %}">S'inscrire</a></div>
         </div>
-        <div class="auth-footer">
-            <a href="{% url 'faq' %}">FAQ</a> | <a href="{% url 'home' %}">Accueil</a> | <a href="{% url 'faq' %}">Support</a>
-        </div>
-    </div>
-
-    <!-- Droite : présentation -->
-    <div class="auth-right">
-        <h2>À propos d'AfriMarket</h2>
-        <p>La marketplace N°1 d'Afrique Centrale. Achetez auprès de vendeurs vérifiés, payez par Mobile Money et suivez vos commandes en temps réel. Vendez vos produits avec votre propre boutique, votre entrepôt et votre équipe.</p>
-        <div class="auth-features">
-            <h3>Fonctionnalités</h3>
-            <ul>
-                <li><i class="fa-solid fa-check"></i> Paiement Mobile Money & Trade Assurance sur toutes vos commandes</li>
-                <li><i class="fa-solid fa-check"></i> Codes promo, programme de fidélité et offres flash exclusives</li>
-                <li><i class="fa-solid fa-check"></i> Vendeurs : boutique, stock, facturation et marketing intégrés</li>
-            </ul>
-        </div>
-        <div class="auth-illustration"><i class="fa-solid fa-cart-shopping"></i></div>
     </div>
 </div>
 
