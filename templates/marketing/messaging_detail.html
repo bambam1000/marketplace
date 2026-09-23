@@ -1,0 +1,97 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ campaign.name }}{% endblock %}
+{% block dash %}
+<style>
+.progress-bar { height: 8px; background: var(--dash-bg); border-radius: 4px; overflow: hidden; }
+.progress-bar > div { height: 100%; background: var(--dash-green); border-radius: 4px; transition: width .3s; }
+.send-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; }
+.send-wa { background: #25D366; color: #fff; }
+.send-tg { background: #2E90FA; color: #fff; }
+.send-done { background: var(--dash-bg); color: var(--dash-text3); pointer-events: none; }
+</style>
+
+<div class="dash-header">
+    <div>
+        <a href="{% url 'marketing:messaging_list' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> WhatsApp & Telegram</a>
+        <h1>
+            {% if campaign.channel == 'whatsapp' %}<i class="fa-brands fa-whatsapp" style="color:#25D366;"></i>{% else %}<i class="fa-brands fa-telegram" style="color:#2E90FA;"></i>{% endif %}
+            {{ campaign.name }}
+        </h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ sent_count }}/{{ total }} envoyé{{ sent_count|pluralize:"s" }}</p>
+    </div>
+</div>
+
+<div class="dash-card" style="padding:16px 18px;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--dash-text3);margin-bottom:6px;">
+        <span>Progression</span><span id="progressLabel">{{ campaign.progress }}%</span>
+    </div>
+    <div class="progress-bar"><div id="progressFill" style="width:{{ campaign.progress }}%;"></div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;">
+    <!-- Aperçu du message -->
+    <div class="dash-card" style="padding:20px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:12px;"><i class="fa-solid fa-eye" style="color:var(--dash-accent);"></i> Message envoyé</div>
+        <div style="background:#e7f6e7;border-radius:10px;padding:14px;font-size:13px;white-space:pre-wrap;line-height:1.6;word-break:break-word;">{{ full_message }}</div>
+        <button type="button" class="btn btn-outline btn-sm" style="width:100%;margin-top:12px;" onclick="copyMessage()"><i class="fa-solid fa-copy"></i> Copier le message</button>
+    </div>
+
+    <!-- Destinataires -->
+    <div class="dash-card">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);font-weight:700;font-size:14px;">
+            <i class="fa-solid fa-users" style="color:var(--dash-accent);"></i> Destinataires ({{ total }})
+        </div>
+        <div class="dash-table-responsive">
+        <table class="dash-table">
+            <thead><tr><th>Numéro</th><th>Statut</th><th style="text-align:right;">Action</th></tr></thead>
+            <tbody>
+                {% for r in rows %}
+                <tr id="row-{{ r.number }}">
+                    <td style="font-family:monospace;font-weight:600;">+{{ r.number }}</td>
+                    <td class="status-cell">
+                        {% if r.sent %}<span class="status-badge st-delivered">Envoyé</span>
+                        {% else %}<span class="status-badge st-pending">En attente</span>{% endif %}
+                    </td>
+                    <td style="text-align:right;">
+                        {% if r.sent %}
+                        <span class="send-btn send-done"><i class="fa-solid fa-check"></i> Envoyé</span>
+                        {% else %}
+                        <a href="{{ r.url }}" target="_blank" class="send-btn {% if campaign.channel == 'whatsapp' %}send-wa{% else %}send-tg{% endif %}" onclick="markSent(event, '{{ r.number }}')">
+                            {% if campaign.channel == 'whatsapp' %}<i class="fa-brands fa-whatsapp"></i>{% else %}<i class="fa-brands fa-telegram"></i>{% endif %} Envoyer
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--dash-text3);">Aucun destinataire</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyMessage() {
+    navigator.clipboard.writeText({{ full_message|escapejs|safe }}).then(function() {
+        alert('Message copié !');
+    });
+}
+function markSent(e, number) {
+    // Laisse le lien s'ouvrir, puis marque comme envoyé
+    var url = "{% url 'marketing:messaging_mark_sent' campaign.pk %}";
+    var formData = new FormData();
+    formData.append('number', number);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fetch(url, {method: 'POST', body: formData}).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) {
+            var row = document.getElementById('row-' + number);
+            row.querySelector('.status-cell').innerHTML = '<span class="status-badge st-delivered">Envoyé</span>';
+            row.querySelector('td:last-child').innerHTML = '<span class="send-btn send-done"><i class="fa-solid fa-check"></i> Envoyé</span>';
+            document.getElementById('progressFill').style.width = data.progress + '%';
+            document.getElementById('progressLabel').textContent = data.progress + '%';
+        }
+    });
+}
+</script>
+{% endblock %}

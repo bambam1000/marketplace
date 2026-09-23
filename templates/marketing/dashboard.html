@@ -25,6 +25,13 @@
             <div class="s">{{ emails_count }} campagne{{ emails_count|pluralize:"s" }} email</div>
         </div>
     </a>
+    <a href="{% url 'marketing:messaging_list' %}" class="mk-card">
+        <div class="ic" style="background:rgba(37,211,102,.1);color:#25D366;"><i class="fa-brands fa-whatsapp"></i></div>
+        <div>
+            <div class="t">WhatsApp & Telegram</div>
+            <div class="s">{{ messaging_count }} campagne{{ messaging_count|pluralize:"s" }}</div>
+        </div>
+    </a>
     <a href="{% url 'marketing:promo_codes' %}" class="mk-card">
         <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-ticket"></i></div>
         <div>

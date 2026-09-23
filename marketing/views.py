@@ -25,6 +25,7 @@ def marketing_dashboard(request):
     active_promos = PromoCode.objects.filter(store=store, is_active=True).count()
     total_loyalty_members = LoyaltyProgram.objects.filter(store=store).count()
     emails_count = Newsletter.objects.filter(store=store).count()
+    messaging_count = MessagingCampaign.objects.filter(store=store).count()
 
     # Analytics des 30 derniers jours
     analytics = MarketingAnalytics.objects.filter(
@@ -47,6 +48,7 @@ def marketing_dashboard(request):
         'active_promos': active_promos,
         'total_loyalty_members': total_loyalty_members,
         'emails_count': emails_count,
+        'messaging_count': messaging_count,
         'analytics': analytics,
         'recent_campaigns': recent_campaigns,
         'active_promo_codes': active_promo_codes,
@@ -310,7 +312,7 @@ def campaign_edit(request, pk):
 # ========== ANALYTICS ==========
 @login_required
 def analytics(request):
-    """Analytics détaillés"""
+    """Analytics marketing basés sur les données réelles (commandes, campagnes, emails, fidélité)"""
     if not request.user.is_seller or not hasattr(request.user, 'store'):
         return redirect('dashboard:index')
 
@@ -318,31 +320,74 @@ def analytics(request):
     now = timezone.now()
     last_30_days = now - timedelta(days=30)
 
-    # Analytics quotidiens
-    daily_analytics = MarketingAnalytics.objects.filter(
-        store=store, date__gte=last_30_days.date()
-    ).order_by('date')
+    # --- Commandes réelles de la boutique (30 derniers jours) ---
+    orders_qs = Order.objects.filter(items__product__store=store, created_at__gte=last_30_days).distinct()
+    orders_count = orders_qs.count()
+    revenue = orders_qs.aggregate(t=Sum('total_amount'))['t'] or 0
+    avg_order = round(revenue / orders_count) if orders_count else 0
 
-    # Statistiques globales
-    stats = daily_analytics.aggregate(
-        total_views=Sum('page_views'),
-        total_visitors=Sum('unique_visitors'),
-        total_purchases=Sum('purchases'),
-        total_revenue=Sum('revenue'),
-        avg_order_value=Avg('avg_order_value'),
+    # Ventes par jour (30 jours) pour le graphique
+    from django.db.models.functions import TruncDate
+    daily = (
+        orders_qs.annotate(day=TruncDate('created_at'))
+        .values('day').annotate(total=Sum('total_amount'), count=Count('id'))
+        .order_by('day')
+    )
+    daily_map = {d['day']: d for d in daily}
+    chart_labels, chart_revenue, chart_orders = [], [], []
+    for i in range(30):
+        day = (last_30_days + timedelta(days=i + 1)).date()
+        chart_labels.append(day.strftime('%d/%m'))
+        entry = daily_map.get(day)
+        chart_revenue.append(float(entry['total']) if entry else 0)
+        chart_orders.append(entry['count'] if entry else 0)
+
+    # --- Campagnes ---
+    campaigns = Campaign.objects.filter(store=store)
+    for camp in campaigns:
+        camp.refresh_status()
+    campaigns_performance = campaigns.order_by('-revenue_generated')[:10]
+    camp_totals = campaigns.aggregate(
+        views=Sum('views_count'), clicks=Sum('clicks_count'),
+        conversions=Sum('conversions_count'), revenue=Sum('revenue_generated'),
     )
 
-    # Performance des campagnes
-    campaigns_performance = Campaign.objects.filter(
-        store=store, status='active'
-    ).annotate(
-        roi_calc=F('revenue_generated') - F('budget')
-    ).order_by('-revenue_generated')[:10]
+    # --- Emails ---
+    emails = Newsletter.objects.filter(store=store)
+    emails_sent = emails.filter(status='sent').count()
+    emails_recipients = emails.aggregate(t=Sum('recipients_count'))['t'] or 0
+
+    # --- Messagerie ---
+    messaging = MessagingCampaign.objects.filter(store=store)
+    messaging_sent = sum(len(c.get_sent_list()) for c in messaging)
+
+    # --- Fidélité ---
+    loyalty_members = LoyaltyProgram.objects.filter(store=store).count()
+
+    # --- Top produits (par quantité vendue, 30 jours) ---
+    from orders.models import OrderItem
+    top_products = (
+        OrderItem.objects.filter(product__store=store, order__created_at__gte=last_30_days)
+        .values('product__name')
+        .annotate(qty=Sum('quantity'), revenue=Sum(F('quantity') * F('price')))
+        .order_by('-qty')[:5]
+    )
 
     context = {
-        'daily_analytics': daily_analytics,
-        'stats': stats,
+        'orders_count': orders_count,
+        'revenue': revenue,
+        'avg_order': avg_order,
+        'chart_labels': chart_labels,
+        'chart_revenue': chart_revenue,
+        'chart_orders': chart_orders,
         'campaigns_performance': campaigns_performance,
+        'camp_totals': camp_totals,
+        'emails_sent': emails_sent,
+        'emails_recipients': emails_recipients,
+        'messaging_count': messaging.count(),
+        'messaging_sent': messaging_sent,
+        'loyalty_members': loyalty_members,
+        'top_products': top_products,
     }
     return render(request, 'marketing/analytics.html', context)
 
@@ -714,3 +759,180 @@ def email_delete(request, pk):
         newsletter.delete()
         messages.success(request, 'Campagne supprimée.')
     return redirect('marketing:emails_list')
+
+
+# ========== WHATSAPP / TELEGRAM ==========
+from .models import MessagingCampaign
+
+
+def _parse_numbers_excel(file):
+    """Lit un Excel et retourne les numéros de la 1ère colonne."""
+    import openpyxl
+    numbers = []
+    wb = openpyxl.load_workbook(file, read_only=True, data_only=True)
+    ws = wb.active
+    for row in ws.iter_rows(values_only=True):
+        if not row or row[0] is None:
+            continue
+        val = str(row[0]).strip()
+        if val.lower() in ('numero', 'numéro', 'telephone', 'téléphone', 'phone', 'number'):
+            continue
+        if val:
+            numbers.append(val)
+    wb.close()
+    return numbers
+
+
+@login_required
+def messaging_list(request):
+    """Liste des campagnes WhatsApp/Telegram"""
+    store = _get_seller_store(request)
+    if not store:
+        messages.error(request, 'Accès réservé aux vendeurs.')
+        return redirect('dashboard:index')
+    campaigns = MessagingCampaign.objects.filter(store=store)
+    return render(request, 'marketing/messaging_list.html', {
+        'campaigns': campaigns,
+    })
+
+
+@login_required
+def messaging_create(request):
+    """Créer une campagne WhatsApp/Telegram"""
+    store = _get_seller_store(request)
+    if not store:
+        messages.error(request, 'Accès réservé aux vendeurs.')
+        return redirect('dashboard:index')
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        message = request.POST.get('message', '').strip()
+        channel = request.POST.get('channel', 'whatsapp')
+        audience = request.POST.get('audience', 'customers')
+        promo_id = request.POST.get('promo_code') or None
+
+        if not name or not message:
+            messages.error(request, 'Le nom et le message sont requis.')
+            return redirect('marketing:messaging_create')
+
+        custom_numbers = ''
+        if audience == 'custom':
+            excel_file = request.FILES.get('numbers_file')
+            if not excel_file:
+                messages.error(request, 'Veuillez téléverser le fichier Excel des numéros.')
+                return redirect('marketing:messaging_create')
+            try:
+                numbers = _parse_numbers_excel(excel_file)
+            except Exception:
+                messages.error(request, 'Fichier Excel illisible. Utilisez le template fourni.')
+                return redirect('marketing:messaging_create')
+            if not numbers:
+                messages.error(request, 'Aucun numéro trouvé dans le fichier.')
+                return redirect('marketing:messaging_create')
+            custom_numbers = '\n'.join(numbers)
+
+        campaign = MessagingCampaign.objects.create(
+            store=store, name=name, message=message, channel=channel,
+            audience=audience, promo_code_id=promo_id, custom_numbers=custom_numbers,
+        )
+        product_ids = request.POST.getlist('products')
+        if product_ids:
+            campaign.products.set(product_ids)
+
+        messages.success(request, f'Campagne « {name} » créée.')
+        return redirect('marketing:messaging_detail', pk=campaign.pk)
+
+    return render(request, 'marketing/messaging_form.html', {
+        'promo_codes': PromoCode.objects.filter(store=store, is_active=True),
+        'products': Product.objects.filter(store=store, is_active=True).order_by('name'),
+    })
+
+
+@login_required
+def messaging_detail(request, pk):
+    """Console d'envoi d'une campagne WhatsApp/Telegram"""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    campaign = get_object_or_404(MessagingCampaign, pk=pk, store=store)
+    recipients = campaign.get_recipients()
+    sent = set(campaign.get_sent_list())
+    base_url = request.build_absolute_uri('/')[:-1]
+    full_message = campaign.build_message(base_url)
+
+    from urllib.parse import quote
+    rows = []
+    for number in recipients:
+        if campaign.channel == 'whatsapp':
+            url = f'https://wa.me/{number}?text={quote(full_message)}'
+        else:
+            url = f'https://t.me/share/url?url={quote(base_url)}&text={quote(full_message)}'
+        rows.append({'number': number, 'url': url, 'sent': number in sent})
+
+    return render(request, 'marketing/messaging_detail.html', {
+        'campaign': campaign,
+        'rows': rows,
+        'full_message': full_message,
+        'total': len(rows),
+        'sent_count': len(sent),
+    })
+
+
+@login_required
+def messaging_mark_sent(request, pk):
+    """Marque un numéro comme envoyé (appel AJAX)."""
+    from django.http import JsonResponse
+    store = _get_seller_store(request)
+    if not store:
+        return JsonResponse({'ok': False}, status=403)
+    campaign = get_object_or_404(MessagingCampaign, pk=pk, store=store)
+    if request.method == 'POST':
+        number = request.POST.get('number', '').strip()
+        sent = campaign.get_sent_list()
+        if number and number not in sent:
+            sent.append(number)
+            campaign.sent_numbers = '\n'.join(sent)
+            if len(sent) >= len(campaign.get_recipients()):
+                campaign.status = 'done'
+            elif campaign.status == 'draft':
+                campaign.status = 'in_progress'
+            campaign.save()
+        return JsonResponse({'ok': True, 'sent_count': len(sent), 'progress': campaign.progress})
+    return JsonResponse({'ok': False}, status=405)
+
+
+@login_required
+def messaging_delete(request, pk):
+    """Supprimer une campagne"""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    campaign = get_object_or_404(MessagingCampaign, pk=pk, store=store)
+    if request.method == 'POST':
+        campaign.delete()
+        messages.success(request, 'Campagne supprimée.')
+    return redirect('marketing:messaging_list')
+
+
+@login_required
+def messaging_numbers_template(request):
+    """Template Excel pour l'import de numéros."""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    import openpyxl
+    from django.http import HttpResponse
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Numéros'
+    ws.append(['numero'])
+    ws.append(['237690000001'])
+    ws.append(['237690000002'])
+    ws.append(['+237699000003'])
+    ws.column_dimensions['A'].width = 25
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="template_numeros.xlsx"'
+    wb.save(response)
+    return response

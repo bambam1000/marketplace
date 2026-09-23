@@ -186,6 +186,91 @@ class Newsletter(models.Model):
         return round((self.clicked_count / self.recipients_count) * 100, 2)
 
 
+class MessagingCampaign(models.Model):
+    """Campagne WhatsApp / Telegram"""
+    CHANNEL_CHOICES = [
+        ('whatsapp', 'WhatsApp'),
+        ('telegram', 'Telegram'),
+    ]
+    AUDIENCE_CHOICES = [
+        ('customers', 'Mes clients'),
+        ('custom', 'Liste importée'),
+    ]
+    STATUS_CHOICES = [
+        ('draft', 'Brouillon'),
+        ('in_progress', 'En cours'),
+        ('done', 'Terminée'),
+    ]
+
+    store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='messaging_campaigns')
+    name = models.CharField(max_length=200)
+    channel = models.CharField(max_length=20, choices=CHANNEL_CHOICES, default='whatsapp')
+    message = models.TextField()
+    promo_code = models.ForeignKey(PromoCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='messaging_campaigns')
+    products = models.ManyToManyField('catalog.Product', blank=True, related_name='messaging_campaigns')
+    audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='customers')
+    custom_numbers = models.TextField(blank=True, help_text="Numéros importés, un par ligne")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    sent_numbers = models.TextField(blank=True, help_text="Numéros déjà envoyés, un par ligne")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.channel})"
+
+    def get_recipients(self):
+        """Liste des numéros normalisés (format international sans +)."""
+        import re
+        numbers = []
+        if self.audience == 'custom':
+            raw = self.custom_numbers.splitlines()
+        else:
+            # Numéros des clients ayant commandé dans la boutique
+            from orders.models import Order
+            raw = Order.objects.filter(
+                items__product__store=self.store
+            ).values_list('shipping_phone', flat=True).distinct()
+        for n in raw:
+            n = re.sub(r'[^\d+]', '', str(n or '')).strip()
+            if not n:
+                continue
+            if n.startswith('+'):
+                n = n[1:]
+            elif n.startswith('00237'):
+                n = n[2:]
+            elif len(n) == 9 and n.startswith('6'):  # numéro camerounais local
+                n = '237' + n
+            if len(n) >= 9 and n not in numbers:
+                numbers.append(n)
+        return numbers
+
+    def get_sent_list(self):
+        return [n.strip() for n in self.sent_numbers.splitlines() if n.strip()]
+
+    @property
+    def progress(self):
+        total = len(self.get_recipients())
+        if total == 0:
+            return 0
+        return round(len(self.get_sent_list()) / total * 100)
+
+    def build_message(self, base_url='http://127.0.0.1:8000'):
+        """Message final avec produits et code promo."""
+        text = self.message
+        products = list(self.products.all())
+        if products:
+            text += '\n\n🛍️ *Nos produits :*'
+            for p in products:
+                text += f'\n• {p.name} — {p.price:.0f} FCFA\n  {base_url}{p.get_absolute_url()}'
+        if self.promo_code:
+            p = self.promo_code
+            reduction = f'-{p.discount_value:.0f}%' if p.discount_type == 'percentage' else f'-{p.discount_value:.0f} FCFA'
+            text += f'\n\n🎁 Code promo *{p.code}* : {reduction} (jusqu\'au {p.valid_to.strftime("%d/%m/%Y")})'
+        return text
+
+
 class MarketingAnalytics(models.Model):
     """Analytics marketing quotidiens"""
     store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='analytics')

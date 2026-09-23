@@ -35,4 +35,12 @@ urlpatterns = [
     path('emails/<int:pk>/', views.email_detail, name='email_detail'),
     path('emails/<int:pk>/envoyer/', views.email_send, name='email_send'),
     path('emails/<int:pk>/supprimer/', views.email_delete, name='email_delete'),
+
+    # WhatsApp / Telegram
+    path('messagerie/', views.messaging_list, name='messaging_list'),
+    path('messagerie/nouveau/', views.messaging_create, name='messaging_create'),
+    path('messagerie/template-numeros/', views.messaging_numbers_template, name='messaging_numbers_template'),
+    path('messagerie/<int:pk>/', views.messaging_detail, name='messaging_detail'),
+    path('messagerie/<int:pk>/envoye/', views.messaging_mark_sent, name='messaging_mark_sent'),
+    path('messagerie/<int:pk>/supprimer/', views.messaging_delete, name='messaging_delete'),
 ]
