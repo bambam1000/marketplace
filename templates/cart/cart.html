@@ -27,6 +27,18 @@
 <div class="cart-sum-row"><span>Sous-total</span><span>{{ subtotal|intcomma }} F</span></div>
 <div class="cart-sum-row"><span>Livraison</span><span>{% if shipping %}{{ shipping|intcomma }} F{% else %}<span style="color:var(--green);">Gratuit</span>{% endif %}</span></div>
 {% if subtotal < 50000 and subtotal > 0 %}<div style="font-size:11px;color:var(--text3);margin-top:4px;">Livraison gratuite dès 50,000 F</div>{% endif %}
+{% if promo %}
+<div class="cart-sum-row" style="color:var(--green);"><span><i class="fa-solid fa-ticket"></i> Code {{ promo.code }} <form method="post" action="{% url 'cart:remove_promo' %}" style="display:inline;">{% csrf_token %}<button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;" title="Retirer"><i class="fa-solid fa-xmark"></i></button></form></span><span>-{{ discount|floatformat:0|intcomma }} F</span></div>
+{% else %}
+{% for store_name, tier, rate, amount in loyalty_details %}
+<div class="cart-sum-row" style="color:var(--green);"><span><i class="fa-solid fa-star"></i> Fidélité {{ tier }} (-{{ rate }}%) · {{ store_name }}</span><span>-{{ amount|intcomma }} F</span></div>
+{% endfor %}
+<form method="post" action="{% url 'cart:apply_promo' %}" style="display:flex;gap:6px;margin:10px 0;">
+{% csrf_token %}
+<input type="text" name="promo_code" placeholder="Code promo" style="flex:1;padding:8px 10px;border:1.5px solid var(--border2);border-radius:6px;font-size:12px;text-transform:uppercase;font-family:inherit;">
+<button type="submit" class="btn btn-outline" style="padding:8px 12px;font-size:12px;">Appliquer</button>
+</form>
+{% endif %}
 <div class="cart-sum-row total"><span>Total</span><span>{{ total|intcomma }} FCFA</span></div>
 <a href="{% url 'cart:checkout' %}" class="btn btn-orange btn-lg btn-block" style="margin-top:16px;">Passer la commande →</a>
 <button onclick="orderCartOnWhatsApp()" class="btn btn-lg btn-block" style="background:#25D366;color:#fff;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;">

@@ -112,6 +112,24 @@ class Campaign(models.Model):
         now = timezone.now()
         return self.status == 'active' and self.start_date <= now <= self.end_date
 
+    def refresh_status(self, save=True):
+        """Met à jour le statut automatiquement selon les dates.
+        Ne touche pas aux campagnes brouillon ou annulées."""
+        now = timezone.now()
+        if self.status in ('draft', 'cancelled'):
+            return self.status
+        if now < self.start_date:
+            new_status = 'scheduled'
+        elif self.start_date <= now <= self.end_date:
+            new_status = 'active'
+        else:
+            new_status = 'completed'
+        if new_status != self.status:
+            self.status = new_status
+            if save:
+                self.save(update_fields=['status'])
+        return self.status
+
     @property
     def conversion_rate(self):
         if self.clicks_count == 0:
@@ -195,6 +213,38 @@ class MarketingAnalytics(models.Model):
         return round((self.purchases / self.unique_visitors) * 100, 2)
 
 
+class LoyaltySettings(models.Model):
+    """Configuration du programme de fidélité, définie par le vendeur"""
+    store = models.OneToOneField('store.Store', on_delete=models.CASCADE, related_name='loyalty_settings')
+    points_per_amount = models.IntegerField(default=1000, help_text="1 point gagné par tranche de X FCFA")
+    silver_threshold = models.IntegerField(default=2000)
+    silver_rate = models.IntegerField(default=5, help_text="Réduction en %")
+    gold_threshold = models.IntegerField(default=5000)
+    gold_rate = models.IntegerField(default=10)
+    platinum_threshold = models.IntegerField(default=10000)
+    platinum_rate = models.IntegerField(default=15)
+
+    def __str__(self):
+        return f"Fidélité - {self.store.name}"
+
+    def tier_for_points(self, points):
+        if points >= self.platinum_threshold:
+            return 'platinum'
+        if points >= self.gold_threshold:
+            return 'gold'
+        if points >= self.silver_threshold:
+            return 'silver'
+        return 'bronze'
+
+    def rate_for_tier(self, tier):
+        return {
+            'bronze': 0,
+            'silver': self.silver_rate,
+            'gold': self.gold_rate,
+            'platinum': self.platinum_rate,
+        }.get(tier, 0)
+
+
 class LoyaltyProgram(models.Model):
     """Programme de fidélité"""
     TIER_CHOICES = [
@@ -219,24 +269,67 @@ class LoyaltyProgram(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.store.name} ({self.tier})"
 
+    def get_settings(self):
+        """Configuration de la boutique (avec valeurs par défaut)."""
+        settings_obj, _ = LoyaltySettings.objects.get_or_create(store=self.store)
+        return settings_obj
+
     def add_points(self, amount):
-        """Ajoute des points (1 point par 1000 FCFA dépensés)"""
-        points_to_add = int(amount / 1000)
+        """Ajoute des points selon le barème de la boutique"""
+        cfg = self.get_settings()
+        points_to_add = int(amount / cfg.points_per_amount) if cfg.points_per_amount > 0 else 0
         self.points += points_to_add
         self.update_tier()
         self.save()
         return points_to_add
 
     def update_tier(self):
-        """Met à jour le niveau selon les points"""
-        if self.points >= 10000:
-            self.tier = 'platinum'
-        elif self.points >= 5000:
-            self.tier = 'gold'
-        elif self.points >= 2000:
-            self.tier = 'silver'
-        else:
-            self.tier = 'bronze'
+        """Met à jour le niveau selon les réglages de la boutique.
+        Envoie un email au client si le niveau change."""
+        cfg = self.get_settings()
+        new_tier = cfg.tier_for_points(self.points)
+        if new_tier != self.tier:
+            old_tier = self.tier
+            self.tier = new_tier
+            self._notify_tier_change(old_tier, new_tier, cfg)
+
+    def _notify_tier_change(self, old_tier, new_tier, cfg):
+        """Email au client lors d'un changement de niveau."""
+        if not self.user.email:
+            return
+        from django.core.mail import EmailMessage
+        from django.conf import settings as dj_settings
+        labels = {'bronze': 'Bronze', 'silver': 'Argent', 'gold': 'Or', 'platinum': 'Platine'}
+        rate = cfg.rate_for_tier(new_tier)
+        benefit = f"Vous bénéficiez désormais de <strong>-{rate}%</strong> automatiques sur toutes vos commandes chez {self.store.name}." if rate > 0 else "Continuez vos achats pour débloquer des réductions automatiques."
+        html = f'''<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#fff;">
+    <div style="background:#ff6a00;padding:24px;text-align:center;">
+        <div style="color:#fff;font-size:22px;font-weight:800;">{self.store.name}</div>
+    </div>
+    <div style="padding:32px 28px;color:#333;font-size:14px;line-height:1.7;">
+        <p>Bonjour {self.user.first_name or self.user.username},</p>
+        <p>Félicitations ! Vous passez au niveau <strong style="color:#ff6a00;">{labels.get(new_tier, new_tier)}</strong> de notre programme de fidélité ({self.points} points).</p>
+        <p>{benefit}</p>
+        <p>Merci de votre confiance.</p>
+    </div>
+    <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
+        {self.store.name} · {self.store.city or 'Douala'} · AfriMarket
+    </div>
+</div>
+</body></html>'''
+        try:
+            msg = EmailMessage(
+                subject=f'Vous êtes maintenant niveau {labels.get(new_tier, new_tier)} chez {self.store.name} !',
+                body=html,
+                from_email=dj_settings.DEFAULT_FROM_EMAIL,
+                to=[self.user.email],
+            )
+            msg.content_subtype = 'html'
+            msg.send(fail_silently=True)
+        except Exception:
+            pass
 
     def redeem_points(self, points):
         """Utilise des points (100 points = 1000 FCFA)"""
@@ -248,11 +341,5 @@ class LoyaltyProgram(models.Model):
 
     @property
     def discount_rate(self):
-        """Taux de réduction selon le niveau"""
-        rates = {
-            'bronze': 0,
-            'silver': 5,
-            'gold': 10,
-            'platinum': 15,
-        }
-        return rates.get(self.tier, 0)
+        """Taux de réduction selon le niveau et les réglages de la boutique"""
+        return self.get_settings().rate_for_tier(self.tier)

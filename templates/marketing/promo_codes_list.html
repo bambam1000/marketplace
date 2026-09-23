@@ -1,116 +1,167 @@
 {% extends 'dashboard/base.html' %}
-{% load humanize %}
-
 {% block title %}Codes Promo{% endblock %}
-
 {% block dash %}
+<style>
+.pc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.pc-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; box-shadow: var(--dash-shadow); display: flex; align-items: center; gap: 12px; }
+.pc-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.pc-stat .v { font-weight: 800; font-size: 18px; }
+.pc-stat .l { font-size: 11px; color: var(--dash-text3); }
+.pc-actions-menu { position: relative; display: inline-block; }
+.pc-dropdown { display: none; position: fixed; background: #fff; border: 1px solid var(--dash-border); border-radius: 6px; box-shadow: var(--dash-shadow-lg); min-width: 170px; z-index: 1500; overflow: hidden; }
+.pc-dropdown.open { display: block; }
+.pc-dropdown a, .pc-dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; font-size: 13px; color: var(--dash-text2); text-decoration: none; background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.pc-dropdown a:hover, .pc-dropdown button:hover { background: var(--dash-bg); color: var(--dash-text); }
+.pc-dropdown i { width: 16px; text-align: center; color: var(--dash-text3); }
+.dots-btn { background: none; border: none; cursor: pointer; color: var(--dash-text3); padding: 6px 10px; border-radius: 6px; font-size: 14px; }
+.dots-btn:hover { background: var(--dash-bg); color: var(--dash-text); }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 420px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+.pc-code { font-family: monospace; font-weight: 800; font-size: 14px; background: var(--dash-bg); border: 1px dashed var(--dash-border); border-radius: 6px; padding: 4px 10px; letter-spacing: 1px; }
+</style>
+
 <div class="dash-header">
     <div>
-        <h1>🎫 Codes Promo</h1>
-        <p>Gérez vos codes de réduction</p>
+        <a href="{% url 'marketing:dashboard' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Marketing</a>
+        <h1><i class="fa-solid fa-ticket" style="color:var(--dash-accent);"></i> Codes Promo</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ promo_codes|length }} code{{ promo_codes|length|pluralize:"s" }} créé{{ promo_codes|length|pluralize:"s" }}</p>
     </div>
-    <a href="{% url 'marketing:promo_code_create' %}" class="btn btn-primary">+ Créer un code promo</a>
+    <a href="{% url 'marketing:promo_code_create' %}" class="btn btn-orange"><i class="fa-solid fa-plus"></i> Nouveau code</a>
 </div>
 
-<div class="stats-mini" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
-    <div class="stat-mini-card">
-        <div class="stat-mini-label">Total</div>
-        <div class="stat-mini-value">{{ promo_codes.count }}</div>
+<div class="pc-stats">
+    <div class="pc-stat">
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-ticket"></i></div>
+        <div><div class="v">{{ promo_codes|length }}</div><div class="l">Total</div></div>
     </div>
-    <div class="stat-mini-card">
-        <div class="stat-mini-label">Actifs</div>
-        <div class="stat-mini-value" style="color: #059669;">{{ active_count }}</div>
+    <div class="pc-stat">
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-circle-check"></i></div>
+        <div><div class="v">{{ active_count }}</div><div class="l">Actif{{ active_count|pluralize:"s" }}</div></div>
     </div>
-    <div class="stat-mini-card">
-        <div class="stat-mini-label">Inactifs</div>
-        <div class="stat-mini-value" style="color: #6b7280;">{{ promo_codes.count|add:"-"|add:active_count }}</div>
+    <div class="pc-stat">
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div><div class="v">{{ inactive_count }}</div><div class="l">Inactif{{ inactive_count|pluralize:"s" }}</div></div>
     </div>
 </div>
 
-<div class="card">
-    <table class="table">
+<div class="dash-card">
+    <div class="dash-table-responsive">
+    <table class="dash-table">
         <thead>
-            <tr>
-                <th>Code</th>
-                <th>Type</th>
-                <th>Réduction</th>
-                <th>Utilisations</th>
-                <th>Valide du</th>
-                <th>Valide jusqu'au</th>
-                <th>Statut</th>
-                <th>Actions</th>
-            </tr>
+            <tr><th>Code</th><th>Réduction</th><th>Min. d'achat</th><th>Utilisations</th><th>Validité</th><th>Statut</th><th style="text-align:right;">Actions</th></tr>
         </thead>
         <tbody>
             {% for promo in promo_codes %}
             <tr>
-                <td><strong>{{ promo.code }}</strong></td>
-                <td>{{ promo.get_discount_type_display }}</td>
+                <td><span class="pc-code">{{ promo.code }}</span></td>
                 <td>
                     {% if promo.discount_type == 'percentage' %}
-                    <span class="badge" style="background: #dbeafe; color: #1e40af;">{{ promo.discount_value }}%</span>
+                    <span class="tag" style="background:rgba(46,144,250,.1);color:var(--dash-blue);">-{{ promo.discount_value|floatformat:0 }}%</span>
                     {% else %}
-                    <span class="badge" style="background: #dcfce7; color: #166534;">{{ promo.discount_value|floatformat:0|intcomma }} F</span>
+                    <span class="tag" style="background:rgba(18,183,106,.1);color:var(--dash-green);">-{{ promo.discount_value|floatformat:0 }} FCFA</span>
                     {% endif %}
+                    {% if promo.max_discount_amount %}<div style="font-size:10px;color:var(--dash-text3);margin-top:2px;">max {{ promo.max_discount_amount|floatformat:0 }} F</div>{% endif %}
                 </td>
+                <td style="font-size:13px;">{% if promo.min_purchase_amount > 0 %}{{ promo.min_purchase_amount|floatformat:0 }} F{% else %}<span style="color:var(--dash-text3);">—</span>{% endif %}</td>
+                <td style="font-size:13px;">{{ promo.usage_count }}{% if promo.usage_limit %}<span style="color:var(--dash-text3);"> / {{ promo.usage_limit }}</span>{% endif %}</td>
+                <td style="font-size:12px;color:var(--dash-text3);">{{ promo.valid_from|date:"d/m/Y" }} → {{ promo.valid_to|date:"d/m/Y" }}</td>
                 <td>
-                    {{ promo.usage_count }}
-                    {% if promo.usage_limit %}
-                    <span style="color: #6b7280;">/ {{ promo.usage_limit }}</span>
-                    {% endif %}
+                    {% if promo.is_valid %}<span class="status-badge st-delivered">Valide</span>
+                    {% elif not promo.is_active %}<span class="status-badge st-cancelled">Inactif</span>
+                    {% else %}<span class="status-badge st-pending">Expiré</span>{% endif %}
                 </td>
-                <td>{{ promo.valid_from|date:"d/m/Y H:i" }}</td>
-                <td>{{ promo.valid_to|date:"d/m/Y H:i" }}</td>
-                <td>
-                    {% if promo.is_valid %}
-                    <span class="badge badge-success">✓ Valide</span>
-                    {% elif not promo.is_active %}
-                    <span class="badge" style="background: #fee2e2; color: #991b1b;">Inactif</span>
-                    {% else %}
-                    <span class="badge badge-secondary">Expiré</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <a href="{% url 'marketing:promo_code_edit' promo.pk %}" class="btn btn-sm">✏️</a>
-                        <a href="{% url 'marketing:promo_code_toggle' promo.pk %}" class="btn btn-sm"
-                           onclick="return confirm('Voulez-vous {{ promo.is_active|yesno:'désactiver,activer' }} ce code ?')">
-                            {% if promo.is_active %}⏸️{% else %}▶️{% endif %}
-                        </a>
+                <td style="text-align:right;">
+                    <div class="pc-actions-menu">
+                        <button class="dots-btn" onclick="togglePcMenu(event, {{ promo.pk }})"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="pc-dropdown" id="pcMenu{{ promo.pk }}">
+                            <a href="{% url 'marketing:promo_code_edit' promo.pk %}"><i class="fa-solid fa-pen"></i> Modifier</a>
+                            {% if promo.is_active %}
+                            <button type="button" style="color:var(--dash-red);" onclick="openToggleModal({{ promo.pk }}, '{{ promo.code|escapejs }}', true)"><i class="fa-solid fa-ban" style="color:var(--dash-red);"></i> Désactiver</button>
+                            {% else %}
+                            <button type="button" style="color:var(--dash-green);" onclick="openToggleModal({{ promo.pk }}, '{{ promo.code|escapejs }}', false)"><i class="fa-solid fa-check" style="color:var(--dash-green);"></i> Activer</button>
+                            {% endif %}
+                        </div>
                     </div>
                 </td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="8" style="text-align: center; padding: 3rem; color: #6b7280;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🎫</div>
-                    <p>Aucun code promo pour le moment.</p>
-                    <a href="{% url 'marketing:promo_code_create' %}" class="btn btn-primary" style="margin-top: 1rem;">Créer votre premier code promo</a>
-                </td>
-            </tr>
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-ticket"></i></div>
+                <div style="color:var(--dash-text3);margin-bottom:12px;">Aucun code promo</div>
+                <a href="{% url 'marketing:promo_code_create' %}" class="btn btn-orange btn-sm"><i class="fa-solid fa-plus"></i> Créer votre premier code</a>
+            </td></tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 
-<style>
-.stat-mini-card {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
+<!-- Modale Activer / Désactiver -->
+<div class="dmodal" id="toggleModal">
+    <div class="dmodal-box">
+        <div class="dmodal-body" style="text-align:center;">
+            <div id="toggleIcon" style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;"></div>
+            <h3 id="toggleTitle" style="font-size:16px;margin-bottom:8px;"></h3>
+            <p id="toggleText" style="font-size:13px;color:var(--dash-text3);margin-bottom:0;"></p>
+        </div>
+        <div class="dmodal-foot">
+            <button type="button" class="btn btn-outline" onclick="document.getElementById('toggleModal').classList.remove('open')">Annuler</button>
+            <form method="post" id="toggleForm" style="margin:0;">{% csrf_token %}
+                <button type="submit" id="toggleBtn" class="btn"></button>
+            </form>
+        </div>
+    </div>
+</div>
 
-.stat-mini-label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin-bottom: 0.5rem;
+<script>
+function togglePcMenu(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById('pcMenu' + id);
+    var wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.pc-dropdown').forEach(function(d) { d.classList.remove('open'); });
+    if (wasOpen) return;
+    var rect = e.currentTarget.getBoundingClientRect();
+    var menuHeight = 110;
+    var top = rect.bottom + 6;
+    if (top + menuHeight > window.innerHeight) { top = rect.top - menuHeight - 6; }
+    menu.style.top = top + 'px';
+    menu.style.left = (rect.right - 170) + 'px';
+    menu.classList.add('open');
 }
-
-.stat-mini-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #111827;
+document.addEventListener('click', function() {
+    document.querySelectorAll('.pc-dropdown').forEach(function(d) { d.classList.remove('open'); });
+});
+function openToggleModal(id, code, isActive) {
+    var icon = document.getElementById('toggleIcon');
+    var title = document.getElementById('toggleTitle');
+    var text = document.getElementById('toggleText');
+    var btn = document.getElementById('toggleBtn');
+    if (isActive) {
+        icon.style.background = 'rgba(239,68,68,.1)'; icon.style.color = 'var(--dash-red)';
+        icon.innerHTML = '<i class="fa-solid fa-ban"></i>';
+        title.textContent = 'Désactiver ce code ?';
+        text.innerHTML = 'Le code « <strong>' + code + '</strong> » ne pourra plus être utilisé par les clients.';
+        btn.style.background = 'var(--dash-red)'; btn.style.color = '#fff';
+        btn.innerHTML = '<i class="fa-solid fa-ban"></i> Désactiver';
+    } else {
+        icon.style.background = 'rgba(18,183,106,.1)'; icon.style.color = 'var(--dash-green)';
+        icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        title.textContent = 'Activer ce code ?';
+        text.innerHTML = 'Le code « <strong>' + code + '</strong> » pourra de nouveau être utilisé.';
+        btn.style.background = 'var(--dash-green)'; btn.style.color = '#fff';
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Activer';
+    }
+    document.getElementById('toggleForm').action = "{% url 'marketing:promo_code_toggle' 0 %}".replace('/0/', '/' + id + '/');
+    document.getElementById('toggleModal').classList.add('open');
 }
-</style>
+document.querySelectorAll('.dmodal').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.querySelectorAll('.dmodal').forEach(function(m) { m.classList.remove('open'); });
+});
+</script>
 {% endblock %}

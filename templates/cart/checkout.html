@@ -24,6 +24,8 @@
 <h3 style="font-size:15px;margin-bottom:10px;">🛒 Récapitulatif</h3>
 {% for item in cart_items %}<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border2);"><span>{{ item.name }} × {{ item.quantity }}</span><span style="font-weight:600;">{{ item.subtotal|intcomma }} F</span></div>{% endfor %}
 <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;"><span>Livraison</span><span>{% if shipping %}{{ shipping|intcomma }} F{% else %}<span style="color:var(--green);">Gratuit</span>{% endif %}</span></div>
+{% if promo %}<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--green);"><span><i class="fa-solid fa-ticket"></i> Code {{ promo.code }}</span><span>-{{ discount|floatformat:0|intcomma }} F</span></div>{% endif %}
+{% for store_name, tier, rate, amount in loyalty_details %}<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--green);"><span><i class="fa-solid fa-star"></i> Fidélité {{ tier }} (-{{ rate }}%) · {{ store_name }}</span><span>-{{ amount|intcomma }} F</span></div>{% endfor %}
 <div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--border);font-size:20px;font-weight:700;color:var(--red);"><span>Total</span><span>{{ total|intcomma }} FCFA</span></div>
 </div>
 <div class="trade-assurance">🛡️ <strong>Trade Assurance</strong> — Votre commande est protégée. Remboursement si non conforme.</div>

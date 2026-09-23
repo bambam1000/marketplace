@@ -7,12 +7,21 @@ from .models import Category, Product, Review, Wishlist, FlashDeal, HeroBanner, 
 from store.models import Store
 
 def home(request):
+    from django.utils import timezone
+    from marketing.models import Campaign
     categories = Category.objects.filter(parent__isnull=True, is_active=True)[:10]
     banners = HeroBanner.objects.filter(is_active=True)
     flash_products = Product.objects.filter(is_flash_deal=True, is_active=True)[:6]
     featured = Product.objects.filter(is_featured=True, is_active=True)[:12]
     new_products = Product.objects.filter(is_active=True).order_by('-created_at')[:12]
     top_stores = Store.objects.filter(is_active=True)[:10]
+    # Campagnes actives affichées sur la vitrine
+    now = timezone.now()
+    active_campaigns = Campaign.objects.filter(
+        status='active', start_date__lte=now, end_date__gte=now
+    ).select_related('store', 'promo_code')[:4]
+    for camp in active_campaigns:
+        Campaign.objects.filter(pk=camp.pk).update(views_count=camp.views_count + 1)
     return render(request, 'catalog/home.html', {
         'categories': categories,
         'banners': banners,
@@ -20,6 +29,7 @@ def home(request):
         'featured_products': featured,
         'new_products': new_products,
         'top_stores': top_stores,
+        'active_campaigns': active_campaigns,
     })
 
 def product_list(request):

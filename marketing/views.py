@@ -64,9 +64,11 @@ def promo_codes_list(request):
     store = request.user.store
     promo_codes = PromoCode.objects.filter(store=store).order_by('-created_at')
 
+    active_count = promo_codes.filter(is_active=True).count()
     context = {
         'promo_codes': promo_codes,
-        'active_count': promo_codes.filter(is_active=True).count(),
+        'active_count': active_count,
+        'inactive_count': promo_codes.count() - active_count,
     }
     return render(request, 'marketing/promo_codes_list.html', context)
 
@@ -127,15 +129,16 @@ def promo_code_edit(request, pk):
 
 @login_required
 def promo_code_toggle(request, pk):
-    """Activer/désactiver un code promo"""
+    """Activer/désactiver un code promo (POST uniquement)"""
     if not request.user.is_seller or not hasattr(request.user, 'store'):
         return redirect('dashboard:index')
 
     promo_code = get_object_or_404(PromoCode, pk=pk, store=request.user.store)
-    promo_code.is_active = not promo_code.is_active
-    promo_code.save()
-    status = 'activé' if promo_code.is_active else 'désactivé'
-    messages.success(request, f'Code promo {status}.')
+    if request.method == 'POST':
+        promo_code.is_active = not promo_code.is_active
+        promo_code.save()
+        status = 'activé' if promo_code.is_active else 'désactivé'
+        messages.success(request, f'Code promo {status}.')
     return redirect('marketing:promo_codes')
 
 
@@ -148,12 +151,33 @@ def campaigns_list(request):
 
     store = request.user.store
     campaigns = Campaign.objects.filter(store=store).order_by('-created_at')
+    for camp in campaigns:
+        camp.refresh_status()
 
     context = {
         'campaigns': campaigns,
-        'active_count': campaigns.filter(status='active').count(),
+        'active_count': sum(1 for c in campaigns if c.status == 'active'),
+        'scheduled_count': sum(1 for c in campaigns if c.status == 'scheduled'),
+        'completed_count': sum(1 for c in campaigns if c.status == 'completed'),
+        'products': Product.objects.filter(store=store, is_active=True).order_by('name'),
+        'promo_codes': PromoCode.objects.filter(store=store, is_active=True),
     }
     return render(request, 'marketing/campaigns_list.html', context)
+
+
+def campaign_public(request, pk):
+    """Page publique d'une campagne (vitrine). Compte le clic."""
+    campaign = get_object_or_404(Campaign, pk=pk)
+    campaign.refresh_status()
+    if campaign.status != 'active':
+        messages.info(request, 'Cette campagne est terminée.')
+        return redirect('catalog:product_list')
+    Campaign.objects.filter(pk=pk).update(clicks_count=campaign.clicks_count + 1)
+    products = campaign.target_products.filter(is_active=True)
+    return render(request, 'marketing/campaign_public.html', {
+        'campaign': campaign,
+        'products': products,
+    })
 
 
 @login_required
@@ -167,14 +191,25 @@ def campaign_create(request):
     promo_codes = PromoCode.objects.filter(store=store, is_active=True)
 
     if request.method == 'POST':
+        from datetime import datetime
+        def parse_dt(val):
+            try:
+                return timezone.make_aware(datetime.strptime(val, '%Y-%m-%dT%H:%M'))
+            except (ValueError, TypeError):
+                return None
+        start = parse_dt(request.POST.get('start_date'))
+        end = parse_dt(request.POST.get('end_date'))
+        if not start or not end or end <= start:
+            messages.error(request, 'Dates de campagne invalides.')
+            return redirect('marketing:campaigns')
         campaign = Campaign.objects.create(
             store=store,
             name=request.POST.get('name'),
             campaign_type=request.POST.get('campaign_type'),
             description=request.POST.get('description'),
-            start_date=request.POST.get('start_date'),
-            end_date=request.POST.get('end_date'),
-            status=request.POST.get('status', 'draft'),
+            start_date=start,
+            end_date=end,
+            status=request.POST.get('status', 'scheduled'),
             budget=request.POST.get('budget', 0),
         )
 
@@ -228,11 +263,22 @@ def campaign_edit(request, pk):
     promo_codes = PromoCode.objects.filter(store=request.user.store, is_active=True)
 
     if request.method == 'POST':
+        from datetime import datetime
+        def parse_dt(val):
+            try:
+                return timezone.make_aware(datetime.strptime(val, '%Y-%m-%dT%H:%M'))
+            except (ValueError, TypeError):
+                return None
+        start = parse_dt(request.POST.get('start_date'))
+        end = parse_dt(request.POST.get('end_date'))
+        if not start or not end or end <= start:
+            messages.error(request, 'Dates de campagne invalides.')
+            return redirect('marketing:campaign_edit', pk=pk)
         campaign.name = request.POST.get('name')
         campaign.campaign_type = request.POST.get('campaign_type')
         campaign.description = request.POST.get('description')
-        campaign.start_date = request.POST.get('start_date')
-        campaign.end_date = request.POST.get('end_date')
+        campaign.start_date = start
+        campaign.end_date = end
         campaign.status = request.POST.get('status', 'draft')
         campaign.budget = request.POST.get('budget', 0)
 
@@ -309,6 +355,24 @@ def loyalty_program(request):
         return redirect('dashboard:index')
 
     store = request.user.store
+
+    # Sauvegarde des réglages du programme
+    from .models import LoyaltySettings
+    cfg, _ = LoyaltySettings.objects.get_or_create(store=store)
+    if request.method == 'POST':
+        for field in ['points_per_amount', 'silver_threshold', 'silver_rate',
+                      'gold_threshold', 'gold_rate', 'platinum_threshold', 'platinum_rate']:
+            val = request.POST.get(field)
+            if val is not None and str(val).isdigit():
+                setattr(cfg, field, int(val))
+        cfg.save()
+        # Recalculer les niveaux de tous les membres
+        for m in LoyaltyProgram.objects.filter(store=store):
+            m.update_tier()
+            m.save()
+        messages.success(request, 'Réglages du programme de fidélité enregistrés.')
+        return redirect('marketing:loyalty')
+
     members = LoyaltyProgram.objects.filter(store=store).select_related('user').order_by('-points')
 
     # Statistiques
@@ -320,12 +384,16 @@ def loyalty_program(request):
     )
 
     # Par niveau
-    tier_breakdown = members.values('tier').annotate(count=Count('id'))
+    tier_breakdown = {t['tier']: t['count'] for t in members.values('tier').annotate(count=Count('id'))}
 
     context = {
         'members': members,
         'stats': stats,
-        'tier_breakdown': tier_breakdown,
+        'cfg': cfg,
+        'tier_bronze': tier_breakdown.get('bronze', 0),
+        'tier_silver': tier_breakdown.get('silver', 0),
+        'tier_gold': tier_breakdown.get('gold', 0),
+        'tier_platinum': tier_breakdown.get('platinum', 0),
     }
     return render(request, 'marketing/loyalty_program.html', context)
 

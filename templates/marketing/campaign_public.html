@@ -1,0 +1,30 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}{{ campaign.name }}{% endblock %}
+{% block content %}
+<div style="background:linear-gradient(135deg,#ff6a00,#ff8533);color:#fff;padding:2.5rem 1rem;text-align:center;">
+    <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;opacity:.8;margin-bottom:8px;">{{ campaign.get_campaign_type_display }} · {{ campaign.store.name }}</div>
+    <h1 style="font-size:28px;font-weight:800;margin-bottom:8px;">{{ campaign.name }}</h1>
+    <p style="opacity:.9;max-width:600px;margin:0 auto 12px;">{{ campaign.description|truncatewords:30 }}</p>
+    <div style="font-size:13px;opacity:.85;"><i class="fa-regular fa-clock"></i> Jusqu'au {{ campaign.end_date|date:"d/m/Y" }}</div>
+    {% if campaign.promo_code %}
+    <div style="display:inline-block;background:#fff;color:var(--orange);border-radius:10px;padding:14px 28px;margin-top:16px;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Code promo</div>
+        <div style="font-size:24px;font-weight:800;letter-spacing:3px;">{{ campaign.promo_code.code }}</div>
+        <div style="font-size:13px;font-weight:600;">{% if campaign.promo_code.discount_type == 'percentage' %}-{{ campaign.promo_code.discount_value|floatformat:0 }}%{% else %}-{{ campaign.promo_code.discount_value|floatformat:0 }} FCFA{% endif %} sur vos achats</div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="section">
+    {% if products %}
+    <div class="products-grid">
+        {% for p in products %}{% include 'includes/product_card.html' with product=p %}{% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem;color:var(--text3);">
+        <i class="fa-solid fa-box-open" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;"></i>
+        Les produits de cette campagne arrivent bientôt.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

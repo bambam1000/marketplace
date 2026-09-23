@@ -91,18 +91,31 @@
 
             <div class="form-group">
                 <label>Produits ciblés</label>
-                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.75rem;">
-                    {% for product in products %}
-                    <label class="checkbox-label" style="margin-bottom: 0.5rem;">
-                        <input type="checkbox" name="target_products" value="{{ product.pk }}"
-                               {% if campaign and product in campaign.target_products.all %}checked{% endif %}>
-                        <span>{{ product.name }} ({{ product.price|floatformat:0 }} F)</span>
-                    </label>
-                    {% empty %}
-                    <p class="text-muted">Aucun produit disponible</p>
-                    {% endfor %}
+                <div style="border: 1px solid #d1d5db; border-radius: 6px; overflow: hidden;">
+                    <div style="position:relative;border-bottom:1px solid #e5e7eb;">
+                        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:12px;"></i>
+                        <input type="text" id="campProdSearch" placeholder="Rechercher un produit..." onkeyup="filterCampProducts()" style="width:100%;padding:10px 12px 10px 34px;border:none;font-size:13px;font-family:inherit;outline:none;">
+                    </div>
+                    <div id="campProdList" style="max-height: 260px; overflow-y: auto;">
+                        {% for product in products %}
+                        <label class="camp-prod-item" data-name="{{ product.name|lower }}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #f3f4f6;cursor:pointer;margin:0;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background=''">
+                            <input type="checkbox" name="target_products" value="{{ product.pk }}" onchange="updateCampProdCount()"
+                                   {% if campaign and product in campaign.target_products.all %}checked{% endif %}
+                                   style="accent-color:#ff6a00;width:16px;height:16px;">
+                            {% if product.image %}<img src="{{ product.image.url }}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">
+                            {% else %}<div style="width:36px;height:36px;background:#f3f4f6;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#9ca3af;"><i class="fa-solid fa-image"></i></div>{% endif %}
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ product.name }}</div>
+                                <div style="font-size:11px;color:#6b7280;">{{ product.price|floatformat:0 }} FCFA · Stock : {{ product.stock }}</div>
+                            </div>
+                        </label>
+                        {% empty %}
+                        <p style="padding:16px;text-align:center;color:#6b7280;font-size:13px;">Aucun produit disponible</p>
+                        {% endfor %}
+                        <div id="campProdEmpty" style="display:none;padding:16px;text-align:center;color:#6b7280;font-size:13px;">Aucun produit trouvé</div>
+                    </div>
                 </div>
-                <small class="form-text">Sélectionnez les produits concernés par cette campagne</small>
+                <small class="form-text"><span id="campProdCount">0</span> produit(s) sélectionné(s) — ils apparaîtront sur la page publique de la campagne</small>
             </div>
 
             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
@@ -167,4 +180,21 @@
     color: #6b7280;
 }
 </style>
+<script>
+function filterCampProducts() {
+    var q = document.getElementById('campProdSearch').value.toLowerCase();
+    var visible = 0;
+    document.querySelectorAll('.camp-prod-item').forEach(function(item) {
+        var match = item.dataset.name.indexOf(q) !== -1;
+        item.style.display = match ? 'flex' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('campProdEmpty').style.display = visible === 0 ? 'block' : 'none';
+}
+function updateCampProdCount() {
+    var n = document.querySelectorAll('.camp-prod-item input:checked').length;
+    document.getElementById('campProdCount').textContent = n;
+}
+updateCampProdCount();
+</script>
 {% endblock %}

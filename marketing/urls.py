@@ -19,6 +19,9 @@ urlpatterns = [
     path('campaigns/<int:pk>/', views.campaign_detail, name='campaign_detail'),
     path('campaigns/<int:pk>/edit/', views.campaign_edit, name='campaign_edit'),
 
+    # Page publique (vitrine)
+    path('campagne/<int:pk>/', views.campaign_public, name='campaign_public'),
+
     # Analytics
     path('analytics/', views.analytics, name='analytics'),
 

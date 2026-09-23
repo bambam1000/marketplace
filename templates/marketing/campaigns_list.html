@@ -1,247 +1,260 @@
 {% extends 'dashboard/base.html' %}
-{% load humanize %}
-
-{% block title %}Campagnes Marketing{% endblock %}
-
+{% block title %}Campagnes{% endblock %}
 {% block dash %}
+<style>
+.camp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.camp-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; box-shadow: var(--dash-shadow); display: flex; align-items: center; gap: 12px; }
+.camp-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.camp-stat .v { font-weight: 800; font-size: 18px; }
+.camp-stat .l { font-size: 11px; color: var(--dash-text3); }
+.camp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.camp-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; overflow: hidden; box-shadow: var(--dash-shadow); transition: var(--dash-transition); }
+.camp-card:hover { box-shadow: var(--dash-shadow-hover); transform: translateY(-2px); }
+.camp-banner { height: 120px; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
+.camp-body { padding: 16px; }
+.camp-metrics { display: flex; gap: 14px; margin: 12px 0; padding: 10px 0; border-top: 1px solid var(--dash-border); border-bottom: 1px solid var(--dash-border); }
+.camp-metric { flex: 1; text-align: center; }
+.camp-metric .v { font-weight: 800; font-size: 15px; }
+.camp-metric .l { font-size: 10px; color: var(--dash-text3); }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+</style>
+
 <div class="dash-header">
     <div>
-        <h1>🎯 Campagnes Marketing</h1>
-        <p>Créez et gérez vos campagnes promotionnelles</p>
+        <a href="{% url 'marketing:dashboard' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Marketing</a>
+        <h1><i class="fa-solid fa-bullseye" style="color:var(--dash-accent);"></i> Campagnes</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ campaigns|length }} campagne{{ campaigns|length|pluralize:"s" }}</p>
     </div>
-    <a href="{% url 'marketing:campaign_create' %}" class="btn btn-primary">+ Créer une campagne</a>
+    <button type="button" class="btn btn-orange" onclick="openCampModal()"><i class="fa-solid fa-plus"></i> Nouvelle campagne</button>
 </div>
 
-<div class="stats-mini" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
-    <div class="stat-mini-card">
-        <div class="stat-mini-label">Total</div>
-        <div class="stat-mini-value">{{ campaigns.count }}</div>
+<div class="camp-stats">
+    <div class="camp-stat">
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-bullseye"></i></div>
+        <div><div class="v">{{ campaigns|length }}</div><div class="l">Total</div></div>
     </div>
-    <div class="stat-mini-card">
-        <div class="stat-mini-label">Actives</div>
-        <div class="stat-mini-value" style="color: #059669;">{{ active_count }}</div>
+    <div class="camp-stat">
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-play"></i></div>
+        <div><div class="v">{{ active_count }}</div><div class="l">Active{{ active_count|pluralize:"s" }}</div></div>
     </div>
-    <div class="stat-mini-card">
-        <div class="stat-mini-label">Programmées</div>
-        <div class="stat-mini-value" style="color: #f59e0b;">{{ campaigns|length }}</div>
+    <div class="camp-stat">
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-clock"></i></div>
+        <div><div class="v">{{ scheduled_count }}</div><div class="l">Programmée{{ scheduled_count|pluralize:"s" }}</div></div>
     </div>
-    <div class="stat-mini-card">
-        <div class="stat-mini-label">Terminées</div>
-        <div class="stat-mini-value" style="color: #6b7280;">0</div>
+    <div class="camp-stat">
+        <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-flag-checkered"></i></div>
+        <div><div class="v">{{ completed_count }}</div><div class="l">Terminée{{ completed_count|pluralize:"s" }}</div></div>
     </div>
 </div>
 
-<div class="campaigns-grid">
-    {% for campaign in campaigns %}
-    <div class="campaign-card">
-        {% if campaign.banner %}
-        <div class="campaign-banner" style="background-image: url('{{ campaign.banner.url }}');"></div>
-        {% else %}
-        <div class="campaign-banner" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
-        {% endif %}
-
-        <div class="campaign-content">
-            <div class="campaign-header">
-                <h3>{{ campaign.name }}</h3>
-                <span class="campaign-status campaign-status-{{ campaign.status }}">
-                    {{ campaign.get_status_display }}
-                </span>
+<div class="camp-grid">
+    {% for camp in campaigns %}
+    <div class="camp-card">
+        <div class="camp-banner" style="{% if camp.banner %}background-image:url('{{ camp.banner.url }}');{% else %}background:linear-gradient(135deg,#ff6a00,#ff8533);{% endif %}">
+            {% if not camp.banner %}<i class="fa-solid fa-bullhorn" style="font-size:32px;color:rgba(255,255,255,.5);"></i>{% endif %}
+        </div>
+        <div class="camp-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
+                <div style="font-weight:700;font-size:15px;">{{ camp.name }}</div>
+                {% if camp.status == 'active' %}<span class="status-badge st-delivered">Active</span>
+                {% elif camp.status == 'scheduled' %}<span class="status-badge st-shipped">Programmée</span>
+                {% elif camp.status == 'completed' %}<span class="status-badge st-pending">Terminée</span>
+                {% elif camp.status == 'cancelled' %}<span class="status-badge st-cancelled">Annulée</span>
+                {% else %}<span class="status-badge st-pending">Brouillon</span>{% endif %}
             </div>
-
-            <p class="campaign-desc">{{ campaign.description|truncatewords:20 }}</p>
-
-            <div class="campaign-meta">
-                <div class="campaign-meta-item">
-                    <span class="meta-label">Type</span>
-                    <span class="meta-value">{{ campaign.get_campaign_type_display }}</span>
-                </div>
-                <div class="campaign-meta-item">
-                    <span class="meta-label">Période</span>
-                    <span class="meta-value">{{ campaign.start_date|date:"d/m" }} - {{ campaign.end_date|date:"d/m" }}</span>
-                </div>
+            <div style="font-size:12px;color:var(--dash-text3);margin-bottom:4px;">{{ camp.get_campaign_type_display }} · {{ camp.start_date|date:"d/m" }} → {{ camp.end_date|date:"d/m/Y" }}</div>
+            {% if camp.promo_code %}<span class="tag" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-ticket"></i> {{ camp.promo_code.code }}</span>{% endif %}
+            <div class="camp-metrics">
+                <div class="camp-metric"><div class="v">{{ camp.views_count }}</div><div class="l">Vues</div></div>
+                <div class="camp-metric"><div class="v">{{ camp.clicks_count }}</div><div class="l">Clics</div></div>
+                <div class="camp-metric"><div class="v">{{ camp.conversions_count }}</div><div class="l">Ventes</div></div>
+                <div class="camp-metric"><div class="v" style="color:var(--dash-green);">{{ camp.revenue_generated|floatformat:0 }}</div><div class="l">FCFA</div></div>
             </div>
-
-            <div class="campaign-stats">
-                <div class="stat-item">
-                    <div class="stat-number">{{ campaign.views_count|intcomma }}</div>
-                    <div class="stat-name">Vues</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">{{ campaign.clicks_count|intcomma }}</div>
-                    <div class="stat-name">Clics</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">{{ campaign.conversions_count }}</div>
-                    <div class="stat-name">Conversions</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">{{ campaign.roi }}%</div>
-                    <div class="stat-name">ROI</div>
-                </div>
-            </div>
-
-            <div class="campaign-actions">
-                <a href="{% url 'marketing:campaign_detail' campaign.pk %}" class="btn btn-sm btn-primary">Voir détails</a>
-                <a href="{% url 'marketing:campaign_edit' campaign.pk %}" class="btn btn-sm">✏️ Modifier</a>
+            <div style="display:flex;gap:8px;">
+                <a href="{% url 'marketing:campaign_detail' camp.pk %}" class="btn btn-outline btn-sm" style="flex:1;"><i class="fa-solid fa-chart-line"></i> Détails</a>
+                <a href="{% url 'marketing:campaign_edit' camp.pk %}" class="btn btn-outline btn-sm" style="flex:1;"><i class="fa-solid fa-pen"></i> Modifier</a>
+                {% if camp.status == 'active' %}
+                <a href="{% url 'marketing:campaign_public' camp.pk %}" target="_blank" class="btn btn-outline btn-sm" title="Voir la page publique"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                {% endif %}
             </div>
         </div>
     </div>
     {% empty %}
-    <div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: #6b7280;">
-        <div style="font-size: 4rem; margin-bottom: 1rem;">🎯</div>
-        <h3>Aucune campagne pour le moment</h3>
-        <p>Créez votre première campagne marketing pour booster vos ventes</p>
-        <a href="{% url 'marketing:campaign_create' %}" class="btn btn-primary" style="margin-top: 1.5rem;">+ Créer ma première campagne</a>
+    <div class="dash-card" style="grid-column:1/-1;text-align:center;padding:3rem;">
+        <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-bullseye"></i></div>
+        <div style="color:var(--dash-text3);margin-bottom:12px;">Aucune campagne</div>
+        <button type="button" class="btn btn-orange btn-sm" onclick="openCampModal()"><i class="fa-solid fa-plus"></i> Créer votre première campagne</button>
     </div>
     {% endfor %}
 </div>
 
-<style>
-.campaigns-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-}
+<!-- ═══ Modale Nouvelle campagne (2 étapes) ═══ -->
+<div class="dmodal" id="campModal">
+    <div class="dmodal-box" style="max-width:600px;">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-bullseye" style="color:var(--dash-accent);"></i> Nouvelle campagne</h3>
+            <button type="button" class="dmodal-close" onclick="closeCampModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <!-- Indicateur d'étapes -->
+        <div style="display:flex;padding:14px 20px 0;gap:8px;">
+            <div id="stepDot1" style="flex:1;text-align:center;padding:8px;border-radius:6px;font-size:12px;font-weight:700;background:var(--dash-accent);color:#fff;">1. Informations</div>
+            <div id="stepDot2" style="flex:1;text-align:center;padding:8px;border-radius:6px;font-size:12px;font-weight:700;background:var(--dash-bg);color:var(--dash-text3);">2. Produits & promo</div>
+        </div>
+        <form method="post" action="{% url 'marketing:campaign_create' %}" enctype="multipart/form-data" id="campForm">
+            {% csrf_token %}
+            <!-- Étape 1 -->
+            <div class="dmodal-body" id="campStep1">
+                <div class="form-group">
+                    <label>Nom de la campagne *</label>
+                    <input type="text" name="name" id="campName" class="form-control" placeholder="Ex : Soldes de fin d'année" required>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Type *</label>
+                        <select name="campaign_type" class="form-control">
+                            <option value="flash_sale">Vente Flash</option>
+                            <option value="seasonal">Promotion Saisonnière</option>
+                            <option value="newsletter">Newsletter</option>
+                            <option value="product_launch">Lancement Produit</option>
+                            <option value="clearance">Déstockage</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Budget (FCFA)</label>
+                        <input type="number" name="budget" class="form-control" value="0" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description *</label>
+                    <textarea name="description" id="campDesc" class="form-control" rows="2" placeholder="Décrivez l'offre..." required></textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group">
+                        <label>Début *</label>
+                        <input type="datetime-local" name="start_date" id="campStart" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fin *</label>
+                        <input type="datetime-local" name="end_date" id="campEnd" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Bannière (optionnel)</label>
+                    <input type="file" name="banner" class="form-control" accept="image/*" style="padding:8px;">
+                </div>
+            </div>
+            <!-- Étape 2 -->
+            <div class="dmodal-body" id="campStep2" style="display:none;">
+                <div class="form-group">
+                    <label>Produits ciblés</label>
+                    <div style="border:1.5px solid var(--dash-border);border-radius:8px;overflow:hidden;">
+                        <div style="position:relative;border-bottom:1px solid var(--dash-border);">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+                            <input type="text" id="campProdSearch" placeholder="Rechercher un produit..." onkeyup="filterCampProducts()" style="width:100%;padding:10px 12px 10px 34px;border:none;font-size:13px;font-family:inherit;outline:none;background:transparent;">
+                        </div>
+                        <div style="max-height:220px;overflow-y:auto;">
+                            {% for p in products %}
+                            <label class="camp-prod-item" data-name="{{ p.name|lower }}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--dash-border);cursor:pointer;margin:0;" onmouseover="this.style.background='var(--dash-bg)'" onmouseout="this.style.background=''">
+                                <input type="checkbox" name="target_products" value="{{ p.pk }}" onchange="updateCampProdCount()" style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                                {% if p.image %}<img src="{{ p.image.url }}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">
+                                {% else %}<div style="width:36px;height:36px;background:var(--dash-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dash-text3);"><i class="fa-solid fa-image"></i></div>{% endif %}
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div>
+                                    <div style="font-size:11px;color:var(--dash-text3);">{{ p.price|floatformat:0 }} FCFA · Stock : {{ p.stock }}</div>
+                                </div>
+                            </label>
+                            {% empty %}
+                            <div style="padding:16px;text-align:center;color:var(--dash-text3);font-size:13px;">Aucun produit actif</div>
+                            {% endfor %}
+                            <div id="campProdEmpty" style="display:none;padding:16px;text-align:center;color:var(--dash-text3);font-size:13px;">Aucun produit trouvé</div>
+                        </div>
+                    </div>
+                    <small style="font-size:11px;color:var(--dash-text3);"><span id="campProdCount">0</span> produit(s) sélectionné(s)</small>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>Code promo associé (optionnel)</label>
+                    <select name="promo_code" class="form-control">
+                        <option value="">— Aucun —</option>
+                        {% for p in promo_codes %}
+                        <option value="{{ p.pk }}">{{ p.code }} — {% if p.discount_type == 'percentage' %}-{{ p.discount_value|floatformat:0 }}%{% else %}-{{ p.discount_value|floatformat:0 }} FCFA{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="font-size:11px;color:var(--dash-text3);">Les ventes avec ce code seront comptabilisées dans les statistiques de la campagne.</small>
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" id="campBackBtn" onclick="campGoStep(1)" style="display:none;"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+                <button type="button" class="btn btn-outline" onclick="closeCampModal()">Annuler</button>
+                <button type="button" class="btn btn-orange" id="campNextBtn" onclick="campGoStep(2)">Suivant <i class="fa-solid fa-arrow-right"></i></button>
+                <button type="submit" class="btn btn-orange" id="campSubmitBtn" style="display:none;"><i class="fa-solid fa-check"></i> Créer la campagne</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-.campaign-card {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
+<script>
+function openCampModal() {
+    campGoStep(1);
+    document.getElementById('campModal').classList.add('open');
 }
-
-.campaign-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+function closeCampModal() {
+    document.getElementById('campModal').classList.remove('open');
 }
-
-.campaign-banner {
-    height: 150px;
-    background-size: cover;
-    background-position: center;
+function campGoStep(step) {
+    if (step === 2) {
+        // Validation étape 1
+        var name = document.getElementById('campName').value.trim();
+        var desc = document.getElementById('campDesc').value.trim();
+        var start = document.getElementById('campStart').value;
+        var end = document.getElementById('campEnd').value;
+        if (!name || !desc || !start || !end) {
+            alert('Veuillez remplir tous les champs obligatoires (nom, description, dates).');
+            return;
+        }
+        if (end <= start) {
+            alert('La date de fin doit être après la date de début.');
+            return;
+        }
+    }
+    document.getElementById('campStep1').style.display = step === 1 ? 'block' : 'none';
+    document.getElementById('campStep2').style.display = step === 2 ? 'block' : 'none';
+    document.getElementById('campBackBtn').style.display = step === 2 ? 'inline-flex' : 'none';
+    document.getElementById('campNextBtn').style.display = step === 1 ? 'inline-flex' : 'none';
+    document.getElementById('campSubmitBtn').style.display = step === 2 ? 'inline-flex' : 'none';
+    var d1 = document.getElementById('stepDot1'), d2 = document.getElementById('stepDot2');
+    if (step === 1) {
+        d1.style.background = 'var(--dash-accent)'; d1.style.color = '#fff';
+        d2.style.background = 'var(--dash-bg)'; d2.style.color = 'var(--dash-text3)';
+    } else {
+        d1.style.background = 'var(--dash-green)'; d1.style.color = '#fff';
+        d2.style.background = 'var(--dash-accent)'; d2.style.color = '#fff';
+    }
 }
-
-.campaign-content {
-    padding: 1.25rem;
+function filterCampProducts() {
+    var q = document.getElementById('campProdSearch').value.toLowerCase();
+    var visible = 0;
+    document.querySelectorAll('.camp-prod-item').forEach(function(item) {
+        var match = item.dataset.name.indexOf(q) !== -1;
+        item.style.display = match ? 'flex' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('campProdEmpty').style.display = visible === 0 ? 'block' : 'none';
 }
-
-.campaign-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    margin-bottom: 0.75rem;
+function updateCampProdCount() {
+    document.getElementById('campProdCount').textContent = document.querySelectorAll('.camp-prod-item input:checked').length;
 }
-
-.campaign-header h3 {
-    margin: 0;
-    font-size: 1.125rem;
-    color: #111827;
-}
-
-.campaign-status {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.campaign-status-active {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.campaign-status-draft {
-    background: #f3f4f6;
-    color: #6b7280;
-}
-
-.campaign-status-scheduled {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.campaign-status-completed {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.campaign-desc {
-    color: #6b7280;
-    font-size: 0.875rem;
-    margin-bottom: 1rem;
-}
-
-.campaign-meta {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.campaign-meta-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.meta-label {
-    font-size: 0.75rem;
-    color: #6b7280;
-}
-
-.meta-value {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #111827;
-}
-
-.campaign-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.stat-item {
-    text-align: center;
-}
-
-.stat-number {
-    font-size: 1.25rem;
-    font-weight: bold;
-    color: #1a56db;
-}
-
-.stat-name {
-    font-size: 0.75rem;
-    color: #6b7280;
-}
-
-.campaign-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.stat-mini-card {
-    background: white;
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.stat-mini-label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin-bottom: 0.5rem;
-}
-
-.stat-mini-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #111827;
-}
-</style>
+document.querySelectorAll('.dmodal').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.querySelectorAll('.dmodal').forEach(function(m) { m.classList.remove('open'); });
+});
+</script>
 {% endblock %}
