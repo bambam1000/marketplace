@@ -54,6 +54,11 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
 .auth-switch a { color: #ff6a00; font-weight: 600; text-decoration: none; }
 .auth-switch a:hover { text-decoration: underline; }
 .alert-error { background: #fef3f2; border: 1px solid #fecdca; color: #b42318; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
+.form-control.valid { border-color: #12b76a; }
+.form-control.invalid { border-color: #f04438; }
+.field-msg { font-size: 11px; margin-top: 4px; display: none; }
+.field-msg.error { color: #f04438; display: block; }
+.field-msg.ok { color: #12b76a; display: block; }
 
 @media (max-width: 860px) {
     .auth-left { display: none; }
@@ -86,13 +91,15 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
             <form method="post" id="loginForm">
                 {% csrf_token %}
                 <div class="form-group">
-                    <input type="text" name="username" class="form-control" required autofocus placeholder="Nom d'utilisateur">
+                    <input type="text" name="username" class="form-control" required autofocus placeholder="Nom d'utilisateur" data-validate="username">
+                    <div class="field-msg"></div>
                 </div>
                 <div class="form-group">
                     <div class="password-wrapper">
-                        <input type="password" name="password" id="passwordInput" class="form-control" required style="padding-right:42px;" placeholder="Mot de passe">
+                        <input type="password" name="password" id="passwordInput" class="form-control" required style="padding-right:42px;" placeholder="Mot de passe" data-validate="password">
                         <button type="button" class="password-toggle" onclick="togglePassword()"><i class="fa-solid fa-eye" id="eyeIcon"></i></button>
                     </div>
+                    <div class="field-msg"></div>
                 </div>
                 <div class="auth-row">
                     <a href="{% url 'accounts:password_reset' %}">Mot de passe oublié ?</a>
@@ -112,6 +119,30 @@ function togglePassword() {
     if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
     else { input.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
 }
+
+// Validation en temps réel
+const validators = {
+    username: v => /^[a-zA-Z0-9._-]{3,}$/.test(v) ? null : 'Min. 3 caractères',
+    password: v => v.length >= 6 ? null : 'Min. 6 caractères',
+};
+document.querySelectorAll('[data-validate]').forEach(function(input) {
+    input.addEventListener('input', function() {
+        var msg = input.closest('.form-group').querySelector('.field-msg');
+        var error = validators[input.dataset.validate](input.value.trim());
+        input.classList.remove('valid', 'invalid');
+        msg.className = 'field-msg';
+        if (input.value.trim() === '') return;
+        if (error) {
+            input.classList.add('invalid');
+            msg.textContent = error;
+            msg.classList.add('error');
+        } else {
+            input.classList.add('valid');
+            msg.textContent = '✓';
+            msg.classList.add('ok');
+        }
+    });
+});
 </script>
 </body>
 </html>

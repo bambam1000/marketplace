@@ -33,12 +33,13 @@ def register_view(request):
         elif User.objects.filter(email=email).exists():
             messages.error(request, 'Cet email est déjà utilisé.')
         else:
+            phone = request.POST.get('phone', '').strip()
             user = User.objects.create_user(
                 username=username, email=email, password=password,
                 role=role,
                 first_name=request.POST.get('first_name', ''),
                 last_name=request.POST.get('last_name', ''),
-                phone=request.POST.get('phone', ''),
+                phone=phone,
             )
             if role == 'seller':
                 from store.models import Store
@@ -70,6 +71,15 @@ def register_view(request):
             messages.success(request, 'Bienvenue ! Votre compte a été créé.')
             return redirect('home')
     return render(request, 'accounts/register.html')
+
+def register_seller_view(request):
+    """Inscription dédiée aux vendeurs (rôle forcé, template dédié)"""
+    if request.method == 'POST':
+        request.POST = request.POST.copy()
+        request.POST['role'] = 'seller'
+        return register_view(request)
+    return render(request, 'accounts/register_seller.html')
+
 
 def logout_view(request):
     logout(request)

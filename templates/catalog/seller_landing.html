@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-:root { --orange: #ff6a00; --orange-dark: #e55f00; --text1: #101828; --text2: #475467; --text3: #98a2b3; --bg: #fff; --bg-soft: #fff7f0; --border: #eaecf0; }
+:root { --orange: #ff6a00; --orange-dark: #e55f00; --text1: #101828; --text2: #475467; --text3: #98a2b3; --bg: #fff; --bg-soft: #fce8ce; --border: #eaecf0; }
 body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--bg); }
 .container { max-width: 1140px; margin: 0 auto; padding: 0 24px; }
 
@@ -30,8 +30,14 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
 .btn-white { background: #fff; color: var(--orange); }
 .btn-white:hover { background: #fff7f0; }
 
-/* ── Hero ── */
-.lp-hero { padding: 70px 0 80px; background: linear-gradient(180deg, #fff 0%, var(--bg-soft) 100%); position: relative; overflow: hidden; }
+/* ── Hero slider ── */
+.lp-hero { padding: 70px 0 80px; background: #fce8ce; position: relative; overflow: hidden; }
+.hero-slide { display: none !important; }
+.hero-slide.active { display: grid !important; animation: fadeSlide .5s ease; }
+@keyframes fadeSlide { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+.hero-dots { display: flex; justify-content: center; gap: 8px; margin-top: 36px; }
+.hero-dot { width: 10px; height: 10px; border-radius: 50%; background: #eaecf0; cursor: pointer; transition: all .2s; border: none; }
+.hero-dot.active { background: var(--orange); width: 28px; border-radius: 5px; }
 .lp-hero::before { content: ''; position: absolute; width: 500px; height: 500px; border-radius: 50%; background: rgba(255,106,0,.06); top: -150px; right: -150px; }
 .lp-hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; position: relative; }
 .lp-hero h1 { font-size: 44px; font-weight: 900; line-height: 1.15; margin-bottom: 18px; }
@@ -46,8 +52,11 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
 .fc2 { bottom: 40px; right: -24px; }
 
 /* ── Sections ── */
-.lp-section { padding: 80px 0; }
+.lp-section { padding: 80px 0; background: #fff; }
 .lp-section.soft { background: var(--bg-soft); }
+.lp-section.dark { background: linear-gradient(160deg, #101828 0%, #1d2939 100%); }
+.lp-section.dark .lp-section-head h2 { color: #fff; }
+.lp-section.dark .lp-section-head p { color: #98a2b3; }
 .lp-section-head { text-align: center; max-width: 560px; margin: 0 auto 48px; }
 .lp-section-head h2 { font-size: 30px; font-weight: 800; margin-bottom: 12px; }
 .lp-section-head p { font-size: 15px; color: var(--text2); line-height: 1.7; }
@@ -98,7 +107,7 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
 .lp-cta p { opacity: .9; margin-bottom: 24px; font-size: 15px; }
 
 /* ── Footer ── */
-.lp-footer { background: var(--text1); color: #98a2b3; padding: 40px 0; margin-top: 80px; }
+.lp-footer { background: var(--text1); color: #98a2b3; padding: 40px 0; }
 .lp-footer-inner { display: flex; justify-content: space-between; align-items: center; font-size: 13px; flex-wrap: wrap; gap: 12px; }
 .lp-footer a { color: #98a2b3; text-decoration: none; margin-left: 20px; }
 .lp-footer a:hover { color: #fff; }
@@ -130,33 +139,87 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
             <a href="#temoignages">Témoignages</a>
             <a href="{% url 'home' %}">Visiter le site</a>
         </div>
-        <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange"><i class="fa-solid fa-store"></i> Devenir vendeur</a>
+        <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange"><i class="fa-solid fa-store"></i> Devenir vendeur</a>
     </div>
 </nav>
 
-<!-- ═══ Hero ═══ -->
+<!-- ═══ Hero slider ═══ -->
 <section class="lp-hero">
-    <div class="container lp-hero-grid">
-        <div>
-            <h1>Nous créons des <span>solutions</span> pour votre business</h1>
-            <p>Vendez en ligne avec AfriMarket : boutique personnalisée, gestion de stock par entrepôts, facturation professionnelle, marketing intégré et paiement Mobile Money. Tout ce qu'il faut pour grandir.</p>
-            <div class="lp-hero-actions">
-                <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange"><i class="fa-solid fa-rocket"></i> Commencer gratuitement</a>
-                <a href="#services" class="btn btn-outline">Découvrir</a>
+    <div class="container">
+        <!-- Slide 1 -->
+        <div class="lp-hero-grid hero-slide active">
+            <div>
+                <h1>Nous créons des <span>solutions</span> pour votre business</h1>
+                <p>Vendez en ligne avec AfriMarket : boutique personnalisée, gestion de stock par entrepôts, facturation professionnelle, marketing intégré et paiement Mobile Money. Tout ce qu'il faut pour grandir.</p>
+                <div class="lp-hero-actions">
+                    <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange"><i class="fa-solid fa-rocket"></i> Commencer gratuitement</a>
+                    <a href="#services" class="btn btn-outline">Découvrir</a>
+                </div>
+            </div>
+            <div class="lp-hero-visual">
+                <div class="visual-box" style="background:url('{% static 'images/hero.jpg' %}') center/cover;">
+                    <div class="float-card fc1">
+                        <span class="fic" style="background:rgba(18,183,106,.1);color:#12b76a;"><i class="fa-solid fa-chart-line"></i></span>
+                        <div>+2 450 FCFA<br><span style="font-weight:500;color:var(--text3);font-size:11px;">Vente du jour</span></div>
+                    </div>
+                    <div class="float-card fc2">
+                        <span class="fic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-box"></i></span>
+                        <div>Nouvelle commande<br><span style="font-weight:500;color:var(--text3);font-size:11px;">il y a 2 min</span></div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="lp-hero-visual">
-            <div class="visual-box">
-                <i class="fa-solid fa-store"></i>
-                <div class="float-card fc1">
-                    <span class="fic" style="background:rgba(18,183,106,.1);color:#12b76a;"><i class="fa-solid fa-chart-line"></i></span>
-                    <div>+2 450 FCFA<br><span style="font-weight:500;color:var(--text3);font-size:11px;">Vente du jour</span></div>
-                </div>
-                <div class="float-card fc2">
-                    <span class="fic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-box"></i></span>
-                    <div>Nouvelle commande<br><span style="font-weight:500;color:var(--text3);font-size:11px;">il y a 2 min</span></div>
+        <!-- Slide 2 -->
+        <div class="lp-hero-grid hero-slide">
+            <div>
+                <h1>Gérez votre <span>stock</span> comme un pro</h1>
+                <p>Entrepôts multiples, transferts entre dépôts, alertes de stock faible et inventaire complet. Votre équipe travaille par entrepôt avec des rôles et permissions.</p>
+                <div class="lp-hero-actions">
+                    <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange"><i class="fa-solid fa-boxes-stacked"></i> Créer ma boutique</a>
+                    <a href="#services" class="btn btn-outline">Découvrir</a>
                 </div>
             </div>
+            <div class="lp-hero-visual">
+                <div class="visual-box" style="background:url('{% static 'images/hero2.jpg' %}') center/cover;">
+                    <div class="float-card fc1">
+                        <span class="fic" style="background:rgba(122,90,248,.1);color:#7a5af8;"><i class="fa-solid fa-warehouse"></i></span>
+                        <div>3 entrepôts<br><span style="font-weight:500;color:var(--text3);font-size:11px;">synchronisés</span></div>
+                    </div>
+                    <div class="float-card fc2">
+                        <span class="fic" style="background:rgba(247,144,9,.1);color:#f79009;"><i class="fa-solid fa-bell"></i></span>
+                        <div>Stock faible<br><span style="font-weight:500;color:var(--text3);font-size:11px;">alerte automatique</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Slide 3 -->
+        <div class="lp-hero-grid hero-slide">
+            <div>
+                <h1>Boostez vos ventes avec le <span>marketing</span> intégré</h1>
+                <p>Codes promo, campagnes email et WhatsApp, programme de fidélité et analytics. Touchez vos clients au bon moment avec le bon message.</p>
+                <div class="lp-hero-actions">
+                    <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange"><i class="fa-solid fa-bullhorn"></i> Lancer mon marketing</a>
+                    <a href="#packs" class="btn btn-outline">Voir les packs</a>
+                </div>
+            </div>
+            <div class="lp-hero-visual">
+                <div class="visual-box" style="background:url('{% static 'images/hero3.jpg' %}') center/cover;">
+                    <div class="float-card fc1">
+                        <span class="fic" style="background:rgba(37,211,102,.1);color:#25D366;"><i class="fa-brands fa-whatsapp"></i></span>
+                        <div>Campagne WhatsApp<br><span style="font-weight:500;color:var(--text3);font-size:11px;">128 clients touchés</span></div>
+                    </div>
+                    <div class="float-card fc2">
+                        <span class="fic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-ticket"></i></span>
+                        <div>-20% PROMO<br><span style="font-weight:500;color:var(--text3);font-size:11px;">code actif</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Points de navigation -->
+        <div class="hero-dots">
+            <button class="hero-dot active" onclick="goHeroSlide(0)"></button>
+            <button class="hero-dot" onclick="goHeroSlide(1)"></button>
+            <button class="hero-dot" onclick="goHeroSlide(2)"></button>
         </div>
     </div>
 </section>
@@ -196,7 +259,7 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
 <!-- ═══ Solutions ═══ -->
 <section class="lp-section soft">
     <div class="container lp-solutions">
-        <div class="lp-solutions-visual"><i class="fa-solid fa-chart-pie"></i></div>
+        <div class="lp-solutions-visual" style="background:url('{% static 'images/solutions.jpg' %}') center/cover;"></div>
         <div>
             <h2>Des solutions simples !</h2>
             <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Tableau de bord complet</strong> — ventes, commandes, clients et analytics en un coup d'œil</div></div>
@@ -205,7 +268,7 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
             <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Paiement Mobile Money</strong> — MTN & Orange Money, cash à la livraison</div></div>
             <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Notifications en temps réel</strong> — commandes, devis, stock, par email et dans le dashboard</div></div>
             <div style="margin-top:24px;display:flex;gap:12px;">
-                <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange">Commencer</a>
+                <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange">Commencer</a>
                 <a href="#packs" class="btn btn-outline">Voir les packs</a>
             </div>
         </div>
@@ -213,7 +276,7 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
 </section>
 
 <!-- ═══ Packs ═══ -->
-<section class="lp-section" id="packs">
+<section class="lp-section dark" id="packs">
     <div class="container">
         <div class="lp-section-head">
             <h2>Nos Packs Vendeurs</h2>
@@ -236,7 +299,7 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
                     {% if plan.can_priority_support %}<li><i class="fa-solid fa-check"></i> Support prioritaire</li>{% endif %}
                     {% if plan.can_custom_store %}<li><i class="fa-solid fa-check"></i> Boutique personnalisée</li>{% endif %}
                 </ul>
-                <a href="{% url 'accounts:register' %}?role=seller" class="btn {% if plan.is_popular %}btn-orange{% else %}btn-outline{% endif %}" style="justify-content:center;">Choisir {{ plan.name }}</a>
+                <a href="{% url 'accounts:register_seller' %}" class="btn {% if plan.is_popular %}btn-orange{% else %}btn-outline{% endif %}" style="justify-content:center;">Choisir {{ plan.name }}</a>
             </div>
             {% empty %}
             <div class="lp-plan">
@@ -247,7 +310,7 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
                     <li><i class="fa-solid fa-check"></i> Gestion de stock</li>
                     <li><i class="fa-solid fa-check"></i> Facturation</li>
                 </ul>
-                <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-orange" style="justify-content:center;">Commencer</a>
+                <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange" style="justify-content:center;">Commencer</a>
             </div>
             {% endfor %}
         </div>
@@ -290,17 +353,6 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
     </div>
 </section>
 
-<!-- ═══ CTA ═══ -->
-<section class="lp-section" style="padding-top:0;">
-    <div class="container">
-        <div class="lp-cta">
-            <h2>Prêt à vous lancer ?</h2>
-            <p>Créez votre boutique gratuitement et commencez à vendre dès aujourd'hui.</p>
-            <a href="{% url 'accounts:register' %}?role=seller" class="btn btn-white"><i class="fa-solid fa-rocket"></i> Créer ma boutique</a>
-        </div>
-    </div>
-</section>
-
 <!-- ═══ Footer ═══ -->
 <footer class="lp-footer">
     <div class="container lp-footer-inner">
@@ -313,5 +365,22 @@ body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--
     </div>
 </footer>
 
+<script>
+(function() {
+    var slides = document.querySelectorAll('.hero-slide');
+    var dots = document.querySelectorAll('.hero-dot');
+    var cur = 0, timer;
+    function show(n) {
+        slides[cur].classList.remove('active');
+        dots[cur].classList.remove('active');
+        cur = (n + slides.length) % slides.length;
+        slides[cur].classList.add('active');
+        dots[cur].classList.add('active');
+    }
+    window.goHeroSlide = function(n) { show(n); resetTimer(); };
+    function resetTimer() { clearInterval(timer); timer = setInterval(function() { show(cur + 1); }, 5000); }
+    resetTimer();
+})();
+</script>
 </body>
 </html>

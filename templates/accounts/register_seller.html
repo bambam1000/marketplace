@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Inscription — AfriMarket</title>
+<title>Inscription Vendeur — AfriMarket</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css">
@@ -88,22 +88,14 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
     <!-- Droite : formulaire -->
     <div class="auth-right">
         <div class="auth-form">
-            <h2>Créer un compte</h2>
-            <div class="sub">Inscription gratuite, en moins d'une minute.</div>
+            <h2>Devenir vendeur</h2>
+            <div class="sub">Créez votre boutique gratuitement, en moins d'une minute.</div>
 
             {% if messages %}{% for msg in messages %}<div class="alert-error">{{ msg }}</div>{% endfor %}{% endif %}
 
             <form method="post">
                 {% csrf_token %}
-                <input type="hidden" name="role" id="role" value="buyer">
-                <div class="role-cards">
-                    <div class="role-card selected" id="roleBuyer" onclick="selectRole('buyer')">
-                        <i class="fa-solid fa-cart-shopping"></i> Acheteur
-                    </div>
-                    <a href="{% url 'seller_landing' %}" class="role-card" style="text-decoration:none;">
-                        <i class="fa-solid fa-store"></i> Vendeur
-                    </a>
-                </div>
+                <input type="hidden" name="role" id="role" value="seller">
                 <div class="form-row">
                     <div class="form-group">
                         <input type="text" name="first_name" class="form-control" placeholder="Prénom" data-validate="name">
@@ -131,10 +123,10 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
                     <input type="password" name="password" class="form-control" required placeholder="Mot de passe (min. 6 caractères) *" data-validate="password">
                     <div class="field-msg"></div>
                 </div>
-                <div class="form-group" id="store-field" style="display:none;">
+                <div class="form-group" id="store-field">
                     <input type="text" name="store_name" class="form-control" placeholder="Nom de votre boutique">
                 </div>
-                <button type="submit" class="btn-auth">Créer mon compte</button>
+                <button type="submit" class="btn-auth">Créer ma boutique</button>
             </form>
 
             <div class="auth-switch">Déjà inscrit ? <a href="{% url 'accounts:login' %}">Se connecter</a></div>
@@ -144,19 +136,6 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
 
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/intlTelInput.min.js"></script>
 <script>
-function selectRole(role) {
-    document.getElementById('role').value = role;
-    document.getElementById('roleBuyer').classList.toggle('selected', role === 'buyer');
-    var sellerCard = document.getElementById('roleSeller');
-    if (sellerCard) sellerCard.classList.toggle('selected', role === 'seller');
-    document.getElementById('store-field').style.display = role === 'seller' ? 'block' : 'none';
-}
-// Pré-remplir le rôle depuis l'URL (?role=seller)
-if (new URLSearchParams(window.location.search).get('role') === 'seller') {
-    document.getElementById('role').value = 'seller';
-    document.getElementById('store-field').style.display = 'block';
-}
-
 // Téléphone avec codes pays + drapeaux (tous les pays)
 const phoneInput = document.getElementById('phoneInput');
 const iti = window.intlTelInput(phoneInput, {
@@ -165,9 +144,11 @@ const iti = window.intlTelInput(phoneInput, {
     separateDialCode: true,
     utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/utils.js',
 });
+// Bloquer les lettres dans le champ téléphone
 phoneInput.addEventListener('keypress', function(e) {
     if (!/[0-9\s]/.test(e.key)) e.preventDefault();
 });
+// Numéro complet avec indicatif dans le champ caché
 phoneInput.addEventListener('input', function() {
     document.getElementById('phoneFull').value = phoneInput.value.trim() ? iti.getNumber() : '';
 });
@@ -182,8 +163,9 @@ const validators = {
 };
 document.querySelectorAll('[data-validate]').forEach(function(input) {
     input.addEventListener('input', function() {
+        var type = input.dataset.validate;
         var msg = input.closest('.form-group').querySelector('.field-msg');
-        var error = validators[input.dataset.validate](input.value.trim());
+        var error = validators[type](input.value.trim());
         input.classList.remove('valid', 'invalid');
         msg.className = 'field-msg';
         if (input.value.trim() === '') return;
@@ -198,6 +180,7 @@ document.querySelectorAll('[data-validate]').forEach(function(input) {
         }
     });
 });
+// Bloquer la soumission si des champs invalides
 document.querySelector('form').addEventListener('submit', function(e) {
     var hasError = false;
     document.querySelectorAll('[data-validate]').forEach(function(input) {

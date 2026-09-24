@@ -1,5 +1,16 @@
 {% extends 'base.html' %}
 {% block title %}Contact{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css">
+<style>
+.iti { width: 100%; }
+.form-control.valid { border-color: #12b76a; }
+.form-control.invalid { border-color: #f04438; }
+.field-msg { font-size: 11px; margin-top: 4px; display: none; }
+.field-msg.error { color: #f04438; display: block; }
+.field-msg.ok { color: #12b76a; display: block; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Contact</div>
 <div class="section" style="padding-top:0;max-width:1000px;">
@@ -20,17 +31,76 @@
 <form method="post" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:2rem;">{% csrf_token %}
 <h3 style="font-size:16px;margin-bottom:1.5rem;font-weight:600;">Envoyez-nous un message</h3>
 <div class="form-row">
-<div class="form-group"><label>Nom complet <span style="color:var(--red);">*</span></label><input type="text" name="name" class="form-control" required placeholder="Votre nom"></div>
-<div class="form-group"><label>Email <span style="color:var(--red);">*</span></label><input type="email" name="email" class="form-control" required placeholder="votre@email.com"></div>
+<div class="form-group"><label>Nom complet <span style="color:var(--red);">*</span></label><input type="text" name="name" class="form-control" required placeholder="Votre nom" data-validate="name"><div class="field-msg"></div></div>
+<div class="form-group"><label>Email <span style="color:var(--red);">*</span></label><input type="email" name="email" class="form-control" required placeholder="votre@email.com" data-validate="email"><div class="field-msg"></div></div>
 </div>
 <div class="form-row">
-<div class="form-group"><label>Téléphone</label><input type="tel" name="phone" class="form-control" placeholder="+237 6XX XXX XXX"></div>
+<div class="form-group"><label>Téléphone</label><input type="tel" id="phoneInput" class="form-control" placeholder="6XX XXX XXX" data-validate="phone" inputmode="numeric"><input type="hidden" name="phone" id="phoneFull"><div class="field-msg"></div></div>
 <div class="form-group"><label>Sujet <span style="color:var(--red);">*</span></label><select name="subject" class="form-control" required><option value="">Sélectionnez un sujet</option><option>Demande d'information</option><option>Suivi de commande</option><option>Retour / Réclamation</option><option>Problème technique</option><option>Partenariat</option><option>Autre</option></select></div>
 </div>
-<div class="form-group"><label>Votre message <span style="color:var(--red);">*</span></label><textarea name="message" class="form-control" rows="6" required placeholder="Décrivez votre demande en détail..."></textarea></div>
+<div class="form-group"><label>Votre message <span style="color:var(--red);">*</span></label><textarea name="message" class="form-control" rows="6" required placeholder="Décrivez votre demande en détail..." data-validate="message"></textarea><div class="field-msg"></div></div>
 <button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:8px;"><i class="fa-solid fa-paper-plane"></i> Envoyer le message</button>
 <p style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center;">Nous vous répondrons dans les 24 heures</p>
 </form>
 </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/intlTelInput.min.js"></script>
+<script>
+// Téléphone avec codes pays + drapeaux
+const phoneInput = document.getElementById('phoneInput');
+const iti = window.intlTelInput(phoneInput, {
+    initialCountry: 'cm',
+    preferredCountries: ['cm', 'cf', 'td', 'cg', 'ga', 'gq'],
+    separateDialCode: true,
+    utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/utils.js',
+});
+phoneInput.addEventListener('keypress', function(e) {
+    if (!/[0-9\s]/.test(e.key)) e.preventDefault();
+});
+phoneInput.addEventListener('input', function() {
+    document.getElementById('phoneFull').value = phoneInput.value.trim() ? iti.getNumber() : '';
+});
+
+// Validation en temps réel
+const validators = {
+    name: v => /^[a-zA-ZÀ-ÿ\s'-]{2,}$/.test(v) ? null : 'Nom invalide (lettres uniquement)',
+    email: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? null : 'Email invalide',
+    phone: v => v === '' || iti.isValidNumber() ? null : 'Numéro invalide',
+    message: v => v.length >= 10 ? null : 'Min. 10 caractères',
+};
+document.querySelectorAll('[data-validate]').forEach(function(input) {
+    input.addEventListener('input', function() {
+        var msg = input.closest('.form-group').querySelector('.field-msg');
+        var error = validators[input.dataset.validate](input.value.trim());
+        input.classList.remove('valid', 'invalid');
+        msg.className = 'field-msg';
+        if (input.value.trim() === '') return;
+        if (error) {
+            input.classList.add('invalid');
+            msg.textContent = error;
+            msg.classList.add('error');
+        } else {
+            input.classList.add('valid');
+            msg.textContent = '✓';
+            msg.classList.add('ok');
+        }
+    });
+});
+document.querySelector('form').addEventListener('submit', function(e) {
+    var hasError = false;
+    document.querySelectorAll('[data-validate]').forEach(function(input) {
+        var error = validators[input.dataset.validate](input.value.trim());
+        if (error && (input.required || input.value.trim() !== '')) {
+            input.classList.add('invalid');
+            var msg = input.closest('.form-group').querySelector('.field-msg');
+            msg.textContent = error;
+            msg.className = 'field-msg error';
+            hasError = true;
+        }
+    });
+    if (hasError) e.preventDefault();
+});
+</script>
 {% endblock %}
