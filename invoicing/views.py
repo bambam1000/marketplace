@@ -15,7 +15,7 @@ from orders.models import Order
 @login_required
 def invoices_dashboard(request):
     """Dashboard des factures"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         messages.error(request, 'Accès réservé aux vendeurs.')
         return redirect('dashboard:index')
 
@@ -62,7 +62,7 @@ def invoices_dashboard(request):
 @login_required
 def invoices_list(request):
     """Liste des factures"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -123,7 +123,7 @@ def invoices_list(request):
 @login_required
 def invoice_create(request):
     """Créer une facture manuelle"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -172,7 +172,7 @@ def invoice_create(request):
 @login_required
 def invoice_from_order(request, order_number):
     """Créer une facture depuis une commande"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -197,7 +197,7 @@ def invoice_from_order(request, order_number):
         customer_phone=getattr(order.buyer, 'phone', ''),
         customer_address=order.shipping_address or '',
         issue_date=timezone.now().date(),
-        shipping_amount=order.shipping_fee or 0,
+        shipping_amount=order.shipping_cost or 0,
         status='draft' if not order.is_paid else 'paid',
     )
 
@@ -223,7 +223,7 @@ def invoice_from_order(request, order_number):
 @login_required
 def invoice_detail(request, pk):
     """Détail d'une facture"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
@@ -237,7 +237,7 @@ def invoice_detail(request, pk):
 @login_required
 def invoice_edit(request, pk):
     """Modifier une facture"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
@@ -289,7 +289,7 @@ def invoice_edit(request, pk):
 @login_required
 def invoice_generate_pdf(request, pk):
     """Générer et télécharger le PDF d'une facture"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
@@ -311,7 +311,7 @@ def invoice_generate_pdf(request, pk):
 @login_required
 def invoice_send(request, pk):
     """Envoyer une facture par email"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
@@ -378,7 +378,7 @@ def invoice_send(request, pk):
 @login_required
 def invoice_mark_paid(request, pk):
     """Marquer une facture comme payée"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
@@ -400,7 +400,7 @@ def invoice_mark_paid(request, pk):
 @login_required
 def invoice_settings_view(request):
     """Gérer les paramètres de facturation"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store

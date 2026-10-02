@@ -142,9 +142,9 @@ class POSSale(models.Model):
         if self.discount_percent > 0:
             self.discount_amount = self.subtotal * (self.discount_percent / 100)
 
-        # TVA (si applicable)
-        settings = self.store.invoice_settings
-        if hasattr(settings, 'apply_tva') and settings.apply_tva:
+        # TVA (si applicable — la boutique n'a pas forcément de paramètres de facturation)
+        settings = getattr(self.store, 'invoice_settings', None)
+        if settings is not None and settings.apply_tva:
             taxable = self.subtotal - self.discount_amount
             self.tax_amount = taxable * (settings.tva_rate / 100)
         else:

@@ -12,7 +12,7 @@ from orders.models import Order
 @login_required
 def marketing_dashboard(request):
     """Dashboard marketing principal"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         messages.error(request, 'Accès réservé aux vendeurs.')
         return redirect('dashboard:index')
 
@@ -26,6 +26,7 @@ def marketing_dashboard(request):
     total_loyalty_members = LoyaltyProgram.objects.filter(store=store).count()
     emails_count = Newsletter.objects.filter(store=store).count()
     messaging_count = MessagingCampaign.objects.filter(store=store).count()
+    facebook_count = FacebookPost.objects.filter(store=store).count()
 
     # Analytics des 30 derniers jours
     analytics = MarketingAnalytics.objects.filter(
@@ -49,6 +50,7 @@ def marketing_dashboard(request):
         'total_loyalty_members': total_loyalty_members,
         'emails_count': emails_count,
         'messaging_count': messaging_count,
+        'facebook_count': facebook_count,
         'analytics': analytics,
         'recent_campaigns': recent_campaigns,
         'active_promo_codes': active_promo_codes,
@@ -60,7 +62,7 @@ def marketing_dashboard(request):
 @login_required
 def promo_codes_list(request):
     """Liste des codes promo"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -78,7 +80,7 @@ def promo_codes_list(request):
 @login_required
 def promo_code_create(request):
     """Créer un code promo"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -106,7 +108,7 @@ def promo_code_create(request):
 @login_required
 def promo_code_edit(request, pk):
     """Modifier un code promo"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     promo_code = get_object_or_404(PromoCode, pk=pk, store=request.user.store)
@@ -132,7 +134,7 @@ def promo_code_edit(request, pk):
 @login_required
 def promo_code_toggle(request, pk):
     """Activer/désactiver un code promo (POST uniquement)"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     promo_code = get_object_or_404(PromoCode, pk=pk, store=request.user.store)
@@ -148,7 +150,7 @@ def promo_code_toggle(request, pk):
 @login_required
 def campaigns_list(request):
     """Liste des campagnes"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -185,7 +187,7 @@ def campaign_public(request, pk):
 @login_required
 def campaign_create(request):
     """Créer une campagne"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -243,7 +245,7 @@ def campaign_create(request):
 @login_required
 def campaign_detail(request, pk):
     """Détail d'une campagne avec analytics"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     campaign = get_object_or_404(Campaign, pk=pk, store=request.user.store)
@@ -257,7 +259,7 @@ def campaign_detail(request, pk):
 @login_required
 def campaign_edit(request, pk):
     """Modifier une campagne"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     campaign = get_object_or_404(Campaign, pk=pk, store=request.user.store)
@@ -313,7 +315,7 @@ def campaign_edit(request, pk):
 @login_required
 def analytics(request):
     """Analytics marketing basés sur les données réelles (commandes, campagnes, emails, fidélité)"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -396,7 +398,7 @@ def analytics(request):
 @login_required
 def loyalty_program(request):
     """Gestion du programme de fidélité"""
-    if not request.user.is_seller or not hasattr(request.user, 'store'):
+    if not request.user.is_seller or not (request.user.store is not None):
         return redirect('dashboard:index')
 
     store = request.user.store
@@ -936,3 +938,97 @@ def messaging_numbers_template(request):
     response['Content-Disposition'] = 'attachment; filename="template_numeros.xlsx"'
     wb.save(response)
     return response
+
+
+# ========== FACEBOOK ==========
+from .models import FacebookPost
+
+
+@login_required
+def facebook_list(request):
+    """Liste des posts Facebook"""
+    store = _get_seller_store(request)
+    if not store:
+        messages.error(request, 'Accès réservé aux vendeurs.')
+        return redirect('dashboard:index')
+    posts = FacebookPost.objects.filter(store=store)
+    return render(request, 'marketing/facebook_list.html', {
+        'posts': posts,
+        'published_count': posts.filter(status='published').count(),
+    })
+
+
+@login_required
+def facebook_create(request):
+    """Studio de création de post Facebook"""
+    store = _get_seller_store(request)
+    if not store:
+        messages.error(request, 'Accès réservé aux vendeurs.')
+        return redirect('dashboard:index')
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        content = request.POST.get('content', '').strip()
+        hashtags = request.POST.get('hashtags', '').strip()
+        promo_id = request.POST.get('promo_code') or None
+
+        if not title or not content:
+            messages.error(request, 'Le titre et le contenu sont requis.')
+            return redirect('marketing:facebook_create')
+
+        post = FacebookPost.objects.create(
+            store=store, title=title, content=content,
+            hashtags=hashtags, promo_code_id=promo_id,
+        )
+        product_ids = request.POST.getlist('products')
+        if product_ids:
+            post.products.set(product_ids)
+
+        messages.success(request, f'Post « {title} » créé.')
+        return redirect('marketing:facebook_detail', pk=post.pk)
+
+    return render(request, 'marketing/facebook_form.html', {
+        'products': Product.objects.filter(store=store, is_active=True).order_by('name'),
+        'promo_codes': PromoCode.objects.filter(store=store, is_active=True),
+    })
+
+
+@login_required
+def facebook_detail(request, pk):
+    """Aperçu du post + publication"""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    post = get_object_or_404(FacebookPost, pk=pk, store=store)
+    base_url = request.build_absolute_uri('/')[:-1]
+    post_text = post.build_post_text(base_url)
+
+    if request.method == 'POST':
+        post.status = 'published'
+        post.published_at = timezone.now()
+        post.save()
+        messages.success(request, 'Post marqué comme publié.')
+        return redirect('marketing:facebook_list')
+
+    # Lien vers la page Facebook de la boutique (configurée dans les paramètres)
+    fb_page_url = store.facebook or ''
+
+    return render(request, 'marketing/facebook_detail.html', {
+        'post': post,
+        'post_text': post_text,
+        'fb_page_url': fb_page_url,
+        'share_url': f'https://www.facebook.com/sharer/sharer.php?u={base_url}',
+    })
+
+
+@login_required
+def facebook_delete(request, pk):
+    """Supprimer un post"""
+    store = _get_seller_store(request)
+    if not store:
+        return redirect('dashboard:index')
+    post = get_object_or_404(FacebookPost, pk=pk, store=store)
+    if request.method == 'POST':
+        post.delete()
+        messages.success(request, 'Post supprimé.')
+    return redirect('marketing:facebook_list')

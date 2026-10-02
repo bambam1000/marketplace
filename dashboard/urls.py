@@ -47,6 +47,7 @@ urlpatterns = [
     path('boutique/parametres/', views.dash_store, name='store'),
     path('parametres/', views.dash_settings, name='settings'),
     path('notifications/', views.dash_notifications, name='notifications'),
+    path('assistant/', views.dash_assistant, name='assistant'),
     # Admin only
     path('utilisateurs/', views.admin_users, name='users'),
     path('utilisateurs/<int:pk>/', views.admin_user_detail, name='user_detail'),

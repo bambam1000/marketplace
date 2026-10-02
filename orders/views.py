@@ -85,7 +85,7 @@ def rfq_detail(request, rfq_id):
 
     # Vérifier si l'utilisateur a déjà soumis un devis
     user_quote = None
-    if request.user.is_authenticated and hasattr(request.user, 'store'):
+    if request.user.is_authenticated and (request.user.store is not None):
         user_quote = quotes.filter(seller=request.user).first()
 
     return render(request, 'orders/rfq_detail.html', {
@@ -113,7 +113,7 @@ def submit_quote(request, rfq_id):
     rfq = get_object_or_404(RFQ, pk=rfq_id)
 
     # Vérifier que l'utilisateur a une boutique
-    if not hasattr(request.user, 'store'):
+    if not (request.user.store is not None):
         messages.error(request, 'Vous devez avoir une boutique pour soumettre un devis.')
         return redirect('orders:rfq_detail', rfq_id=rfq_id)
 
@@ -233,7 +233,7 @@ def close_rfq(request, rfq_id):
 @login_required
 def my_quotes(request):
     """Dashboard des devis soumis par le vendeur"""
-    if not hasattr(request.user, 'store'):
+    if not (request.user.store is not None):
         messages.error(request, 'Vous devez avoir une boutique.')
         return redirect('dashboard:index')
 

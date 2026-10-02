@@ -32,6 +32,13 @@
             <div class="s">{{ messaging_count }} campagne{{ messaging_count|pluralize:"s" }}</div>
         </div>
     </a>
+    <a href="{% url 'marketing:facebook_list' %}" class="mk-card">
+        <div class="ic" style="background:rgba(24,119,242,.1);color:#1877F2;"><i class="fa-brands fa-facebook"></i></div>
+        <div>
+            <div class="t">Facebook</div>
+            <div class="s">{{ facebook_count }} post{{ facebook_count|pluralize:"s" }}</div>
+        </div>
+    </a>
     <a href="{% url 'marketing:promo_codes' %}" class="mk-card">
         <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-ticket"></i></div>
         <div>

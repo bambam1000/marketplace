@@ -271,6 +271,51 @@ class MessagingCampaign(models.Model):
         return text
 
 
+class FacebookPost(models.Model):
+    """Post Facebook créé par le vendeur"""
+    STATUS_CHOICES = [
+        ('draft', 'Brouillon'),
+        ('published', 'Publié'),
+    ]
+
+    store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='facebook_posts')
+    title = models.CharField(max_length=200, help_text="Titre interne")
+    content = models.TextField(help_text="Texte du post")
+    products = models.ManyToManyField('catalog.Product', blank=True, related_name='facebook_posts')
+    promo_code = models.ForeignKey(PromoCode, on_delete=models.SET_NULL, null=True, blank=True, related_name='facebook_posts')
+    hashtags = models.CharField(max_length=300, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} — {self.store.name}"
+
+    def build_post_text(self, base_url='http://127.0.0.1:8000'):
+        """Texte final du post aux normes Facebook."""
+        lines = [self.content.strip(), '']
+        products = list(self.products.all())
+        if products:
+            for p in products:
+                old = f' ~~{p.old_price:.0f} FCFA~~' if p.old_price else ''
+                lines.append(f'🛍️ {p.name} — {p.price:.0f} FCFA{old}')
+                lines.append(f'👉 {base_url}{p.get_absolute_url()}')
+            lines.append('')
+        if self.promo_code:
+            pc = self.promo_code
+            reduction = f'-{pc.discount_value:.0f}%' if pc.discount_type == 'percentage' else f'-{pc.discount_value:.0f} FCFA'
+            lines.append(f'🎁 Code promo : {pc.code} ({reduction})')
+            lines.append('')
+        lines.append(f'📍 {self.store.name} · {self.store.city or "Douala"}')
+        if self.hashtags:
+            lines.append('')
+            lines.append(self.hashtags)
+        return '\n'.join(lines)
+
+
 class MarketingAnalytics(models.Model):
     """Analytics marketing quotidiens"""
     store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='analytics')

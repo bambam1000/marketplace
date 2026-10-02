@@ -1,0 +1,125 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Assistant IA{% endblock %}
+{% block dash %}
+<style>
+.ai-container { max-width: 760px; margin: 0 auto; }
+.ai-hero { text-align: center; padding: 24px 0 20px; }
+.ai-hero .icon { width: 60px; height: 60px; border-radius: 18px; background: linear-gradient(135deg, var(--dash-accent), #ff8533); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 12px; }
+.ai-hero h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.ai-hero p { font-size: 13px; color: var(--dash-text3); }
+
+/* Briefing */
+.ai-briefing { margin-bottom: 24px; }
+.ai-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.ai-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 8px; padding: 12px; text-align: center; }
+.ai-stat .v { font-weight: 800; font-size: 16px; }
+.ai-stat .l { font-size: 10px; color: var(--dash-text3); }
+.ai-alert { display: flex; align-items: center; gap: 12px; background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; text-decoration: none; color: inherit; transition: var(--dash-transition); }
+.ai-alert:hover { border-color: var(--dash-accent); }
+.ai-alert .ic { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.ai-alert .t { font-weight: 700; font-size: 13px; }
+.ai-alert .d { font-size: 11px; color: var(--dash-text3); }
+.ai-sugg { background: rgba(255,106,0,.05); border: 1px solid rgba(255,106,0,.15); border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--dash-text2); margin-bottom: 8px; }
+.ai-sugg i { color: var(--dash-accent); margin-right: 6px; }
+
+/* Suggestions */
+.ai-suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
+.ai-suggestion { padding: 8px 16px; border: 1.5px solid var(--dash-border); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--dash-text2); background: var(--dash-card); cursor: pointer; transition: var(--dash-transition); }
+.ai-suggestion:hover { border-color: var(--dash-accent); color: var(--dash-accent); background: rgba(255,106,0,.05); }
+
+/* Réponse */
+.ai-answer { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: var(--dash-shadow); }
+.ai-answer .q { font-size: 13px; color: var(--dash-text3); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--dash-border); }
+.ai-answer .a { font-size: 14px; line-height: 1.8; color: var(--dash-text); white-space: pre-wrap; }
+.ai-answer .a strong { color: var(--dash-accent); }
+
+/* Formulaire */
+.ai-form { display: flex; gap: 10px; }
+.ai-form input { flex: 1; padding: 14px 18px; border: 1.5px solid var(--dash-border); border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
+.ai-form input:focus { border-color: var(--dash-accent); box-shadow: 0 0 0 3px rgba(255,106,0,.1); }
+.ai-form button { padding: 14px 24px; background: var(--dash-accent); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .2s; }
+.ai-form button:hover { background: #e55f00; }
+</style>
+
+<div class="ai-container">
+    <div class="ai-hero">
+        <div class="icon"><i class="fa-solid fa-robot"></i></div>
+        <h1>Assistant AfriMarket</h1>
+        <p>Analyse votre boutique et répond à vos questions</p>
+    </div>
+
+    {% if briefing and not answer %}
+    <!-- Briefing du jour -->
+    <div class="ai-briefing">
+        <div class="ai-stats">
+            <div class="ai-stat">
+                <div class="v" style="color:var(--dash-green);">{{ briefing.stats.week_revenue|floatformat:0 }} F</div>
+                <div class="l">Revenus 7 jours</div>
+            </div>
+            <div class="ai-stat">
+                <div class="v">{{ briefing.stats.week_orders }}</div>
+                <div class="l">Commandes 7 jours</div>
+            </div>
+            <div class="ai-stat">
+                <div class="v">{{ briefing.stats.total_products }}</div>
+                <div class="l">Produits actifs</div>
+            </div>
+            <div class="ai-stat">
+                <div class="v">{{ briefing.stats.total_customers }}</div>
+                <div class="l">Clients</div>
+            </div>
+        </div>
+
+        {% if briefing.alerts %}
+        <div style="font-size:12px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;margin-bottom:8px;"><i class="fa-solid fa-bell"></i> Alertes</div>
+        {% for alert in briefing.alerts %}
+        <a href="{{ alert.url }}" class="ai-alert">
+            <div class="ic" style="background:rgba(255,106,0,.1);color:{{ alert.color }};"><i class="fa-solid {{ alert.icon }}"></i></div>
+            <div>
+                <div class="t">{{ alert.title }}</div>
+                <div class="d">{{ alert.detail }}</div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:var(--dash-text3);font-size:12px;"></i>
+        </a>
+        {% endfor %}
+        {% endif %}
+
+        {% for sugg in briefing.suggestions %}
+        <div class="ai-sugg"><i class="fa-solid fa-lightbulb"></i> {{ sugg }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not answer %}
+    <div class="ai-suggestions">
+        {% for s in suggestions %}
+        <button type="button" class="ai-suggestion" onclick="askSuggestion(this)">{{ s }}</button>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if answer %}
+    <div class="ai-answer">
+        <div class="q"><i class="fa-solid fa-user" style="color:var(--dash-accent);"></i> {{ question }}</div>
+        <div class="a" id="answerText">{{ answer }}</div>
+    </div>
+    {% endif %}
+
+    <form method="post" class="ai-form">
+        {% csrf_token %}
+        <input type="text" name="question" id="questionInput" placeholder="Posez votre question... Ex : ventes du jour, état du stock, comment ajouter un produit" value="{{ question }}" autofocus>
+        <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+</div>
+
+<script>
+function askSuggestion(btn) {
+    document.getElementById('questionInput').value = btn.textContent;
+    btn.closest('.ai-container').querySelector('form').submit();
+}
+var el = document.getElementById('answerText');
+if (el) {
+    el.innerHTML = el.innerHTML.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+</script>
+{% endblock %}

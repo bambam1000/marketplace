@@ -43,4 +43,10 @@ urlpatterns = [
     path('messagerie/<int:pk>/', views.messaging_detail, name='messaging_detail'),
     path('messagerie/<int:pk>/envoye/', views.messaging_mark_sent, name='messaging_mark_sent'),
     path('messagerie/<int:pk>/supprimer/', views.messaging_delete, name='messaging_delete'),
+
+    # Facebook
+    path('facebook/', views.facebook_list, name='facebook_list'),
+    path('facebook/nouveau/', views.facebook_create, name='facebook_create'),
+    path('facebook/<int:pk>/', views.facebook_detail, name='facebook_detail'),
+    path('facebook/<int:pk>/supprimer/', views.facebook_delete, name='facebook_delete'),
 ]

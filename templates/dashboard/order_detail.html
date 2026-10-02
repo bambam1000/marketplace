@@ -1,15 +1,201 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Commande {{ order.order_number }}{% endblock %}
 {% block dash %}
-<div class="dash-header"><h1>{{ order.order_number }}</h1><a href="{% url 'dashboard:orders' %}" class="btn btn-sm btn-outline">← Retour</a></div>
-<div style="display:grid;grid-template-columns:1fr 320px;gap:12px;">
-<div>
-<div class="dash-card"><div class="dash-card-title">Articles</div><table class="dash-table"><thead><tr><th>Produit</th><th>Qté</th><th>Prix</th><th>Total</th></tr></thead><tbody>{% for i in order.items.all %}<tr><td>{{ i.product.name }}</td><td>{{ i.quantity }}</td><td>{{ i.price|intcomma }} F</td><td style="font-weight:600;">{{ i.subtotal|intcomma }} F</td></tr>{% endfor %}<tr><td colspan="3" style="text-align:right;font-weight:700;">Total</td><td style="font-weight:700;color:var(--red);font-size:16px;">{{ order.total_amount|intcomma }} FCFA</td></tr></tbody></table></div>
-<div class="dash-card"><div class="dash-card-title">Modifier le statut</div><form method="post" style="display:flex;gap:8px;">{% csrf_token %}<select name="status" class="form-control" style="width:auto;">{% for code, label in order.STATUS_CHOICES %}<option value="{{ code }}" {% if order.status == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="btn btn-orange btn-sm">Mettre à jour</button></form></div>
+<style>
+.od-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .od-grid { grid-template-columns: 1fr; } }
+.od-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 8px; box-shadow: var(--dash-shadow); margin-bottom: 16px; overflow: hidden; }
+.od-card-head { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.od-card-head i { color: var(--dash-accent); }
+.od-card-body { padding: 18px; }
+.od-info-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13px; }
+.od-info-row i { width: 18px; color: var(--dash-text3); margin-top: 2px; flex-shrink: 0; }
+.od-info-row .lbl { color: var(--dash-text3); font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: .3px; }
+.od-info-row .val { font-weight: 600; color: var(--dash-text); }
+.od-timeline { display: flex; gap: 0; margin-bottom: 20px; }
+.od-step { flex: 1; text-align: center; position: relative; }
+.od-step .dot { width: 28px; height: 28px; border-radius: 50%; background: var(--dash-bg); border: 2px solid var(--dash-border); display: flex; align-items: center; justify-content: center; font-size: 11px; margin: 0 auto 6px; color: var(--dash-text3); position: relative; z-index: 1; }
+.od-step .lbl { font-size: 10px; color: var(--dash-text3); font-weight: 600; }
+.od-step.done .dot { background: var(--dash-green); border-color: var(--dash-green); color: #fff; }
+.od-step.done .lbl { color: var(--dash-green); }
+.od-step.current .dot { background: var(--dash-accent); border-color: var(--dash-accent); color: #fff; }
+.od-step.current .lbl { color: var(--dash-accent); font-weight: 700; }
+.od-step::before { content: ''; position: absolute; top: 14px; left: -50%; width: 100%; height: 2px; background: var(--dash-border); }
+.od-step:first-child::before { display: none; }
+.od-step.done::before { background: var(--dash-green); }
+.od-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--dash-border); }
+.od-item:last-child { border-bottom: none; }
+.od-item img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; }
+.od-item .no-img { width: 48px; height: 48px; border-radius: 8px; background: var(--dash-bg); display: flex; align-items: center; justify-content: center; color: var(--dash-text3); }
+.od-sum-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+.od-sum-row.total { border-top: 2px solid var(--dash-border); padding-top: 12px; margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--dash-red); }
+</style>
+
+<div class="dash-header">
+    <div>
+        <a href="{% url 'dashboard:orders' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Commandes</a>
+        <h1><i class="fa-solid fa-box" style="color:var(--dash-accent);"></i> {{ order.order_number }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ order.created_at|date:"d/m/Y à H:i" }} · {{ order.buyer.display_name }}</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+        {% if order.status == 'pending' %}<span class="status-badge st-pending" style="font-size:13px;padding:6px 14px;">En attente</span>
+        {% elif order.status == 'confirmed' %}<span class="status-badge st-shipped" style="font-size:13px;padding:6px 14px;">Confirmée</span>
+        {% elif order.status == 'processing' %}<span class="status-badge st-shipped" style="font-size:13px;padding:6px 14px;">En préparation</span>
+        {% elif order.status == 'shipped' %}<span class="status-badge st-shipped" style="font-size:13px;padding:6px 14px;">Expédiée</span>
+        {% elif order.status == 'delivered' %}<span class="status-badge st-delivered" style="font-size:13px;padding:6px 14px;">Livrée</span>
+        {% elif order.status == 'cancelled' %}<span class="status-badge st-cancelled" style="font-size:13px;padding:6px 14px;">Annulée</span>
+        {% endif %}
+    </div>
 </div>
-<div>
-<div class="dash-card"><h4 style="font-size:13px;margin-bottom:8px;">Client</h4><p style="font-size:13px;line-height:1.8;">{{ order.shipping_name }}<br>📞 {{ order.shipping_phone }}<br>📍 {{ order.shipping_address }}, {{ order.shipping_city }}</p></div>
-<div class="dash-card"><h4 style="font-size:13px;margin-bottom:8px;">Paiement</h4><p style="font-size:13px;">{{ order.get_payment_method_display }}</p><span class="status-badge {% if order.is_paid %}st-delivered{% else %}st-pending{% endif %}">{% if order.is_paid %}✓ Payée{% else %}⏳ Non payée{% endif %}</span></div>
+
+<!-- Timeline -->
+<div class="od-card">
+    <div class="od-card-body" style="padding:20px 24px;">
+        <div class="od-timeline">
+            <div class="od-step {% if order.status != 'cancelled' %}done{% endif %}">
+                <div class="dot"><i class="fa-solid fa-check"></i></div>
+                <div class="lbl">Reçue</div>
+            </div>
+            <div class="od-step {% if order.status == 'confirmed' or order.status == 'processing' or order.status == 'shipped' or order.status == 'delivered' %}done{% endif %}">
+                <div class="dot"><i class="fa-solid fa-check"></i></div>
+                <div class="lbl">Confirmée</div>
+            </div>
+            <div class="od-step {% if order.status == 'processing' %}current{% elif order.status == 'shipped' or order.status == 'delivered' %}done{% endif %}">
+                <div class="dot"><i class="fa-solid fa-box-open"></i></div>
+                <div class="lbl">Préparation</div>
+            </div>
+            <div class="od-step {% if order.status == 'shipped' %}current{% elif order.status == 'delivered' %}done{% endif %}">
+                <div class="dot"><i class="fa-solid fa-truck"></i></div>
+                <div class="lbl">Expédiée</div>
+            </div>
+            <div class="od-step {% if order.status == 'delivered' %}done{% endif %}">
+                <div class="dot"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="lbl">Livrée</div>
+            </div>
+        </div>
+    </div>
 </div>
+
+<div class="od-grid">
+    <div>
+        <!-- Articles -->
+        <div class="od-card">
+            <div class="od-card-head"><i class="fa-solid fa-cart-shopping"></i> Articles ({{ order.items.count }})</div>
+            <div class="od-card-body" style="padding:0 18px;">
+                {% for i in order.items.all %}
+                <div class="od-item">
+                    {% if i.product.image %}<img src="{{ i.product.image.url }}" alt="{{ i.product.name }}">
+                    {% else %}<div class="no-img"><i class="fa-solid fa-image"></i></div>{% endif %}
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;font-size:13px;">{{ i.product.name }}</div>
+                        <div style="font-size:11px;color:var(--dash-text3);">
+                            {{ i.store.name }}{% if i.warehouse %} · {{ i.warehouse.name }}{% endif %}
+                            {% if i.color %} · {{ i.color }}{% endif %}{% if i.size %} · {{ i.size }}{% endif %}
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:12px;color:var(--dash-text3);">{{ i.price|intcomma }} F × {{ i.quantity }}</div>
+                        <div style="font-weight:700;font-size:14px;">{{ i.subtotal|intcomma }} F</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div style="padding:14px 18px;border-top:1px solid var(--dash-border);">
+                <div class="od-sum-row"><span>Sous-total</span><span>{{ order.subtotal|intcomma }} F</span></div>
+                <div class="od-sum-row"><span>Livraison</span><span>{% if order.shipping_cost %}{{ order.shipping_cost|intcomma }} F{% else %}<span style="color:var(--dash-green);">Gratuit</span>{% endif %}</span></div>
+                {% if order.discount_amount > 0 %}
+                <div class="od-sum-row" style="color:var(--dash-green);"><span><i class="fa-solid fa-ticket"></i> Réduction{% if order.promo_code %} ({{ order.promo_code.code }}){% endif %}</span><span>-{{ order.discount_amount|intcomma }} F</span></div>
+                {% endif %}
+                {% if order.loyalty_discount > 0 %}
+                <div class="od-sum-row" style="color:var(--dash-green);"><span><i class="fa-solid fa-star"></i> Fidélité</span><span>-{{ order.loyalty_discount|intcomma }} F</span></div>
+                {% endif %}
+                <div class="od-sum-row total"><span>Total</span><span>{{ order.total_amount|intcomma }} FCFA</span></div>
+            </div>
+        </div>
+
+        <!-- Changer le statut -->
+        <div class="od-card">
+            <div class="od-card-head"><i class="fa-solid fa-arrows-rotate"></i> Mettre à jour le statut</div>
+            <div class="od-card-body">
+                <form method="post" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    {% csrf_token %}
+                    <select name="status" class="form-control" style="flex:1;min-width:180px;">
+                        {% for code, label in order.STATUS_CHOICES %}
+                        <option value="{{ code }}" {% if order.status == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Mettre à jour</button>
+                </form>
+                <div style="font-size:11px;color:var(--dash-text3);margin-top:8px;"><i class="fa-solid fa-bell"></i> Le client sera notifié par email et notification interne.</div>
+            </div>
+        </div>
+
+        <!-- Suivi -->
+        <div class="od-card">
+            <div class="od-card-head"><i class="fa-solid fa-truck"></i> Suivi</div>
+            <div class="od-card-body">
+                <form method="post" style="display:flex;gap:10px;align-items:center;">
+                    {% csrf_token %}
+                    <input type="text" name="tracking_number" class="form-control" value="{{ order.tracking_number }}" placeholder="Numéro de suivi" style="flex:1;">
+                    <button type="submit" class="btn btn-outline"><i class="fa-solid fa-save"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Colonne droite -->
+    <div>
+        <!-- Client -->
+        <div class="od-card">
+            <div class="od-card-head"><i class="fa-solid fa-user"></i> Client</div>
+            <div class="od-card-body">
+                <div class="od-info-row">
+                    <i class="fa-solid fa-user"></i>
+                    <div><div class="lbl">Nom</div><div class="val">{{ order.shipping_name }}</div></div>
+                </div>
+                <div class="od-info-row">
+                    <i class="fa-solid fa-phone"></i>
+                    <div><div class="lbl">Téléphone</div><div class="val">{{ order.shipping_phone }}</div></div>
+                </div>
+                <div class="od-info-row">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <div><div class="lbl">Adresse</div><div class="val">{{ order.shipping_address }}, {{ order.shipping_city }}</div></div>
+                </div>
+                {% if order.buyer.email %}
+                <div class="od-info-row">
+                    <i class="fa-solid fa-envelope"></i>
+                    <div><div class="lbl">Email</div><div class="val">{{ order.buyer.email }}</div></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Paiement -->
+        <div class="od-card">
+            <div class="od-card-head"><i class="fa-solid fa-credit-card"></i> Paiement</div>
+            <div class="od-card-body">
+                <div class="od-info-row">
+                    <i class="fa-solid fa-wallet"></i>
+                    <div><div class="lbl">Méthode</div><div class="val">{{ order.get_payment_method_display }}</div></div>
+                </div>
+                <div class="od-info-row">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div>
+                        <div class="lbl">Statut</div>
+                        {% if order.is_paid %}<span class="status-badge st-delivered">Payée</span>
+                        {% else %}<span class="status-badge st-pending">Non payée</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if order.notes %}
+        <!-- Notes -->
+        <div class="od-card">
+            <div class="od-card-head"><i class="fa-solid fa-note-sticky"></i> Notes</div>
+            <div class="od-card-body" style="font-size:13px;color:var(--dash-text2);">{{ order.notes }}</div>
+        </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

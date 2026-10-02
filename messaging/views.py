@@ -119,6 +119,13 @@ def notification_mark_read(request, pk):
     notif.is_read = True
     notif.save(update_fields=['is_read'])
     if notif.url:
+        # Vérifier que l'objet lié existe encore (évite les 404)
+        import re
+        m = re.search(r'/commandes/([A-Z0-9-]+)/', notif.url)
+        if m:
+            from orders.models import Order
+            if not Order.objects.filter(order_number=m.group(1)).exists():
+                return redirect('messaging:notifications')
         return redirect(notif.url)
     return redirect('messaging:notifications')
 

@@ -1,0 +1,92 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ post.title }}{% endblock %}
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <a href="{% url 'marketing:facebook_list' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Facebook</a>
+        <h1><i class="fa-brands fa-facebook" style="color:#1877F2;"></i> {{ post.title }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">
+            {% if post.status == 'published' %}Publié le {{ post.published_at|date:"d/m/Y à H:i" }}
+            {% else %}Brouillon créé le {{ post.created_at|date:"d/m/Y" }}{% endif %}
+        </p>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;">
+    <!-- Aperçu Facebook -->
+    <div class="dash-card" style="padding:0;overflow:hidden;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);font-weight:700;font-size:14px;">
+            <i class="fa-solid fa-eye" style="color:#1877F2;"></i> Aperçu du post
+        </div>
+        <!-- Rendu style Facebook -->
+        <div style="max-width:500px;margin:20px auto;border:1px solid #dddfe2;border-radius:8px;background:#fff;font-family:Helvetica,Arial,sans-serif;">
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:#1877F2;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;">{{ post.store.name|first|upper }}</div>
+                <div>
+                    <div style="font-weight:700;font-size:14px;color:#050505;">{{ post.store.name }}</div>
+                    <div style="font-size:12px;color:#65676b;">Maintenant · 🌍</div>
+                </div>
+            </div>
+            <div style="padding:4px 16px 12px;font-size:14px;color:#050505;line-height:1.5;white-space:pre-wrap;">{{ post_text }}</div>
+            {% if post.products.exists %}
+            <div style="display:grid;grid-template-columns:repeat({% if post.products.count > 1 %}2{% else %}1{% endif %},1fr);gap:2px;">
+                {% for p in post.products.all %}
+                {% if p.image %}<img src="{{ p.image.url }}" style="width:100%;height:180px;object-fit:cover;">{% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div style="display:flex;justify-content:space-around;padding:8px 16px;border-top:1px solid #e4e6eb;font-size:13px;color:#65676b;font-weight:600;">
+                <span><i class="fa-regular fa-thumbs-up"></i> J'aime</span>
+                <span><i class="fa-regular fa-comment"></i> Commenter</span>
+                <span><i class="fa-solid fa-share"></i> Partager</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div>
+        <div class="dash-card" style="padding:20px;margin-bottom:16px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:12px;"><i class="fa-solid fa-share-nodes" style="color:#1877F2;"></i> Publier</div>
+            {% if fb_page_url %}
+            <div style="font-size:12px;color:var(--dash-text2);margin-bottom:12px;padding:10px;background:rgba(24,119,242,.05);border-radius:8px;">
+                <i class="fa-brands fa-facebook" style="color:#1877F2;"></i> Page : <a href="{{ fb_page_url }}" target="_blank" style="color:#1877F2;font-weight:600;">{{ fb_page_url|truncatechars:35 }}</a>
+            </div>
+            {% else %}
+            <div style="font-size:12px;color:var(--dash-text2);margin-bottom:12px;padding:10px;background:rgba(247,144,9,.08);border-radius:8px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:var(--dash-yellow);"></i> Aucune page Facebook configurée. <a href="{% url 'dashboard:store' %}" style="color:var(--dash-accent);font-weight:600;">Ajouter dans les paramètres</a>
+            </div>
+            {% endif %}
+            <button type="button" class="btn btn-outline" style="width:100%;margin-bottom:10px;" onclick="copyPost()"><i class="fa-solid fa-copy"></i> Copier le texte</button>
+            {% if fb_page_url %}
+            <a href="{{ fb_page_url }}" target="blank" class="btn" style="width:100%;background:#1877F2;color:#fff;margin-bottom:10px;justify-content:center;" onclick="copyPost()"><i class="fa-brands fa-facebook"></i> Publier sur ma page</a>
+            {% else %}
+            <a href="{{ share_url }}" target="_blank" class="btn" style="width:100%;background:#1877F2;color:#fff;margin-bottom:10px;justify-content:center;"><i class="fa-brands fa-facebook"></i> Partager sur Facebook</a>
+            {% endif %}
+            {% if post.status != 'published' %}
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline" style="width:100%;color:var(--dash-green);border-color:var(--dash-green);"><i class="fa-solid fa-check"></i> Marquer comme publié</button>
+            </form>
+            {% endif %}
+        </div>
+        <div class="dash-card" style="padding:20px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:12px;"><i class="fa-solid fa-circle-info" style="color:var(--dash-accent);"></i> Normes Meta</div>
+            <div style="font-size:12px;color:var(--dash-text2);line-height:1.8;">
+                <div>✓ Texte structuré avec emojis</div>
+                <div>✓ Liens produits cliquables</div>
+                <div>✓ Hashtags en fin de post</div>
+                <div>✓ Appel à l'action clair</div>
+                <div>✓ Images des produits jointes</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyPost() {
+    navigator.clipboard.writeText({{ post_text|escapejs|safe }}).then(function() {
+        alert('Texte du post copié !');
+    });
+}
+</script>
+{% endblock %}

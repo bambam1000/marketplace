@@ -22,7 +22,7 @@ def seller_or_admin_required(view_func):
     def wrapper(request, *args, **kwargs):
         user = request.user
         is_admin = user.is_superuser or user.role == 'admin'
-        is_seller = user.is_seller and hasattr(user, 'store')
+        is_seller = user.is_seller and user.stores.exists()
         is_member = user.store_memberships.filter(is_active=True).exists()
         if not (is_admin or is_seller or is_member):
             django_messages.error(request, "Accès réservé aux vendeurs et administrateurs.")
@@ -37,7 +37,7 @@ def store_permission_required(permission):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             user = request.user
-            if user.is_superuser or user.role == 'admin' or hasattr(user, 'store'):
+            if user.is_superuser or user.role == 'admin' or user.stores.exists():
                 return view_func(request, *args, **kwargs)
             member = user.store_memberships.filter(is_active=True).first()
             if member and member.has_permission(permission):
@@ -52,7 +52,7 @@ def store_permission_required(permission):
 def index(request):
     user = request.user
     is_admin = user.is_superuser or user.role == 'admin'
-    is_seller = user.is_seller and hasattr(user, 'store')
+    is_seller = user.is_seller and user.stores.exists()
     is_member = user.store_memberships.filter(is_active=True).exists()
     # Les acheteurs n'ont pas accès au dashboard (sauf employés de boutique)
     if not (is_admin or is_seller or is_member):
@@ -173,7 +173,7 @@ def index(request):
 @login_required
 @seller_or_admin_required
 def dash_orders(request):
-    if request.user.is_seller and hasattr(request.user, 'store'):
+    if request.user.is_seller and (request.user.store is not None):
         orders = Order.objects.filter(items__store=request.user.store).distinct()
     else:
         orders = Order.objects.all()
@@ -283,7 +283,7 @@ def get_user_warehouse(request):
 @login_required
 @seller_or_admin_required
 def dash_products(request):
-    if request.user.is_seller and hasattr(request.user, 'store'):
+    if request.user.is_seller and (request.user.store is not None):
         products = request.user.store.products.all()
     else:
         products = Product.objects.all()
@@ -420,7 +420,7 @@ def dash_product_unarchive(request, pk):
 @seller_or_admin_required
 def dash_sales(request):
     """Page Ventes : commandes payées avec statistiques"""
-    if request.user.is_seller and hasattr(request.user, 'store'):
+    if request.user.is_seller and (request.user.store is not None):
         items = OrderItem.objects.filter(store=request.user.store, order__is_paid=True)
     else:
         items = OrderItem.objects.filter(order__is_paid=True)
@@ -550,7 +550,7 @@ def dash_rfqs(request):
 
     # RFQ où le vendeur a déjà soumis un devis
     my_quoted_ids = []
-    if hasattr(request.user, 'store'):
+    if (request.user.store is not None):
         my_quoted_ids = list(Quote.objects.filter(seller=request.user).values_list('rfq_id', flat=True))
 
     # Mes propres demandes de devis
@@ -594,7 +594,7 @@ def dash_rfq_detail(request, rfq_id):
     user_quote = Quote.objects.filter(rfq=rfq, seller=request.user).first()
 
     if request.method == 'POST':
-        if not hasattr(request.user, 'store'):
+        if not (request.user.store is not None):
             django_messages.error(request, 'Vous devez avoir une boutique.')
             return redirect('dashboard:rfq_detail', rfq_id=rfq_id)
         if rfq.status != 'open':
@@ -676,12 +676,29 @@ def dash_warehouse_detail(request, pk):
     if q:
         stocks = stocks.filter(product__name__icontains=q)
 
+    # Alertes pour les badges sur les cartes
+    from orders.models import OrderItem
+    from invoicing.models import Invoice
+    from store.models import StoreMember
+    pending_orders = OrderItem.objects.filter(
+        warehouse=warehouse, order__status='pending'
+    ).values('order').distinct().count()
+    low_stock_count = warehouse.stocks.filter(quantity__lte=F('product__low_stock_threshold'), quantity__gt=0).count()
+    out_of_stock_count = warehouse.stocks.filter(quantity=0).count()
+    unpaid_invoices = Invoice.objects.filter(warehouse=warehouse, status='sent').count()
+    employees_count = StoreMember.objects.filter(warehouse=warehouse, is_active=True).count()
+
     return render(request, 'dashboard/warehouse_detail.html', {
         'warehouse': warehouse,
         'stocks': stocks,
         'search_query': q,
         'products': warehouse.store.products.filter(is_active=True),
         'other_warehouses': warehouse.store.warehouses.filter(is_active=True).exclude(pk=warehouse.pk),
+        'pending_orders': pending_orders,
+        'low_stock_count': low_stock_count,
+        'out_of_stock_count': out_of_stock_count,
+        'unpaid_invoices': unpaid_invoices,
+        'employees_count': employees_count,
     })
 
 
@@ -1406,7 +1423,7 @@ def dash_inventory(request):
     """Page inventaire : historique des mouvements de stock avec filtres"""
     from catalog.models import StockMovement
     from datetime import datetime
-    if request.user.is_seller and hasattr(request.user, 'store'):
+    if request.user.is_seller and (request.user.store is not None):
         movements = StockMovement.objects.filter(store=request.user.store)
     else:
         movements = StockMovement.objects.all()
@@ -1506,7 +1523,7 @@ def _filtered_movements(request):
     """Retourne les mouvements filtrés selon les paramètres GET."""
     from catalog.models import StockMovement
     from datetime import datetime
-    if request.user.is_seller and hasattr(request.user, 'store'):
+    if request.user.is_seller and (request.user.store is not None):
         movements = StockMovement.objects.filter(store=request.user.store)
     else:
         movements = StockMovement.objects.all()
@@ -1733,7 +1750,7 @@ def dash_movement_excel(request, pk):
 @seller_or_admin_required
 def dash_customers(request):
     # Si l'utilisateur est un vendeur, afficher uniquement ses clients
-    if request.user.is_seller and hasattr(request.user, 'store'):
+    if request.user.is_seller and (request.user.store is not None):
         customers = User.objects.filter(
             orders__items__product__store__owner=request.user
         ).distinct().annotate(
@@ -1775,7 +1792,7 @@ def dash_customers_export(request):
     from openpyxl.styles import Font
     from django.http import HttpResponse
 
-    if request.user.is_seller and hasattr(request.user, 'store'):
+    if request.user.is_seller and (request.user.store is not None):
         customers = User.objects.filter(
             orders__items__product__store__owner=request.user
         ).distinct().annotate(
@@ -1871,6 +1888,27 @@ def dash_store(request):
         'products_count': store.products.count(),
         'total_sales': store.total_sales,
         'rating': store.rating,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_assistant(request):
+    """Assistant IA du dashboard — briefing + réponses intelligentes"""
+    from .assistant import ask, get_suggestions, get_briefing
+    store = getattr(request.user, 'store', None)
+    answer = None
+    question = ''
+    if request.method == 'POST':
+        question = request.POST.get('question', '').strip()
+        if question and store:
+            answer = ask(question, store, user=request.user)
+    briefing = get_briefing(store) if store else None
+    return render(request, 'dashboard/assistant.html', {
+        'answer': answer,
+        'question': question,
+        'suggestions': get_suggestions(),
+        'briefing': briefing,
     })
 
 

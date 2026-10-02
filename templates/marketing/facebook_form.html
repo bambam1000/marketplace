@@ -1,0 +1,90 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Nouveau post Facebook{% endblock %}
+{% block dash %}
+<div class="dash-header">
+    <div>
+        <a href="{% url 'marketing:facebook_list' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Facebook</a>
+        <h1><i class="fa-brands fa-facebook" style="color:#1877F2;"></i> Nouveau post Facebook</h1>
+    </div>
+</div>
+
+<form method="post">
+{% csrf_token %}
+<div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+    <div class="dash-card" style="padding:20px;">
+        <div class="form-group">
+            <label>Titre interne *</label>
+            <input type="text" name="title" class="form-control" placeholder="Ex : Promo week-end" required>
+            <small style="font-size:11px;color:var(--dash-text3);">Visible uniquement par vous, pour retrouver le post.</small>
+        </div>
+        <div class="form-group">
+            <label>Texte du post *</label>
+            <textarea name="content" class="form-control" rows="5" placeholder="Ex : Grande promo ce week-end ! Profitez de nos meilleures offres..." required></textarea>
+            <small style="font-size:11px;color:var(--dash-text3);">Les produits, le code promo et les hashtags seront ajoutés automatiquement.</small>
+        </div>
+        <div class="form-group">
+            <label>Produits à inclure (optionnel)</label>
+            <div style="border:1.5px solid var(--dash-border);border-radius:8px;overflow:hidden;">
+                <div style="position:relative;border-bottom:1px solid var(--dash-border);">
+                    <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
+                    <input type="text" id="fbProdSearch" placeholder="Rechercher un produit..." onkeyup="filterFbProducts()" style="width:100%;padding:10px 12px 10px 34px;border:none;font-size:13px;font-family:inherit;outline:none;background:transparent;">
+                </div>
+                <div style="max-height:220px;overflow-y:auto;">
+                    {% for p in products %}
+                    <label class="fb-prod-item" data-name="{{ p.name|lower }}" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--dash-border);cursor:pointer;margin:0;" onmouseover="this.style.background='var(--dash-bg)'" onmouseout="this.style.background=''">
+                        <input type="checkbox" name="products" value="{{ p.pk }}" onchange="updateFbProdCount()" style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                        {% if p.image %}<img src="{{ p.image.url }}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">
+                        {% else %}<div style="width:36px;height:36px;background:var(--dash-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dash-text3);"><i class="fa-solid fa-image"></i></div>{% endif %}
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">{{ p.price|floatformat:0 }} FCFA</div>
+                        </div>
+                    </label>
+                    {% empty %}
+                    <div style="padding:16px;text-align:center;color:var(--dash-text3);font-size:13px;">Aucun produit actif</div>
+                    {% endfor %}
+                    <div id="fbProdEmpty" style="display:none;padding:16px;text-align:center;color:var(--dash-text3);font-size:13px;">Aucun produit trouvé</div>
+                </div>
+            </div>
+            <small style="font-size:11px;color:var(--dash-text3);"><span id="fbProdCount">0</span> produit(s) sélectionné(s) — nom, prix et lien inclus dans le post</small>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label>Hashtags</label>
+            <input type="text" name="hashtags" class="form-control" placeholder="#promo #afrimarket #douala">
+            <small style="font-size:11px;color:var(--dash-text3);">Séparés par des espaces. 3-5 hashtags recommandés par Meta.</small>
+        </div>
+    </div>
+
+    <div>
+        <div class="dash-card" style="padding:20px;margin-bottom:16px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:12px;"><i class="fa-solid fa-ticket" style="color:var(--dash-accent);"></i> Code promo</div>
+            <select name="promo_code" class="form-control">
+                <option value="">— Aucun —</option>
+                {% for p in promo_codes %}
+                <option value="{{ p.pk }}">{{ p.code }} — {% if p.discount_type == 'percentage' %}-{{ p.discount_value|floatformat:0 }}%{% else %}-{{ p.discount_value|floatformat:0 }} FCFA{% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="dash-card" style="padding:20px;">
+            <button type="submit" class="btn btn-orange" style="width:100%;"><i class="fa-solid fa-check"></i> Créer le post</button>
+        </div>
+    </div>
+</div>
+</form>
+
+<script>
+function filterFbProducts() {
+    var q = document.getElementById('fbProdSearch').value.toLowerCase();
+    var visible = 0;
+    document.querySelectorAll('.fb-prod-item').forEach(function(item) {
+        var match = item.dataset.name.indexOf(q) !== -1;
+        item.style.display = match ? 'flex' : 'none';
+        if (match) visible++;
+    });
+    document.getElementById('fbProdEmpty').style.display = visible === 0 ? 'block' : 'none';
+}
+function updateFbProdCount() {
+    document.getElementById('fbProdCount').textContent = document.querySelectorAll('.fb-prod-item input:checked').length;
+}
+</script>
+{% endblock %}

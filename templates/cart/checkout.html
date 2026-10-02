@@ -1,35 +1,195 @@
 {% extends 'base.html' %}{% load humanize %}
-{% block title %}Commande{% endblock %}
+{% block title %}Finaliser la commande{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css">
+<style>
+.co-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; max-width: 1000px; margin: 0 auto; }
+@media (max-width: 860px) { .co-grid { grid-template-columns: 1fr; } }
+.co-card { background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.co-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.co-card h3 i { color: var(--orange); }
+.co-card h3 .step { width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+.form-control.valid { border-color: #12b76a; }
+.form-control.invalid { border-color: #f04438; }
+.field-msg { font-size: 11px; margin-top: 4px; display: none; }
+.field-msg.error { color: #f04438; display: block; }
+.field-msg.ok { color: #12b76a; display: block; }
+.iti { width: 100%; }
+.pay-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.pay-option { position: relative; }
+.pay-option input { position: absolute; opacity: 0; }
+.pay-option label { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1.5px solid var(--border2); border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; margin: 0; }
+.pay-option label i { font-size: 18px; color: var(--text3); transition: color .2s; }
+.pay-option input:checked + label { border-color: var(--orange); background: rgba(255,106,0,.05); color: var(--orange); }
+.pay-option input:checked + label i { color: var(--orange); }
+.co-summary-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--border2); }
+.co-summary-row:last-child { border-bottom: none; }
+.co-total { display: flex; justify-content: space-between; padding: 14px 0 0; border-top: 2px solid var(--border); font-size: 20px; font-weight: 800; color: var(--red); margin-top: 8px; }
+.co-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--border2); }
+.co-item .q { background: var(--orange-light); color: var(--orange); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+</style>
+{% endblock %}
 {% block content %}
-<div style="max-width:900px;margin:0 auto;padding:1.5rem;">
-<h2 style="font-size:18px;margin-bottom:1rem;">📋 Finaliser la commande</h2>
-<form method="post">{% csrf_token %}
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;">
-<h3 style="font-size:15px;margin-bottom:1rem;">📍 Adresse de livraison</h3>
-<div class="form-row"><div class="form-group"><label>Nom complet</label><input type="text" name="shipping_name" class="form-control" value="{{ user.get_full_name }}" required></div><div class="form-group"><label>Téléphone</label><input type="tel" name="shipping_phone" class="form-control" value="{{ user.phone }}" required></div></div>
-<div class="form-row"><div class="form-group"><label>Ville</label><select name="shipping_city" class="form-control"><option>Douala</option><option>Yaoundé</option><option>Bafoussam</option><option>Bamenda</option><option>Garoua</option><option>Maroua</option><option>Autre</option></select></div><div class="form-group"><label>Adresse</label><input type="text" name="shipping_address" class="form-control" value="{{ user.address }}" required></div></div>
-<div class="form-group"><label>Notes (optionnel)</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+<div style="max-width:1000px;margin:0 auto;padding:1.5rem;">
+<h2 style="font-size:20px;margin-bottom:1.5rem;font-weight:800;"><i class="fa-solid fa-clipboard-check" style="color:var(--orange);"></i> Finaliser la commande</h2>
+
+<form method="post" id="checkoutForm">{% csrf_token %}
+<div class="co-grid">
+    <!-- Colonne gauche -->
+    <div>
+        <!-- Adresse -->
+        <div class="co-card">
+            <h3><span class="step">1</span> Adresse de livraison</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nom complet *</label>
+                    <input type="text" name="shipping_name" class="form-control" value="{{ user.get_full_name }}" required data-validate="name">
+                    <div class="field-msg"></div>
+                </div>
+                <div class="form-group">
+                    <label>Téléphone *</label>
+                    <input type="tel" id="phoneInput" class="form-control" value="{{ user.phone }}" required data-validate="phone" inputmode="numeric">
+                    <input type="hidden" name="shipping_phone" id="phoneFull" value="{{ user.phone }}">
+                    <div class="field-msg"></div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ville *</label>
+                    <select name="shipping_city" class="form-control">
+                        <option>Douala</option><option>Yaoundé</option><option>Bafoussam</option><option>Bamenda</option><option>Garoua</option><option>Maroua</option><option>Autre</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Adresse *</label>
+                    <input type="text" name="shipping_address" class="form-control" value="{{ user.address }}" required data-validate="address">
+                    <div class="field-msg"></div>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+                <label>Notes (optionnel)</label>
+                <textarea name="notes" class="form-control" rows="2" placeholder="Instructions de livraison..."></textarea>
+            </div>
+        </div>
+
+        <!-- Paiement -->
+        <div class="co-card">
+            <h3><span class="step">2</span> Mode de paiement</h3>
+            <div class="pay-grid">
+                <div class="pay-option">
+                    <input type="radio" name="payment_method" value="momo" id="pm1" checked>
+                    <label for="pm1"><i class="fa-solid fa-mobile-screen"></i> MTN MoMo</label>
+                </div>
+                <div class="pay-option">
+                    <input type="radio" name="payment_method" value="om" id="pm2">
+                    <label for="pm2"><i class="fa-solid fa-mobile-screen"></i> Orange Money</label>
+                </div>
+                <div class="pay-option">
+                    <input type="radio" name="payment_method" value="cash" id="pm3">
+                    <label for="pm3"><i class="fa-solid fa-money-bill-wave"></i> Cash livraison</label>
+                </div>
+                <div class="pay-option">
+                    <input type="radio" name="payment_method" value="card" id="pm4">
+                    <label for="pm4"><i class="fa-solid fa-credit-card"></i> Carte bancaire</label>
+                </div>
+                <div class="pay-option">
+                    <input type="radio" name="payment_method" value="transfer" id="pm5">
+                    <label for="pm5"><i class="fa-solid fa-building-columns"></i> Virement</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Colonne droite : récapitulatif -->
+    <div>
+        <div class="co-card" style="position:sticky;top:80px;">
+            <h3><i class="fa-solid fa-cart-shopping"></i> Récapitulatif</h3>
+            {% for item in cart_items %}
+            <div class="co-item">
+                <span style="flex:1;min-width:0;">{{ item.name }}<span class="q">× {{ item.quantity }}</span></span>
+                <span style="font-weight:600;">{{ item.subtotal|intcomma }} F</span>
+            </div>
+            {% endfor %}
+            <div class="co-summary-row"><span>Sous-total</span><span>{{ subtotal|intcomma }} F</span></div>
+            <div class="co-summary-row"><span>Livraison</span><span>{% if shipping %}{{ shipping|intcomma }} F{% else %}<span style="color:var(--green);font-weight:600;">Gratuit</span>{% endif %}</span></div>
+            {% if promo %}
+            <div class="co-summary-row" style="color:var(--green);"><span><i class="fa-solid fa-ticket"></i> Code {{ promo.code }}</span><span>-{{ discount|floatformat:0|intcomma }} F</span></div>
+            {% endif %}
+            {% for store_name, tier, rate, amount in loyalty_details %}
+            <div class="co-summary-row" style="color:var(--green);"><span><i class="fa-solid fa-star"></i> Fidélité {{ tier }} (-{{ rate }}%)</span><span>-{{ amount|intcomma }} F</span></div>
+            {% endfor %}
+            <div class="co-total"><span>Total</span><span>{{ total|intcomma }} FCFA</span></div>
+
+            <div class="trade-assurance" style="margin-top:16px;"><i class="fa-solid fa-shield-halved"></i> <strong>Trade Assurance</strong> — Commande protégée. Remboursement si non conforme.</div>
+            <button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:12px;"><i class="fa-solid fa-check"></i> Confirmer et Payer</button>
+        </div>
+    </div>
 </div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;">
-<h3 style="font-size:15px;margin-bottom:1rem;">💳 Mode de paiement</h3>
-<div class="payment-grid">
-<div class="payment-option"><input type="radio" name="payment_method" value="momo" id="pm1" checked><label for="pm1">📱<br>MTN MoMo</label></div>
-<div class="payment-option"><input type="radio" name="payment_method" value="om" id="pm2"><label for="pm2">📱<br>Orange Money</label></div>
-<div class="payment-option"><input type="radio" name="payment_method" value="cash" id="pm3"><label for="pm3">💵<br>Cash livraison</label></div>
-<div class="payment-option"><input type="radio" name="payment_method" value="card" id="pm4"><label for="pm4">💳<br>Carte bancaire</label></div>
-<div class="payment-option"><input type="radio" name="payment_method" value="transfer" id="pm5"><label for="pm5">🏦<br>Virement</label></div>
-</div>
-</div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;">
-<h3 style="font-size:15px;margin-bottom:10px;">🛒 Récapitulatif</h3>
-{% for item in cart_items %}<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border2);"><span>{{ item.name }} × {{ item.quantity }}</span><span style="font-weight:600;">{{ item.subtotal|intcomma }} F</span></div>{% endfor %}
-<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;"><span>Livraison</span><span>{% if shipping %}{{ shipping|intcomma }} F{% else %}<span style="color:var(--green);">Gratuit</span>{% endif %}</span></div>
-{% if promo %}<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--green);"><span><i class="fa-solid fa-ticket"></i> Code {{ promo.code }}</span><span>-{{ discount|floatformat:0|intcomma }} F</span></div>{% endif %}
-{% for store_name, tier, rate, amount in loyalty_details %}<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:var(--green);"><span><i class="fa-solid fa-star"></i> Fidélité {{ tier }} (-{{ rate }}%) · {{ store_name }}</span><span>-{{ amount|intcomma }} F</span></div>{% endfor %}
-<div style="display:flex;justify-content:space-between;padding:12px 0;border-top:2px solid var(--border);font-size:20px;font-weight:700;color:var(--red);"><span>Total</span><span>{{ total|intcomma }} FCFA</span></div>
-</div>
-<div class="trade-assurance">🛡️ <strong>Trade Assurance</strong> — Votre commande est protégée. Remboursement si non conforme.</div>
-<button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:8px;">✓ Confirmer et Payer</button>
 </form>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/intlTelInput.min.js"></script>
+<script>
+// Téléphone avec indicatif pays
+const phoneInput = document.getElementById('phoneInput');
+const iti = window.intlTelInput(phoneInput, {
+    initialCountry: 'cm',
+    preferredCountries: ['cm', 'cf', 'td', 'cg', 'ga', 'gq'],
+    separateDialCode: true,
+    utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/utils.js',
+});
+phoneInput.addEventListener('keypress', function(e) {
+    if (!/[0-9\s+]/.test(e.key)) e.preventDefault();
+});
+phoneInput.addEventListener('input', function() {
+    document.getElementById('phoneFull').value = phoneInput.value.trim() ? iti.getNumber() : '';
+});
+// Si un numéro international est pré-rempli, le garder tel quel
+if (phoneInput.value.trim().startsWith('+')) {
+    document.getElementById('phoneFull').value = phoneInput.value.trim();
+}
+
+// Validation en temps réel
+const validators = {
+    name: v => /^[a-zA-ZÀ-ÿ\s'-]{3,}$/.test(v) ? null : 'Nom complet invalide',
+    phone: v => {
+        if (v.startsWith('+')) return null;  // numéro international pré-rempli
+        return iti.isValidNumber() ? null : 'Numéro invalide';
+    },
+    address: v => v.length >= 5 ? null : 'Adresse trop courte',
+};
+document.querySelectorAll('[data-validate]').forEach(function(input) {
+    input.addEventListener('input', function() {
+        var msg = input.closest('.form-group').querySelector('.field-msg');
+        var error = validators[input.dataset.validate](input.value.trim());
+        input.classList.remove('valid', 'invalid');
+        msg.className = 'field-msg';
+        if (input.value.trim() === '') return;
+        if (error) {
+            input.classList.add('invalid');
+            msg.textContent = error;
+            msg.classList.add('error');
+        } else {
+            input.classList.add('valid');
+            msg.textContent = '✓';
+            msg.classList.add('ok');
+        }
+    });
+});
+document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+    var hasError = false;
+    document.querySelectorAll('[data-validate]').forEach(function(input) {
+        var error = validators[input.dataset.validate](input.value.trim());
+        if (error) {
+            input.classList.add('invalid');
+            var msg = input.closest('.form-group').querySelector('.field-msg');
+            msg.textContent = error;
+            msg.className = 'field-msg error';
+            hasError = true;
+        }
+    });
+    if (hasError) e.preventDefault();
+});
+</script>
 {% endblock %}

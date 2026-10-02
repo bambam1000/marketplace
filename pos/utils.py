@@ -68,7 +68,7 @@ def generate_invoice_pdf(invoice):
 
         html_string = render_to_string('invoicing/invoice_pdf_template.html', {
             'invoice': invoice,
-            'settings': invoice.store.invoice_settings,
+            'settings': getattr(invoice.store, 'invoice_settings', None),
         })
 
         font_config = FontConfiguration()
