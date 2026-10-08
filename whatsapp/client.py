@@ -99,7 +99,7 @@ class EvolutionClient:
         })
 
     def set_webhook(self, instance_name, webhook_url, webhook_secret):
-        """Met à jour URL, secret et événements d'une instance existante (ex. après une mise à jour d'AfriMarket)."""
+        """Met à jour URL, secret et événements d'une instance existante (ex. après une mise à jour du site)."""
         return self._request('POST', f'/webhook/set/{self._name(instance_name)}',
                              {'webhook': self.webhook_config(webhook_url, webhook_secret)})
 

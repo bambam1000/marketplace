@@ -30,13 +30,13 @@
 
 <div class="wi-head">
     <div>
-        <h1><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> Conversations WhatsApp{% if is_platform %} — AfriMarket{% endif %}</h1>
+        <h1><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> Conversations WhatsApp{% if is_platform %} — Comptoir{% endif %}</h1>
         <p>Messages reçus sur {% if instance.phone %}+{{ instance.phone }}{% else %}votre numéro WhatsApp{% endif %}. Répondez directement d'ici.{% if unread_total %} <strong style="color:#128C7E;">{{ unread_total }} non lu{{ unread_total|pluralize:"s" }}</strong>{% endif %}</p>
     </div>
     <div class="wi-actions">
         {% if is_admin %}
         <a href="{% url 'whatsapp:inbox' %}" class="btn btn-sm {% if not is_platform %}btn-orange{% else %}btn-outline{% endif %}">Ma boutique</a>
-        <a href="{% url 'whatsapp:inbox' %}?scope=platform" class="btn btn-sm {% if is_platform %}btn-orange{% else %}btn-outline{% endif %}">AfriMarket</a>
+        <a href="{% url 'whatsapp:inbox' %}?scope=platform" class="btn btn-sm {% if is_platform %}btn-orange{% else %}btn-outline{% endif %}">Comptoir</a>
         {% endif %}
         <a href="{% url 'whatsapp:settings' %}{% if scope %}?scope={{ scope }}{% endif %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-gear"></i> Connexion</a>
     </div>

@@ -1,4 +1,4 @@
-{% load static %}{% load humanize %}<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>{% block title %}Dashboard{% endblock %} — AfriMarket</title>
+{% load static %}{% load humanize %}<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>{% block title %}Dashboard{% endblock %} — Comptoir</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
 <style>
 /* ═══════════════════════════════════════════
-   AfriMarket Dashboard — Premium Design System
+   Comptoir Dashboard — Premium Design System
    ═══════════════════════════════════════════ */
 
 :root {
@@ -906,7 +906,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 {% with nav=dash_nav rm=request.resolver_match %}
 <aside class="dash-sidebar" id="dashSidebar" aria-label="Menu du tableau de bord">
 <button class="dash-sidebar-close" onclick="closeSidebar()" aria-label="Fermer le menu"><i class="fa-solid fa-xmark"></i></button>
-<a href="{% url 'dashboard:index' %}" class="dash-sidebar-logo" style="text-decoration:none;"><div class="logo-icon"><i class="fa-solid fa-store"></i></div>Afri<span>Market</span></a>
+<a href="{% url 'dashboard:index' %}" class="dash-sidebar-logo" style="text-decoration:none;"><div class="logo-icon"><i class="fa-solid fa-store"></i></div>Comptoir</a>
 
 {% if nav.store %}
 <a href="{% if nav.can.owner and nav.is_seller %}{% url 'dashboard:stores' %}{% else %}{% url 'dashboard:index' %}{% endif %}" class="sb-store" title="{{ nav.store.name }}">
@@ -1011,7 +1011,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <header class="dash-navbar">
 <div class="dash-navbar-left">
 <button class="dash-sidebar-toggle" onclick="toggleSidebar()" aria-label="Ouvrir le menu"><i class="fa-solid fa-bars"></i></button>
-<div class="tb-title"><span class="tb-crumb">{% if nav.store %}{{ nav.store.name }}{% else %}AfriMarket{% endif %}</span><span class="tb-page" id="tbPageTitle"></span></div>
+<div class="tb-title"><span class="tb-crumb">{% if nav.store %}{{ nav.store.name }}{% else %}Comptoir{% endif %}</span><span class="tb-page" id="tbPageTitle"></span></div>
 </div>
 
 <form class="tb-search" action="{% url 'dashboard:search' %}" method="get" role="search">
@@ -1100,7 +1100,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 </div>
 
 <div class="dash-footer">
-<p>© 2026 AfriMarket — Tableau de bord vendeur</p>
+<p>© 2026 Comptoir — Tableau de bord vendeur</p>
 </div>
 </div>
 </div>

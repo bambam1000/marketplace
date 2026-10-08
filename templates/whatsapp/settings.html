@@ -84,7 +84,7 @@
 <!-- ═══ En-tête ═══ -->
 <div class="wa-head">
     <div>
-        <h1><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> WhatsApp{% if is_platform %} — Numéro AfriMarket{% elif store %} — {{ store.name }}{% endif %}</h1>
+        <h1><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> WhatsApp{% if is_platform %} — Numéro Comptoir{% elif store %} — {{ store.name }}{% endif %}</h1>
         <div class="wa-meta">
             {% if is_platform %}
             <span><i class="fa-solid fa-building"></i>Numéro de la plateforme : alertes vendeurs et relais pour les boutiques non connectées</span>
@@ -97,7 +97,7 @@
         <a href="{% url 'whatsapp:inbox' %}{% if scope %}?scope={{ scope }}{% endif %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-comments"></i> Conversations{% if stats.unread %} ({{ stats.unread }}){% endif %}</a>
         {% if is_admin %}
         <a href="{% url 'whatsapp:settings' %}" class="btn btn-sm {% if not is_platform %}btn-orange{% else %}btn-outline{% endif %}">Ma boutique</a>
-        <a href="{% url 'whatsapp:settings' %}?scope=platform" class="btn btn-sm {% if is_platform %}btn-orange{% else %}btn-outline{% endif %}">Numéro AfriMarket</a>
+        <a href="{% url 'whatsapp:settings' %}?scope=platform" class="btn btn-sm {% if is_platform %}btn-orange{% else %}btn-outline{% endif %}">Numéro Comptoir</a>
         {% endif %}
     </div>
 </div>
@@ -167,7 +167,7 @@
                 </form>
             </div>
             <div id="waDisconnected" {% if instance.is_connected %}style="display:none;"{% endif %}>
-                <p style="font-size:13px;color:var(--dash-text2);margin:0 0 14px;line-height:1.6;">Aucun numéro connecté. Cliquez sur « Connecter WhatsApp », puis scannez le QR code avec le téléphone {% if is_platform %}d'AfriMarket{% else %}de la boutique{% endif %}.</p>
+                <p style="font-size:13px;color:var(--dash-text2);margin:0 0 14px;line-height:1.6;">Aucun numéro connecté. Cliquez sur « Connecter WhatsApp », puis scannez le QR code avec le téléphone {% if is_platform %}de Comptoir{% else %}de la boutique{% endif %}.</p>
                 <button type="button" class="btn btn-orange" id="waConnectBtn" onclick="startConnect()" {% if not ready %}disabled style="opacity:.5;cursor:not-allowed;" title="Voir « Pourquoi la connexion est impossible »"{% endif %}><i class="fa-brands fa-whatsapp"></i> Connecter WhatsApp</button>
                 <div class="wa-qr" id="waQr">
                     <img id="waQrImg" alt="QR code à scanner avec WhatsApp">

@@ -1830,7 +1830,7 @@ def dash_transfers_export_pdf(request):
     width, height = landscape(A4)
 
     p.setFont('Helvetica-Bold', 16)
-    p.drawString(15*mm, height - 18*mm, 'AfriMarket — Mouvements entre entrepôts')
+    p.drawString(15*mm, height - 18*mm, 'Comptoir — Mouvements entre entrepôts')
     p.setFont('Helvetica', 9)
     p.drawString(15*mm, height - 24*mm, f'Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — {transfers.count()} transfert(s)')
     p.line(15*mm, height - 27*mm, width - 15*mm, height - 27*mm)
@@ -2015,7 +2015,7 @@ def dash_employees_list(request):
                     f'{request.user.display_name} vous a ajouté à son équipe.\n\nVos identifiants de connexion :\nNom d\'utilisateur : {username}\nMot de passe : {password}\n\nConnectez-vous pour accéder au tableau de bord.',
                     url='/compte/connexion/',
                     send_email=True,
-                    email_subject=f'Vos identifiants {store.name} — AfriMarket',
+                    email_subject=f'Vos identifiants {store.name} — Comptoir',
                 )
             django_messages.success(request, f'Compte créé pour {user.display_name}.')
         elif user == request.user:
@@ -2369,7 +2369,7 @@ def dash_movements_export_pdf(request):
     width, height = landscape(A4)
 
     p.setFont('Helvetica-Bold', 16)
-    p.drawString(15*mm, height - 18*mm, 'AfriMarket — Mouvements de stock')
+    p.drawString(15*mm, height - 18*mm, 'Comptoir — Mouvements de stock')
     p.setFont('Helvetica', 9)
     p.drawString(15*mm, height - 24*mm, f'Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — {movements.count()} mouvement(s)')
     p.line(15*mm, height - 27*mm, width - 15*mm, height - 27*mm)
@@ -2472,7 +2472,7 @@ def dash_movement_pdf(request, pk):
     width, height = A4
 
     p.setFont('Helvetica-Bold', 20)
-    p.drawString(20*mm, height - 25*mm, 'AfriMarket — Mouvement de stock')
+    p.drawString(20*mm, height - 25*mm, 'Comptoir — Mouvement de stock')
     p.setLineWidth(1)
     p.line(20*mm, height - 30*mm, width - 20*mm, height - 30*mm)
 
@@ -2497,7 +2497,7 @@ def dash_movement_pdf(request, pk):
         y -= 10*mm
 
     p.setFont('Helvetica', 8)
-    p.drawString(20*mm, 15*mm, f'Document généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — AfriMarket')
+    p.drawString(20*mm, 15*mm, f'Document généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — Comptoir')
     p.showPage()
     p.save()
     buffer.seek(0)

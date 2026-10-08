@@ -98,7 +98,7 @@ function shareStore(){
   var url=window.location.href;
   var name='{{ store.name|escapejs }}';
   if(navigator.share){
-    navigator.share({title:name+' — AfriMarket',text:'Decouvrez la boutique '+name+' sur AfriMarket',url:url});
+    navigator.share({title:name+' — Comptoir',text:'Decouvrez la boutique '+name+' sur Comptoir',url:url});
   } else {
     navigator.clipboard.writeText(url).then(function(){
       var b=document.getElementById('shareTip');

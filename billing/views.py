@@ -151,13 +151,13 @@ def boost_product(request, product_id):
         elif boost.platform == 'facebook':
             # TODO: Integrate with Facebook Marketing API
             # For now, we'll create a task for manual processing
-            messages.info(request, f'Votre campagne Facebook Ads sera activée sous 24h. Budget Facebook: {platform_budget:,} FCFA (Commission AfriMarket: {commission:,} FCFA).')
+            messages.info(request, f'Votre campagne Facebook Ads sera activée sous 24h. Budget Facebook: {platform_budget:,} FCFA (Commission Comptoir: {commission:,} FCFA).')
             boost.status = 'pending'
             boost.save()
 
         elif boost.platform == 'whatsapp':
             # TODO: Integrate with WhatsApp Business API
-            messages.info(request, f'Votre campagne WhatsApp sera activée sous 24h. Budget WhatsApp: {platform_budget:,} FCFA (Commission AfriMarket: {commission:,} FCFA).')
+            messages.info(request, f'Votre campagne WhatsApp sera activée sous 24h. Budget WhatsApp: {platform_budget:,} FCFA (Commission Comptoir: {commission:,} FCFA).')
             boost.status = 'pending'
             boost.save()
 

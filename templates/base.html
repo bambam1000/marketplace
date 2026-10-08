@@ -3,7 +3,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>{% block title %}AfriMarket{% endblock %} — La Marketplace Africaine</title>
+<title>{% block title %}Achetez et vendez en ligne{% endblock %} — Comptoir</title>
 {% block extra_head %}{% endblock %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="{% static 'images/pwa/apple-touch-icon.png' %}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="AfriMarket">
+<meta name="apple-mobile-web-app-title" content="Comptoir">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 {% block extra_css %}{% endblock %}
@@ -27,7 +27,7 @@
 <div class="topbar">
 <div class="topbar-inner">
 <div class="topbar-links">
-<a href="{% url 'seller_landing' %}"><i class="fa-solid fa-store"></i> Vendre sur AfriMarket</a>
+<a href="{% url 'seller_landing' %}"><i class="fa-solid fa-store"></i> Vendre sur Comptoir</a>
 <span class="topbar-sep"></span>
 {% if user.is_authenticated %}
 <a href="{% url 'orders:my_rfqs' %}"><i class="fa-solid fa-clipboard-list"></i> Mes demandes de devis</a>
@@ -73,7 +73,7 @@
 <header class="header">
 <div class="header-inner">
 <button type="button" class="m-burger" onclick="openMobileMenu()" aria-label="Ouvrir le menu" aria-controls="mDrawer" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
-<a href="{% url 'home' %}" class="logo">Afri<span>Market</span></a>
+<a href="{% url 'home' %}" class="logo">Comptoir</a>
 <form method="get" action="{% url 'catalog:search' %}" class="search-bar" style="position:relative;">
 <div class="search-category">
 <i class="fa-solid fa-layer-group"></i>
@@ -120,7 +120,7 @@
 <div class="m-overlay" id="mOverlay" onclick="closeMobileMenu()"></div>
 <aside class="m-drawer" id="mDrawer" aria-label="Menu" aria-hidden="true">
 <div class="m-drawer-head">
-<a href="{% url 'home' %}" class="logo">Afri<span>Market</span></a>
+<a href="{% url 'home' %}" class="logo">Comptoir</a>
 <button type="button" class="m-close" onclick="closeMobileMenu()" aria-label="Fermer le menu"><i class="fa-solid fa-xmark"></i></button>
 </div>
 {% if user.is_authenticated %}
@@ -166,7 +166,7 @@
 <a href="{% url 'dashboard:index' %}"><i class="fa-solid fa-gauge-high"></i> Tableau de bord</a>
 {% if user.store %}<a href="{% url 'store:detail' slug=user.store.slug %}"><i class="fa-solid fa-store"></i> Ma boutique</a>{% endif %}
 {% else %}
-<a href="{% url 'seller_landing' %}"><i class="fa-solid fa-store"></i> Vendre sur AfriMarket</a>
+<a href="{% url 'seller_landing' %}"><i class="fa-solid fa-store"></i> Vendre sur Comptoir</a>
 {% endif %}
 <a href="{% url 'faq' %}"><i class="fa-solid fa-circle-question"></i> Aide</a>
 <a href="{% url 'contact' %}"><i class="fa-solid fa-envelope"></i> Contact</a>
@@ -233,8 +233,8 @@
 <footer class="footer">
 <div class="footer-top">
 <div>
-<div class="footer-brand">Afri<span>Market</span></div>
-<p style="font-size:13px;line-height:1.7;max-width:300px;margin-top:.5rem;">La plus grande marketplace B2B et B2C d'Afrique Centrale. Des milliers de produits, des centaines de vendeurs vérifiés.</p>
+<div class="footer-brand">Comptoir</div>
+<p style="font-size:13px;line-height:1.7;max-width:320px;margin-top:.5rem;">La place de marché en ligne qui réunit commerçants et acheteurs : boutiques indépendantes, vente au détail et en gros, paiement en ligne ou à la livraison.</p>
 <div class="footer-payments" style="margin-top:1rem;">
 <span><i class="fa-solid fa-mobile-screen"></i> MoMo</span><span><i class="fa-solid fa-mobile-screen"></i> OM</span><span><i class="fa-solid fa-credit-card"></i> Visa</span><span><i class="fa-solid fa-credit-card"></i> Mastercard</span><span><i class="fa-solid fa-money-bill"></i> Cash</span>
 </div>
@@ -251,9 +251,9 @@
 <div>
 <h4>Vendeur</h4>
 <ul>
-<li><a href="{% url 'accounts:register' %}">Devenir vendeur</a></li>
+<li><a href="{% url 'seller_landing' %}">Devenir vendeur</a></li>
 <li><a href="{% url 'dashboard:index' %}">Espace vendeur</a></li>
-<li><a href="#">Centre d'aide vendeur</a></li>
+<li><a href="{% url 'seller_landing' %}#faq">Questions des vendeurs</a></li>
 </ul>
 </div>
 <div>
@@ -277,7 +277,7 @@
 </div>
 </div>
 <div class="footer-bottom">
-<p>© 2026 AfriMarket — La Marketplace Africaine. Fait avec <i class="fa-solid fa-heart" style="color:#e25563;"></i> au Cameroun par DigiSoft Africa</p>
+<p>© 2026 Comptoir — Conçu et développé par DigiSoft Africa</p>
 </div>
 </footer>
 
@@ -298,7 +298,7 @@
 <button type="button" class="pwa-x" onclick="pwaDismiss()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
 <div class="pwa-top">
 <img src="{% static 'images/pwa/icon-192.png' %}" alt="" width="52" height="52">
-<div><b id="pwaTitle">Installer l'application AfriMarket</b><span>Accès en un appui depuis votre écran d'accueil, plein écran, plus rapide.</span></div>
+<div><b id="pwaTitle">Installer l'application Comptoir</b><span>Accès en un appui depuis votre écran d'accueil, plein écran, plus rapide.</span></div>
 </div>
 <div class="pwa-ios" id="pwaIos">
 <div class="pwa-step"><em>1</em> Touchez <span class="pwa-key"><i class="fa-solid fa-arrow-up-from-bracket"></i> Partager</span> en bas de Safari</div>

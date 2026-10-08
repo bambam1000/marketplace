@@ -1,25 +1,109 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load humanize %}
 {% block title %}À propos{% endblock %}
+{% block extra_css %}
+<style>
+.ab-hero { padding: 4rem 1.5rem 2.5rem; text-align: center; max-width: 760px; margin: 0 auto; }
+.ab-hero .tag { display: inline-flex; align-items: center; gap: 6px; background: var(--orange-light); color: var(--orange); font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 50px; }
+.ab-hero h1 { font-size: 2.4rem; margin: 14px 0 12px; }
+.ab-hero p { color: var(--text2); font-size: 15px; line-height: 1.75; }
+.ab-wrap { max-width: 1000px; }
+.ab-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0 2rem; }
+.ab-card { background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); padding: 1.6rem; }
+.ab-card h2 { font-size: 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+.ab-card h2 i { width: 36px; height: 36px; border-radius: 10px; background: var(--orange-light); color: var(--orange); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+.ab-card li { color: var(--text2); line-height: 1.7; font-size: 13.5px; display: flex; gap: 10px; }
+.ab-card ul { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.ab-card li i { color: var(--green); margin-top: 5px; font-size: 12px; }
+.ab-title { text-align: center; margin: 2.5rem 0 1.2rem; }
+.ab-title h2 { font-size: 22px; }
+.ab-title p { color: var(--text3); font-size: 13.5px; margin-top: 6px; }
+.ab-values { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.ab-value { background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); padding: 1.4rem 1.2rem; }
+.ab-value i { font-size: 20px; color: var(--orange); }
+.ab-value h3 { font-size: 15px; margin: 10px 0 6px; }
+.ab-value p { font-size: 12.5px; color: var(--text2); line-height: 1.65; }
+.ab-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 1rem; }
+.ab-stat { background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); padding: 1.2rem; text-align: center; }
+.ab-stat b { display: block; font-size: 1.9rem; color: var(--orange); font-family: var(--font); font-weight: 800; }
+.ab-stat span { font-size: 12.5px; color: var(--text3); }
+.ab-note { text-align: center; font-size: 12.5px; color: var(--text3); margin-top: 10px; }
+.ab-cta { margin: 2.5rem 0 1rem; background: #1a1a2e; color: #cfd2dc; border-radius: var(--radius); padding: 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; }
+.ab-cta h2 { color: #fff; font-size: 20px; }
+.ab-cta p { font-size: 13.5px; margin-top: 6px; max-width: 520px; line-height: 1.6; }
+.ab-cta-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.ab-cta .btn-light { background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.2); }
+@media (max-width: 900px) {
+    .ab-hero { padding: 2rem 14px 1.5rem; }
+    .ab-hero h1 { font-size: 1.8rem; }
+    .ab-two { grid-template-columns: 1fr; }
+    .ab-values { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+    .ab-values { grid-template-columns: 1fr; }
+    .ab-stats { gap: 8px; }
+    .ab-stat { padding: .9rem .4rem; }
+    .ab-stat b { font-size: 1.4rem; }
+    .ab-cta { padding: 1.4rem; }
+    .ab-cta-btns, .ab-cta-btns .btn { width: 100%; justify-content: center; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div style="padding:4rem 2rem;text-align:center;">
-<h1 style="font-size:2.2rem;">À propos d'AfriMarket</h1>
-<p style="color:var(--text2);max-width:600px;margin:.8rem auto 0;">Votre marketplace B2B et B2C</p>
+<div class="ab-hero">
+    <span class="tag"><i class="fa-solid fa-store"></i> À propos</span>
+    <h1>Comptoir, le commerce en ligne simplement</h1>
+    <p>Comptoir est une place de marché en ligne qui réunit des boutiques indépendantes et leurs clients. Nous construisons les outils dont un commerçant a besoin pour vendre en ligne comme en magasin, et une expérience d'achat claire pour ses clients, où qu'ils se trouvent.</p>
 </div>
-<div class="section" style="max-width:900px;">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin:2rem 0;">
-<div><h2 style="font-size:18px;margin-bottom:10px;">Notre mission</h2><p style="color:var(--text2);line-height:1.8;font-size:13px;">AfriMarket connecte les acheteurs et vendeurs sur une plateforme moderne, sécurisée et adaptée au marché local. Notre objectif : rendre le commerce en ligne accessible à tous.</p></div>
-<div><h2 style="font-size:18px;margin-bottom:10px;">Notre vision</h2><p style="color:var(--text2);line-height:1.8;font-size:13px;">Faciliter le commerce en ligne avec une plateforme moderne, sécurisée et adaptée aux besoins des utilisateurs. Nous construisons l'infrastructure du commerce digital.</p></div>
-</div>
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;text-align:center;margin:2rem 0;">
-<div><div style="font-size:2.5rem;font-weight:700;color:var(--orange);">500+</div><div style="font-size:13px;color:var(--text3);">Vendeurs actifs</div></div>
-<div><div style="font-size:2.5rem;font-weight:700;color:var(--orange);">10K+</div><div style="font-size:13px;color:var(--text3);">Produits</div></div>
-<div><div style="font-size:2.5rem;font-weight:700;color:var(--orange);">50K+</div><div style="font-size:13px;color:var(--text3);">Acheteurs</div></div>
-</div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin:2rem 0;">
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;text-align:center;"><div style="font-size:2rem;margin-bottom:8px;">🤝</div><h3 style="font-size:14px;">Confiance</h3><p style="font-size:12px;color:var(--text3);margin-top:4px;">Trade Assurance sur chaque commande</p></div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;text-align:center;"><div style="font-size:2rem;margin-bottom:8px;">🌱</div><h3 style="font-size:14px;">Impact local</h3><p style="font-size:12px;color:var(--text3);margin-top:4px;">Soutien aux PME africaines</p></div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;text-align:center;"><div style="font-size:2rem;margin-bottom:8px;">⚡</div><h3 style="font-size:14px;">Innovation</h3><p style="font-size:12px;color:var(--text3);margin-top:4px;">Mobile Money, RFQ, Flash Deals</p></div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;text-align:center;"><div style="font-size:2rem;margin-bottom:8px;">❤️</div><h3 style="font-size:14px;">Service client</h3><p style="font-size:12px;color:var(--text3);margin-top:4px;">Support WhatsApp 6j/7</p></div>
-</div>
+
+<div class="section ab-wrap">
+    <div class="ab-two">
+        <div class="ab-card">
+            <h2><i class="fa-solid fa-bag-shopping"></i> Pour les acheteurs</h2>
+            <ul>
+                <li><i class="fa-solid fa-check"></i>Des produits proposés par des boutiques identifiées, avec les avis et les notes des clients.</li>
+                <li><i class="fa-solid fa-check"></i>Paiement en ligne (Mobile Money, carte) ou à la livraison, selon la boutique.</li>
+                <li><i class="fa-solid fa-check"></i>Le suivi de chaque commande et un échange direct avec le vendeur.</li>
+                <li><i class="fa-solid fa-check"></i>Des demandes de devis pour les achats en quantité.</li>
+            </ul>
+        </div>
+        <div class="ab-card">
+            <h2><i class="fa-solid fa-store"></i> Pour les vendeurs</h2>
+            <ul>
+                <li><i class="fa-solid fa-check"></i>Une boutique en ligne à votre nom, avec votre catalogue.</li>
+                <li><i class="fa-solid fa-check"></i>Le stock suivi par entrepôt et une caisse pour vendre en magasin.</li>
+                <li><i class="fa-solid fa-check"></i>Factures, comptabilité, gestion de l'équipe et de ses droits.</li>
+                <li><i class="fa-solid fa-check"></i>Codes promo, campagnes, WhatsApp et un assistant pour piloter l'activité.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="ab-title"><h2>Ce qui nous guide</h2></div>
+    <div class="ab-values">
+        <div class="ab-value"><i class="fa-solid fa-handshake"></i><h3>Transparence</h3><p>Des prix affichés clairement, des boutiques identifiées et des avis laissés par les clients.</p></div>
+        <div class="ab-value"><i class="fa-solid fa-wand-magic-sparkles"></i><h3>Simplicité</h3><p>Ouvrir une boutique, publier un produit ou passer commande doit prendre quelques minutes, sur ordinateur comme sur téléphone.</p></div>
+        <div class="ab-value"><i class="fa-solid fa-wallet"></i><h3>Paiements adaptés</h3><p>Les moyens de paiement que les clients utilisent vraiment, y compris le Mobile Money et le paiement à la livraison.</p></div>
+        <div class="ab-value"><i class="fa-solid fa-headset"></i><h3>Proximité</h3><p>Une équipe joignable par message et par WhatsApp, à l'écoute des commerçants pour faire évoluer la plateforme.</p></div>
+    </div>
+
+    {% if stats.products %}
+    <div class="ab-title"><h2>Comptoir aujourd'hui</h2><p>Une plateforme jeune, qui grandit avec ses commerçants.</p></div>
+    <div class="ab-stats">
+        <div class="ab-stat"><b>{{ stats.stores|intcomma }}</b><span>boutique{{ stats.stores|pluralize }} en ligne</span></div>
+        <div class="ab-stat"><b>{{ stats.products|intcomma }}</b><span>produit{{ stats.products|pluralize }} disponible{{ stats.products|pluralize }}</span></div>
+        <div class="ab-stat"><b>{{ stats.categories|intcomma }}</b><span>catégorie{{ stats.categories|pluralize }}</span></div>
+    </div>
+    <p class="ab-note">Chiffres réels, mis à jour en continu.</p>
+    {% endif %}
+
+    <div class="ab-cta">
+        <div>
+            <h2>Vous avez un commerce ?</h2>
+            <p>Ouvrez votre boutique sur Comptoir et gérez vos ventes en ligne et en magasin depuis un seul tableau de bord.</p>
+        </div>
+        <div class="ab-cta-btns">
+            <a href="{% url 'seller_landing' %}" class="btn btn-orange"><i class="fa-solid fa-store"></i> Devenir vendeur</a>
+            <a href="{% url 'catalog:product_list' %}" class="btn btn-light">Voir les produits</a>
+        </div>
+    </div>
 </div>
 {% endblock %}

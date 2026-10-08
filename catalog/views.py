@@ -190,7 +190,14 @@ def add_review(request, product_id):
     return redirect('catalog:product_detail', slug=product.slug)
 
 def about(request):
-    return render(request, 'catalog/about.html')
+    # Chiffres réels de la plateforme (pas de chiffres « vitrine »)
+    products = Product.objects.filter(is_active=True, store__is_active=True)
+    stats = {
+        'stores': Store.objects.filter(is_active=True, products__is_active=True).distinct().count(),
+        'products': products.count(),
+        'categories': Category.objects.filter(is_active=True, products__in=products).distinct().count(),
+    }
+    return render(request, 'catalog/about.html', {'stats': stats})
 
 def contact(request):
     if request.method == 'POST':

@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Inscription Vendeur — AfriMarket</title>
+<title>Inscription Vendeur — Comptoir</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css">
@@ -76,12 +76,12 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
     <div class="auth-left">
         <a href="{% url 'home' %}" class="auth-logo">
             <span class="logo-ic"><i class="fa-solid fa-store"></i></span>
-            AfriMarket
+            Comptoir
         </a>
         <div class="auth-left-content">
             <h1>Bonjour !</h1>
-            <div class="subtitle">Rejoignez la marketplace N°1 d'Afrique Centrale</div>
-            <p>Créez votre compte gratuitement. Acheteurs : des milliers de produits avec paiement sécurisé. Vendeurs : votre boutique en ligne en 2 minutes, avec entrepôt et équipe.</p>
+            <div class="subtitle">Vendez sur Comptoir</div>
+            <p>Une boutique en ligne, votre stock par entrepôt, une caisse pour le magasin, des factures et des outils marketing : tout votre commerce dans un seul tableau de bord.</p>
         </div>
     </div>
 
@@ -89,7 +89,7 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
     <div class="auth-right">
         <div class="auth-form">
             <h2>Devenir vendeur</h2>
-            <div class="sub">Créez votre boutique gratuitement, en moins d'une minute.</div>
+            <div class="sub">Votre compte vendeur est prêt en moins d'une minute.</div>
 
             {% if messages %}{% for msg in messages %}<div class="alert-error">{{ msg }}</div>{% endfor %}{% endif %}
 

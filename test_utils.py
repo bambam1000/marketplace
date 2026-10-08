@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Helpers partagés pour les suites de tests fonctionnels AfriMarket.
+"""Helpers partagés pour les suites de tests fonctionnels Comptoir.
 
 Usage dans un script de test :
     from test_utils import make_checker, finish, cleanup_test_data

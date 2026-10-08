@@ -12,13 +12,13 @@ class Command(BaseCommand):
     help = 'Seed marketplace with demo data'
 
     def handle(self, *args, **kwargs):
-        self.stdout.write('Seeding AfriMarket...')
+        self.stdout.write('Seeding Comptoir...')
 
         # Admin
         admin, _ = User.objects.get_or_create(username='admin', defaults={
             'email': 'admin@afrimarketplace.cm', 'role': 'admin',
             'is_staff': True, 'is_superuser': True,
-            'first_name': 'Admin', 'last_name': 'AfriMarket',
+            'first_name': 'Admin', 'last_name': 'Comptoir',
         })
         admin.set_password('admin123')
         admin.save()

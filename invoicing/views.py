@@ -419,7 +419,7 @@ def invoice_send(request, pk):
         <p>Merci de votre confiance.</p>
     </div>
     <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
-        {invoice.store.name} · AfriMarket
+        {invoice.store.name} · Comptoir
     </div>
 </div>
 </body></html>'''

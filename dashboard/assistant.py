@@ -83,7 +83,7 @@ def ask(question, store, user=None):
     if any(w in q for w in ['bonjour', 'salut', 'hello', 'bonsoir', 'coucou', 'hey']):
         return (
             f"Bonjour {name} ! 👋\n\n"
-            f"Je suis votre assistant AfriMarket. Je peux :\n\n"
+            f"Je suis votre assistant Comptoir. Je peux :\n\n"
             f"📊 **Analyser votre boutique** — « ventes du jour », « état du stock », « mes clients »\n"
             f"📖 **Vous guider** — « comment ajouter un produit », « créer un code promo »\n"
             f"⚡ **Vous alerter** — ruptures, commandes en attente, factures impayées\n\n"
@@ -100,7 +100,7 @@ def ask(question, store, user=None):
 
     # ── Qui es-tu ──
     if any(w in q for w in ['qui es', 't\'es qui', 'tu es qui', 'ton nom', 't\'appelles']):
-        return "Je suis l'**assistant AfriMarket** 🤖 — votre copilote pour gérer votre boutique. Je connais toute la plateforme et j'analyse vos données en temps réel."
+        return "Je suis l'**assistant Comptoir** 🤖 — votre copilote pour gérer votre boutique. Je connais toute la plateforme et j'analyse vos données en temps réel."
 
     # ── Aide ──
     if any(w in q for w in ['aide', 'help', 'quoi faire', 'tu peux faire', 'tu sais faire']):
@@ -344,7 +344,7 @@ def ask(question, store, user=None):
 
     # Général
     if any(w in q for w in ['commission', 'frais', 'pourcentage']):
-        return "**Commission** 💰\n\nAfriMarket prélève **10%** sur chaque vente. Le reste est crédité sur votre portefeuille."
+        return "**Commission** 💰\n\nComptoir prélève **10%** sur chaque vente. Le reste est crédité sur votre portefeuille."
     if any(w in q for w in ['paiement', 'payer', 'mobile money', 'momo', 'orange money']):
         return "**Modes de paiement** 💳\n\nMTN Mobile Money, Orange Money, cash à la livraison, carte bancaire et virement bancaire."
 

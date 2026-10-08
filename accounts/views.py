@@ -59,14 +59,14 @@ def register_view(request):
             if role == 'seller':
                 msg = 'Votre boutique a été créée avec un entrepôt principal. Complétez votre profil et ajoutez vos premiers produits pour commencer à vendre.'
             else:
-                msg = 'Parcourez des milliers de produits, commandez en toute sécurité et suivez vos commandes en temps réel.'
+                msg = 'Découvrez les boutiques et leurs produits, commandez en toute sécurité et suivez vos commandes en temps réel.'
             notify(
                 user, 'account',
-                'Bienvenue sur AfriMarket !',
+                'Bienvenue sur Comptoir !',
                 msg,
                 url='/',
                 send_email=True,
-                email_subject='Bienvenue sur AfriMarket !',
+                email_subject='Bienvenue sur Comptoir !',
             )
             messages.success(request, 'Bienvenue ! Votre compte a été créé.')
             return redirect('home')
@@ -159,7 +159,7 @@ def password_reset_view(request):
 <html><body style="margin:0;padding:0;background:#f4f5f7;font-family:Arial,sans-serif;">
 <div style="max-width:600px;margin:0 auto;background:#fff;">
     <div style="background:#ff6a00;padding:24px;text-align:center;">
-        <div style="color:#fff;font-size:22px;font-weight:800;">AfriMarket</div>
+        <div style="color:#fff;font-size:22px;font-weight:800;">Comptoir</div>
     </div>
     <div style="padding:32px 28px;color:#333;font-size:14px;line-height:1.7;">
         <p>Bonjour {user.first_name or user.username},</p>
@@ -170,12 +170,12 @@ def password_reset_view(request):
         <p style="font-size:12px;color:#98a2b3;">Ce lien est valide pendant 24 heures. Si vous n'avez pas fait cette demande, ignorez ce message.</p>
     </div>
     <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
-        AfriMarket · Douala, Cameroun
+        Comptoir
     </div>
 </div>
 </body></html>'''
                     email = EmailMessage(
-                        'Réinitialisation de votre mot de passe — AfriMarket',
+                        'Réinitialisation de votre mot de passe — Comptoir',
                         html,
                         settings.DEFAULT_FROM_EMAIL,
                         [user.email],

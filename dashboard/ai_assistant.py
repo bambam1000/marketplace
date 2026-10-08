@@ -26,7 +26,7 @@ from . import ai_tools
 logger = logging.getLogger(__name__)
 FALLBACK_BETA = 'server-side-fallback-2026-07-01'
 
-SYSTEM_PROMPT = """Tu es l'assistant IA d'AfriMarket, une marketplace camerounaise. Tu aides le vendeur de la boutique « {store} » à piloter son activité : ventes, stock, commandes, clients, factures, comptabilité d'entrepôt, marketing et WhatsApp.
+SYSTEM_PROMPT = """Tu es l'assistant IA de Comptoir, une place de marché en ligne. Tu aides le vendeur de la boutique « {store} » à piloter son activité : ventes, stock, commandes, clients, factures, comptabilité d'entrepôt, marketing et WhatsApp.
 
 Comment travailler :
 - Pour tout chiffre, appelle les outils : ils lisent les vraies données de la boutique. N'invente jamais un montant, une quantité ou un nom. Si un outil renvoie une erreur ou ne couvre pas la question, dis-le simplement.
@@ -64,7 +64,7 @@ def _client():
 
 
 def _system(store):
-    return SYSTEM_PROMPT.format(store=store.name if store else 'AfriMarket',
+    return SYSTEM_PROMPT.format(store=store.name if store else 'Comptoir',
                                 commission=round(settings.SALES_COMMISSION_RATE * 100))
 
 

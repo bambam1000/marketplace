@@ -1,6 +1,6 @@
 Bonjour {{ recipient_name }},
 
-Vous avez reçu un nouveau message sur AfriMarket.
+Vous avez reçu un nouveau message sur Comptoir.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -19,7 +19,7 @@ Ou accédez à tous vos messages depuis votre tableau de bord :
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-AfriMarket - La Marketplace Africaine
+Comptoir — Achetez et vendez en ligne
 Douala, Cameroun
 
 Cet email a été envoyé automatiquement. Merci de ne pas y répondre directement.

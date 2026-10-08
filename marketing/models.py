@@ -448,7 +448,7 @@ class LoyaltyProgram(models.Model):
         <p>Merci de votre confiance.</p>
     </div>
     <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
-        {self.store.name} · {self.store.city or 'Douala'} · AfriMarket
+        {self.store.name} · {self.store.city or 'Douala'} · Comptoir
     </div>
 </div>
 </body></html>'''

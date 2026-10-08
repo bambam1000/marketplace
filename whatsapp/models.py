@@ -4,7 +4,7 @@ from django.db import models
 
 class WhatsAppInstance(models.Model):
     """Un numéro WhatsApp connecté à Evolution API (QR code scanné).
-    store=None : numéro de la plateforme AfriMarket ; sinon numéro d'une boutique."""
+    store=None : numéro de la plateforme Comptoir ; sinon numéro d'une boutique."""
     STATUS_CHOICES = [
         ('close', 'Déconnecté'),
         ('connecting', 'En attente du QR code'),
@@ -24,7 +24,7 @@ class WhatsAppInstance(models.Model):
         verbose_name = 'Instance WhatsApp'
 
     def __str__(self):
-        owner = self.store.name if self.store_id else 'AfriMarket'
+        owner = self.store.name if self.store_id else 'Comptoir'
         return f'{owner} — {self.get_status_display()}'
 
     @property
@@ -33,12 +33,12 @@ class WhatsAppInstance(models.Model):
 
 
 class WhatsAppChat(models.Model):
-    """Conversation WhatsApp entre un numéro connecté (boutique ou AfriMarket) et un contact."""
+    """Conversation WhatsApp entre un numéro connecté (boutique ou Comptoir) et un contact."""
     instance = models.ForeignKey(WhatsAppInstance, on_delete=models.CASCADE, related_name='chats')
     number = models.CharField(max_length=30)
     contact_name = models.CharField(max_length=200, blank=True)
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                 related_name='whatsapp_chats', help_text='Client AfriMarket reconnu par son numéro')
+                                 related_name='whatsapp_chats', help_text='Client Comptoir reconnu par son numéro')
     last_message_at = models.DateTimeField(null=True, blank=True)
     last_preview = models.CharField(max_length=200, blank=True)
     unread_count = models.PositiveIntegerField(default=0)

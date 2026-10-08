@@ -132,7 +132,7 @@ if os.environ.get('DJANGO_EMAIL_BACKEND', 'console') == 'smtp':
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AfriMarket <noreply@afrimarket.com>')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Comptoir <noreply@afrimarket.com>')
 SITE_URL = os.environ.get('SITE_URL', 'http://127.0.0.1:8000')
 
 # ── WhatsApp via Evolution API (mode Baileys) — voir deploy/evolution/README.md ──

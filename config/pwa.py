@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.views.decorators.cache import cache_control
 
 # À incrémenter quand la liste des fichiers mis en cache change : les anciens caches sont supprimés.
-CACHE_VERSION = 'afrimarket-v1'
+CACHE_VERSION = 'comptoir-v2'
 
 
 @cache_control(max_age=3600)
@@ -26,9 +26,9 @@ def manifest(request):
     shortcut_icon = [{'src': static('images/pwa/icon-192.png'), 'sizes': '192x192', 'type': 'image/png'}]
     data = {
         'id': '/',
-        'name': 'AfriMarket — La Marketplace Africaine',
-        'short_name': 'AfriMarket',
-        'description': "Achetez et vendez en Afrique centrale : produits, vendeurs vérifiés, paiement Mobile Money.",
+        'name': 'Comptoir — Achetez et vendez en ligne',
+        'short_name': 'Comptoir',
+        'description': "La place de marché en ligne : boutiques indépendantes, vente au détail et en gros, paiement en ligne ou à la livraison.",
         'lang': 'fr',
         'dir': 'ltr',
         'start_url': '/?source=pwa',

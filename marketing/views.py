@@ -648,7 +648,7 @@ def _build_email_html(newsletter, base_url=None, unsubscribe_url=None):
         {promo_block}
     </div>
     <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
-        {escape(store.name)} · {escape(store.city or 'Douala')} · AfriMarket
+        {escape(store.name)} · {escape(store.city or 'Douala')} · Comptoir
         {f'<br><a href="{unsubscribe_url}" style="color:#98a2b3;">Se désinscrire des emails promotionnels</a>' if unsubscribe_url else ''}
     </div>
 </div>

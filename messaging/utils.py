@@ -31,7 +31,7 @@ def notify(user, notif_type, title, message, url='', send_email=False, email_sub
                 'url': f"{settings.SITE_URL}{url}" if url else settings.SITE_URL,
             })
             email = EmailMessage(
-                subject=email_subject or f'{title} — AfriMarket',
+                subject=email_subject or f'{title} — Comptoir',
                 body=html,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 to=[user.email],
@@ -80,12 +80,12 @@ def send_new_message_notification(message):
     text_content = render_to_string('emails/new_message.txt', context)
 
     # Créer l'email
-    subject = f"💬 Nouveau message de {sender.display_name} - AfriMarket"
+    subject = f"💬 Nouveau message de {sender.display_name} - Comptoir"
 
     email = EmailMultiAlternatives(
         subject=subject,
         body=text_content,
-        from_email=f"AfriMarket <{settings.DEFAULT_FROM_EMAIL}>",
+        from_email=f"Comptoir <{settings.DEFAULT_FROM_EMAIL}>",
         to=[recipient.email],
     )
 

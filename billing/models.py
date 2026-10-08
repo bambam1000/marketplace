@@ -136,7 +136,7 @@ class PaymentConfig(models.Model):
 class ProductBoost(models.Model):
     """Système de boost/promotion de produits"""
     PLATFORM_CHOICES = [
-        ('internal', 'AfriMarket (page d\'accueil)'),
+        ('internal', 'Comptoir (page d\'accueil)'),
         ('facebook', 'Facebook'),
         ('whatsapp', 'WhatsApp Status'),
     ]
@@ -156,7 +156,7 @@ class ProductBoost(models.Model):
     # Financial tracking
     client_budget = models.DecimalField(max_digits=10, decimal_places=0, default=0, help_text='Montant payé par le client')
     platform_budget = models.DecimalField(max_digits=10, decimal_places=0, default=0, help_text='Montant envoyé à Facebook/WhatsApp')
-    commission = models.DecimalField(max_digits=10, decimal_places=0, default=0, help_text='Commission AfriMarket')
+    commission = models.DecimalField(max_digits=10, decimal_places=0, default=0, help_text='Commission Comptoir')
 
     # External campaign tracking
     external_campaign_id = models.CharField(max_length=200, blank=True, help_text='ID de campagne Facebook/WhatsApp')

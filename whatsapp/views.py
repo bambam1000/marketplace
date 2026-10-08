@@ -24,7 +24,7 @@ MAX_WEBHOOK_BYTES = 1024 * 1024
 
 # ───────────────────────── Accès ─────────────────────────
 def _target(request):
-    """Instance gérée par la page : celle de la boutique du propriétaire, ou celle d'AfriMarket (?scope=platform, admin).
+    """Instance gérée par la page : celle de la boutique du propriétaire, ou celle de Comptoir (?scope=platform, admin).
     Retourne (store, nom_instance, est_plateforme) ou None si l'accès est refusé."""
     scope = request.GET.get('scope') or request.POST.get('scope')
     if scope == 'platform':
@@ -189,7 +189,7 @@ def whatsapp_test(request):
         messages.error(request, 'Numéro invalide. Exemple : 690 00 00 01 ou +237 690 00 00 01.')
     else:
         msg = services.queue_message(instance, number, 'test', dispatch=False, sent_by=request.user,
-                                     body=f'✅ Test AfriMarket : WhatsApp est bien connecté pour {store.name if store else "AfriMarket"}.')
+                                     body=f'✅ Test Comptoir : WhatsApp est bien connecté pour {store.name if store else "Comptoir"}.')
         if msg is not None:
             msg = services.deliver(msg.pk)  # test : envoi immédiat pour afficher le résultat tout de suite
         if msg is not None and msg.status == 'sent':
@@ -258,7 +258,7 @@ def webhook(request):
 # ───────────────────────── Boîte de réception ─────────────────────────
 def _inbox_instance(request):
     """Numéro dont on lit les conversations : celui de la boutique (propriétaire ou employé avec orders.manage),
-    ou celui d'AfriMarket (?scope=platform, admin). Retourne (instance ou None, est_plateforme) ou None si refusé."""
+    ou celui de Comptoir (?scope=platform, admin). Retourne (instance ou None, est_plateforme) ou None si refusé."""
     if (request.GET.get('scope') or request.POST.get('scope')) == 'platform':
         if not access.is_admin(request.user):
             return None

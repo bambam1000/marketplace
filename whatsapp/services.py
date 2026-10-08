@@ -1,9 +1,9 @@
-"""Envoi et réception WhatsApp d'AfriMarket (Evolution API, mode Baileys).
+"""Envoi et réception WhatsApp de Comptoir (Evolution API, mode Baileys).
 
 Envoi :
 - rien n'est envoyé si WHATSAPP_ENABLED est faux ou si aucun numéro n'est connecté (les emails restent envoyés) ;
-- un message à un client part du numéro de SA boutique si elle est connectée, sinon du numéro AfriMarket ;
-- les alertes aux vendeurs partent du numéro AfriMarket ;
+- un message à un client part du numéro de SA boutique si elle est connectée, sinon du numéro Comptoir ;
+- les alertes aux vendeurs partent du numéro Comptoir ;
 - chaque message est mis en file (WhatsAppMessage) : la requête web ne l'envoie jamais elle-même.
   WHATSAPP_DELIVERY_MODE choisit qui l'envoie :
     'thread' : un fil d'arrière-plan juste après la transaction (par défaut, pratique en développement) ;
@@ -115,7 +115,7 @@ def platform_instance():
 
 
 def sender_for_store(store):
-    """Numéro qui écrit aux clients d'une boutique : le sien s'il est connecté, sinon celui d'AfriMarket."""
+    """Numéro qui écrit aux clients d'une boutique : le sien s'il est connecté, sinon celui de Comptoir."""
     if store is not None:
         own = WhatsAppInstance.objects.filter(store=store, status='open').first()
         if own:
@@ -292,7 +292,7 @@ def sender_number(key):
 
 
 def _match_customer(instance, number):
-    """Client AfriMarket ayant ce numéro (profil ou commande), en privilégiant les clients de la boutique."""
+    """Client Comptoir ayant ce numéro (profil ou commande), en privilégiant les clients de la boutique."""
     from accounts.models import User
     from orders.models import Order
     orders = Order.objects.exclude(shipping_phone='').select_related('buyer').order_by('-created_at')
@@ -384,7 +384,7 @@ def notify_order_placed(order):
     items = list(order.items.select_related('product', 'store'))
     stores = {item.store for item in items}
 
-    # Client : numéro de la boutique si la commande ne concerne qu'elle, sinon AfriMarket
+    # Client : numéro de la boutique si la commande ne concerne qu'elle, sinon Comptoir
     if _wants_whatsapp(order.buyer):
         sender = sender_for_store(next(iter(stores))) if len(stores) == 1 else sender_for_store(None)
         lines = '\n'.join(f'• {i.product.name} ×{i.quantity} — {_money(i.price * i.quantity)} FCFA' for i in items[:10])
@@ -392,7 +392,7 @@ def notify_order_placed(order):
             lines += f'\n… et {len(items) - 10} autre(s) article(s)'
         body = (
             f'Bonjour {order.shipping_name or order.buyer.display_name} 👋\n\n'
-            f'Merci pour votre commande *{order.order_number}* sur AfriMarket.\n\n'
+            f'Merci pour votre commande *{order.order_number}* sur Comptoir.\n\n'
             f'{lines}\n\n'
             f'Total : *{_money(order.total_amount)} FCFA*\n'
             f'Livraison : {order.shipping_city}\n\n'
@@ -402,7 +402,7 @@ def notify_order_placed(order):
         number = order.shipping_phone or order.buyer.phone
         queue_message(sender, number, 'order_placed', body, order=order, with_chat=True)
 
-    # Vendeurs : alerte depuis le numéro AfriMarket
+    # Vendeurs : alerte depuis le numéro Comptoir
     platform = sender_for_store(None)
     for store in stores:
         store_items = [i for i in items if i.store_id == store.pk]
@@ -513,9 +513,9 @@ def service_catalog(instance, store, is_platform):
             svc('fa-life-ring', 'Relais pour les boutiques non connectées',
                 "Confirmation, suivi et factures des boutiques qui n'ont pas connecté leur WhatsApp partent de ce numéro.",
                 'Commande, changement de statut, facture', 'Client', ['order_placed', 'order_status', 'invoice']),
-            svc('fa-comments', 'Conversations AfriMarket',
+            svc('fa-comments', 'Conversations Comptoir',
                 'Les réponses des clients à ce numéro arrivent dans Conversations ; vous y répondez depuis le dashboard.',
-                'Message reçu', 'Équipe AfriMarket', ['inbound', 'reply']),
+                'Message reçu', 'Équipe Comptoir', ['inbound', 'reply']),
             svc('fa-bell-slash', 'Désinscription STOP / START',
                 'Un contact qui écrit STOP ne reçoit plus de message automatique ; START le réinscrit.',
                 'Mot-clé reçu', 'Contact', ['optout']),
@@ -526,7 +526,7 @@ def service_catalog(instance, store, is_platform):
 
     store_phone = (store.whatsapp or store.phone) if store else ''
     if not platform_ok:
-        alert_state, alert_reason = False, "Nécessite le numéro AfriMarket (géré par l'administrateur)."
+        alert_state, alert_reason = False, "Nécessite le numéro Comptoir (géré par l'administrateur)."
     elif not normalize_phone(store_phone):
         alert_state, alert_reason = False, 'Renseignez le numéro WhatsApp de la boutique dans ses paramètres.'
     else:

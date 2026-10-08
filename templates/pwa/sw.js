@@ -1,4 +1,4 @@
-/* Service worker AfriMarket — {{ version }}
+/* Service worker Comptoir — {{ version }}
    - pages : réseau d'abord, page « hors ligne » si pas de connexion ;
    - fichiers statiques, polices et images : servis depuis le cache puis rafraîchis en arrière-plan ;
    - jamais de cache pour l'espace vendeur, l'administration, les API ni les requêtes POST. */

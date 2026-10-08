@@ -270,7 +270,7 @@ def checkout(request):
             f'Votre commande de {order.total_amount:.0f} FCFA a été enregistrée. Nous vous tiendrons informé de son avancement.',
             url=f'/commandes/{order.order_number}/',
             send_email=True,
-            email_subject=f'Confirmation de commande {order.order_number} — AfriMarket',
+            email_subject=f'Confirmation de commande {order.order_number} — Comptoir',
         )
         for st in store_totals.keys():
             notify(
