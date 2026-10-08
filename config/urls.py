@@ -5,11 +5,16 @@ from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 
 from whatsapp import views as whatsapp_views
+from config import pwa
 
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     # Appelé par Evolution API (serveur à serveur) : hors préfixe de langue
     path('whatsapp/webhook/', whatsapp_views.webhook, name='whatsapp_webhook'),
+    # Application installable (PWA) : à la racine, hors préfixe de langue
+    path('manifest.webmanifest', pwa.manifest, name='pwa_manifest'),
+    path('sw.js', pwa.service_worker, name='pwa_sw'),
+    path('offline/', pwa.offline, name='pwa_offline'),
 ]
 
 urlpatterns += i18n_patterns(

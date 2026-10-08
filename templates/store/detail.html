@@ -1,13 +1,29 @@
 {% extends 'base.html' %}{% load humanize %}
 {% block title %}{{ store.name }}{% endblock %}
 {% block extra_css %}
+<style>
+@media (max-width: 900px) {
+  .store-header-inner { align-items: flex-start !important; }
+  .store-logo-lg { width: 60px; height: 60px; font-size: 1.5rem; }
+  .store-stats-bar { display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 6px !important; opacity: 1 !important; }
+  .store-stats-bar span { background: rgba(255,255,255,.08); border-radius: 8px; padding: 8px 4px; text-align: center; font-size: 11px; line-height: 1.3; color: rgba(255,255,255,.75); }
+  .store-stats-bar strong { display: block; font-size: 15px; color: #fff; }
+  /* Catégories : une rangée qu'on fait glisser */
+  .store-cats { flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none; margin-left: -14px; margin-right: -14px; padding: 0 14px 2px; -webkit-overflow-scrolling: touch; }
+  .store-cats::-webkit-scrollbar { display: none; }
+  .store-cats .btn { flex-shrink: 0; border-radius: 50px; }
+  .store-map-card { padding: 1rem !important; margin-top: 1.25rem !important; }
+  .store-map { height: 240px !important; }
+  .store-map-foot .btn { width: 100%; justify-content: center; }
+}
+</style>
 {% endblock %}
 {% block content %}
 <div class="section">
 <div class="store-header" {% if store.banner %}style="background-image:linear-gradient(rgba(26,26,46,0.85), rgba(26,26,46,0.85)), url('{{ store.banner.url }}');background-size:cover;background-position:center;"{% endif %}>
 <div class="store-header-inner">
 <div class="store-logo-lg" {% if store.logo %}style="background-image:url('{{ store.logo.url }}');background-size:cover;background-position:center;color:transparent;"{% endif %}>
-{% if not store.logo %}{{ store.name|truncatechars:2 }}{% endif %}
+{% if not store.logo %}{{ store.name|slice:":1"|upper }}{% endif %}
 </div>
 <div><h1 style="color:#fff;">{{ store.name }}</h1>
 {% if store.is_verified %}<span class="verified-badge" style="color:#4ade80;"><i class="fa-solid fa-circle-check"></i> Vendeur Vérifié</span>{% endif %}
@@ -23,7 +39,7 @@
 </div>
 <div class="store-stats-bar"><span><strong>{{ store.product_count }}</strong> produits</span><span><strong>★ {{ store.rating }}</strong> note</span><span><strong>{{ store.response_rate }}%</strong> réponse</span><span><strong>{{ store.total_sales }}</strong> ventes</span></div>
 </div>
-<div style="margin-left:auto;display:flex;gap:8px;">
+<div class="store-header-actions" style="margin-left:auto;display:flex;gap:8px;">
 {% if user.is_authenticated and user == store.owner %}
 <a href="{% url 'dashboard:store' %}" class="btn btn-lg" style="background:rgba(255,255,255,.15);color:#fff;"><i class="fa-solid fa-gear"></i> Paramètres</a>
 {% else %}
@@ -35,7 +51,7 @@
 <div id="shareTip" style="display:none;align-items:center;gap:8px;background:var(--green-bg);color:var(--green);border:1px solid #a7f3d0;border-radius:var(--radius-sm);padding:10px 16px;margin-top:10px;font-size:13px;font-weight:600;"><i class="fa-solid fa-check"></i> Lien copié !</div>
 <div class="section-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
     <h2>Produits de {{ store.name }} ({{ products|length }})</h2>
-    <form method="get" style="display:flex;gap:8px;align-items:center;">
+    <form method="get" class="store-toolbar" style="display:flex;gap:8px;align-items:center;">
         {% if current_category %}<input type="hidden" name="category" value="{{ current_category }}">{% endif %}
         <div style="position:relative;">
             <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:12px;"></i>
@@ -51,7 +67,7 @@
 </div>
 
 {% if categories %}
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;">
+<div class="store-cats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;">
     <a href="{% url 'store:detail' store.slug %}" class="btn btn-sm {% if not current_category %}btn-orange{% else %}btn-outline{% endif %}">Tous</a>
     {% for cat in categories %}
     <a href="?category={{ cat.slug }}" class="btn btn-sm {% if current_category == cat.slug %}btn-orange{% else %}btn-outline{% endif %}">{{ cat.name }}</a>
@@ -60,18 +76,18 @@
 {% endif %}
 <div class="products-grid">{% for p in products %}{% include 'includes/product_card.html' with product=p %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon"><i class="fa-solid fa-box-open"></i></div><h3>Aucun produit</h3></div>{% endfor %}</div>
 
-<div style="background:#fff;padding:1.5rem;border-radius:var(--radius);border:1px solid var(--border2);margin-top:2rem;">
+<div class="store-map-card" style="background:#fff;padding:1.5rem;border-radius:var(--radius);border:1px solid var(--border2);margin-top:2rem;">
 <h3 style="font-size:18px;margin-bottom:1rem;color:var(--text1);"><i class="fa-solid fa-location-dot"></i> Localisation</h3>
-<div style="width:100%;height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border2);background:#f5f5f5;position:relative;">
+<div class="store-map" style="width:100%;height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border2);background:#f5f5f5;position:relative;">
 <iframe id="mapFrame" width="100%" height="100%" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" style="border:0;"></iframe>
 <div id="mapLoader" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
 <div style="font-size:24px;margin-bottom:8px;"><i class="fa-solid fa-map-location-dot"></i></div>
 <p style="font-size:13px;color:var(--text2);">Chargement de la carte...</p>
 </div>
 </div>
-<div style="margin-top:1rem;display:flex;gap:1rem;align-items:center;">
-<p style="font-size:13px;color:var(--text2);margin:0;flex:1;">{{ store.city }}{% if store.address %}, {{ store.address }}{% endif %}</p>
-<a href="https://www.google.com/maps/search/?api=1&query={{ store.city|urlencode }}{% if store.address %},{{ store.address|urlencode }}{% endif %}" target="_blank" class="btn btn-sm" style="background:var(--primary);color:#fff;">Voir sur Google Maps</a>
+<div class="store-map-foot" style="margin-top:1rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+<p style="font-size:13px;color:var(--text2);margin:0;flex:1;min-width:180px;">{{ store.city }}{% if store.address %}, {{ store.address }}{% endif %}</p>
+<a href="https://www.google.com/maps/search/?api=1&query={{ store.city|urlencode }}{% if store.address %},{{ store.address|urlencode }}{% endif %}" target="_blank" rel="noopener" class="btn btn-sm btn-orange"><i class="fa-solid fa-diamond-turn-right"></i> Voir sur Google Maps</a>
 </div>
 </div>
 </div>

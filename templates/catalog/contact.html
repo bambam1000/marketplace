@@ -4,6 +4,24 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css">
 <style>
 .iti { width: 100%; }
+.iti input.form-control { padding-left: 90px; } /* place de l'indicatif avant le chargement du script */
+.ct-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border2); color: inherit; }
+.ct-row:last-of-type { border-bottom: none; }
+.ct-row:hover .ct-val { color: var(--orange); }
+.ct-ic { width: 44px; height: 44px; background: var(--orange-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--orange); flex-shrink: 0; }
+.ct-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ct-label { font-size: 11px; color: var(--text3); text-transform: uppercase; font-weight: 600; margin-bottom: 3px; }
+.ct-val { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; transition: color .15s; }
+.ct-go { font-size: 11px; color: var(--text3); }
+.ct-quick { display: none; }
+@media (max-width: 900px) {
+  .ct-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1rem; }
+  .ct-quick a { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; background: #fff; border: 1px solid var(--border2); border-radius: 12px; font-size: 12px; font-weight: 600; color: var(--text); }
+  .ct-quick i { width: 38px; height: 38px; border-radius: 50%; background: var(--orange-light); color: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .ct-quick a.wa i { background: #e7f8ee; color: #128c4b; }
+  .contact-grid > div > div { padding: 1.1rem !important; }
+  .contact-grid h3 { margin-bottom: .75rem !important; }
+}
 .form-control.valid { border-color: #12b76a; }
 .form-control.invalid { border-color: #f04438; }
 .field-msg { font-size: 11px; margin-top: 4px; display: none; }
@@ -15,14 +33,20 @@
 <div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Contact</div>
 <div class="section" style="padding-top:0;max-width:1000px;">
 <h2 style="font-size:20px;margin-bottom:1.5rem;font-weight:700;"><i class="fa-solid fa-phone"></i> Contactez-nous</h2>
-<div style="display:grid;grid-template-columns:1fr 1.2fr;gap:2rem;">
+<div class="ct-quick">
+<a href="tel:+237677123456"><i class="fa-solid fa-phone"></i>Appeler</a>
+<a href="https://wa.me/237677123456" target="_blank" rel="noopener" class="wa"><i class="fa-brands fa-whatsapp"></i>WhatsApp</a>
+<a href="mailto:contact@afrimarketplace.cm"><i class="fa-solid fa-envelope"></i>E-mail</a>
+<a href="https://www.google.com/maps/search/?api=1&query=Bonanjo%2C+Douala%2C+Cameroun" target="_blank" rel="noopener"><i class="fa-solid fa-diamond-turn-right"></i>Itinéraire</a>
+</div>
+<div class="contact-grid" style="display:grid;grid-template-columns:1fr 1.2fr;gap:2rem;">
 <div>
 <div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
 <h3 style="font-size:15px;margin-bottom:1.5rem;font-weight:600;">Nos coordonnées</h3>
-<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-solid fa-phone"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Téléphone</div><div style="font-size:14px;font-weight:600;">+237 677 123 456</div></div></div>
-<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-brands fa-whatsapp"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">WhatsApp</div><div style="font-size:14px;font-weight:600;">+237 677 123 456</div></div></div>
-<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-solid fa-envelope"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Email</div><div style="font-size:14px;font-weight:600;">contact@afrimarketplace.cm</div></div></div>
-<div style="display:flex;gap:12px;padding:12px 0;"><div style="width:44px;height:44px;background:var(--orange-light);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--orange);"><i class="fa-solid fa-location-dot"></i></div><div><div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:600;margin-bottom:4px;">Adresse</div><div style="font-size:14px;font-weight:600;">Bonanjo, Douala, Cameroun</div></div></div>
+<a href="tel:+237677123456" class="ct-row"><span class="ct-ic"><i class="fa-solid fa-phone"></i></span><span class="ct-txt"><span class="ct-label">Téléphone</span><span class="ct-val">+237 677 123 456</span></span><i class="fa-solid fa-chevron-right ct-go"></i></a>
+<a href="https://wa.me/237677123456" class="ct-row" target="_blank" rel="noopener"><span class="ct-ic"><i class="fa-brands fa-whatsapp"></i></span><span class="ct-txt"><span class="ct-label">WhatsApp</span><span class="ct-val">+237 677 123 456</span></span><i class="fa-solid fa-chevron-right ct-go"></i></a>
+<a href="mailto:contact@afrimarketplace.cm" class="ct-row"><span class="ct-ic"><i class="fa-solid fa-envelope"></i></span><span class="ct-txt"><span class="ct-label">Email</span><span class="ct-val">contact@afrimarketplace.cm</span></span><i class="fa-solid fa-chevron-right ct-go"></i></a>
+<a href="https://www.google.com/maps/search/?api=1&query=Bonanjo%2C+Douala%2C+Cameroun" class="ct-row" target="_blank" rel="noopener"><span class="ct-ic"><i class="fa-solid fa-location-dot"></i></span><span class="ct-txt"><span class="ct-label">Adresse</span><span class="ct-val">Bonanjo, Douala, Cameroun</span></span><i class="fa-solid fa-chevron-right ct-go"></i></a>
 <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border2);">
 <p style="font-size:13px;color:var(--text2);line-height:1.7;">Notre équipe est disponible du lundi au samedi de 8h à 18h pour répondre à toutes vos questions.</p>
 </div>

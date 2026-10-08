@@ -131,7 +131,7 @@ Partager
 <form method="post" action="{% url 'cart:add' product.id %}">{% csrf_token %}
 <div class="qty-control"><button type="button" class="qty-btn2" onclick="let i=this.nextElementSibling;i.value=Math.max({{ product.min_order }},parseInt(i.value)-1)">−</button><input type="number" name="quantity" value="{{ product.min_order }}" min="{{ product.min_order }}" class="qty-input"><button type="button" class="qty-btn2" onclick="let i=this.previousElementSibling;i.value=parseInt(i.value)+1">+</button></div>
 <div style="display:flex;flex-direction:column;gap:10px;">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+<div class="buy-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 <button type="submit" class="btn btn-orange btn-lg" style="margin:0;"><i class="fa-solid fa-cart-shopping"></i> Ajouter au panier</button>
 {% if product.store.whatsapp %}
 <a href="javascript:void(0)" onclick="orderOnWhatsApp()" class="btn btn-lg" style="background:#25D366;color:#fff;margin:0;display:flex;align-items:center;justify-content:center;gap:6px;">
@@ -140,7 +140,7 @@ Commander sur WhatsApp
 </a>
 {% endif %}
 </div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+<div class="buy-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 <a href="{% url 'catalog:toggle_wishlist' product.id %}" class="btn btn-outline" style="margin:0;padding:10px;font-size:13px;">{% if in_wishlist %}<i class="fa-solid fa-heart-crack"></i> Retirer des favoris{% else %}<i class="fa-solid fa-heart"></i> Favoris{% endif %}</a>
 <a href="{% url 'messaging:new' product.store.owner.id %}?product={{ product.id }}" class="btn btn-outline" style="margin:0;padding:10px;font-size:13px;"><i class="fa-solid fa-comments"></i> Contacter</a>
 </div>

@@ -1,57 +1,106 @@
 {% extends 'base.html' %}{% load humanize %}
 {% block title %}Tous les vendeurs — AfriMarket{% endblock %}
+{% block extra_css %}
+<style>
+.sl-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 1.2rem; flex-wrap: wrap; }
+.sl-head h2 { margin: 0; }
+.sl-head h2 small { font-family: var(--font); font-size: 14px; color: var(--text3); font-weight: 500; }
+.sl-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 1.2rem; }
+.sl-search { display: flex; flex: 1 1 320px; max-width: 480px; height: 42px; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; }
+.sl-search:focus-within { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,106,0,.12); }
+.sl-search input { flex: 1; min-width: 0; border: none; outline: none; padding: 0 14px; font-size: 14px; font-family: var(--font); }
+.sl-search button { border: none; background: var(--orange); color: #fff; padding: 0 16px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.sl-filters { display: flex; gap: 8px; align-items: center; }
+.sl-chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 50px; border: 1px solid var(--border); background: #fff; font-size: 13px; font-weight: 600; color: var(--text2); white-space: nowrap; }
+.sl-chip.on { background: var(--orange); border-color: var(--orange); color: #fff; }
+.sl-chip i { font-size: 12px; }
+.sl-sort { height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 50px; font-size: 13px; font-family: var(--font); background: #fff; color: var(--text2); font-weight: 600; }
+.sl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.sl-card { display: flex; flex-direction: column; background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); overflow: hidden; transition: var(--transition); color: inherit; min-width: 0; }
+.sl-card:hover { border-color: var(--orange); box-shadow: 0 8px 24px rgba(0,0,0,.08); transform: translateY(-2px); }
+.sl-banner { height: 84px; background: linear-gradient(135deg, #1a1a2e, #16213e) center/cover; }
+.sl-body { padding: 0 1rem 1rem; text-align: center; margin-top: -28px; display: flex; flex-direction: column; align-items: center; flex: 1; }
+.sl-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--orange-light); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; color: var(--orange); border: 3px solid var(--white); overflow: hidden; flex-shrink: 0; }
+.sl-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sl-main { min-width: 0; width: 100%; margin-top: .5rem; }
+.sl-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 0; }
+.sl-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl-name i { color: var(--green); font-size: 13px; flex-shrink: 0; }
+.sl-city { font-size: 12px; color: var(--text3); margin-top: 3px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.sl-stats { display: flex; justify-content: center; gap: 1rem; margin-top: 8px; font-size: 12px; color: var(--text2); }
+.sl-stats i { color: var(--yellow); }
+.sl-go { margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: var(--text); }
+.sl-card:hover .sl-go { border-color: var(--orange); color: var(--orange); }
+.sl-empty { grid-column: 1 / -1; text-align: center; padding: 3rem 1rem; color: var(--text3); background: #fff; border-radius: var(--radius); border: 1px solid var(--border2); }
+.sl-empty i { font-size: 32px; opacity: .3; display: block; margin-bottom: 10px; }
+
+@media (max-width: 600px) {
+    .sl-head h2 { font-size: 18px; }
+    .sl-head .btn { padding: 8px 12px; font-size: 12px; }
+    .sl-search { flex-basis: 100%; max-width: none; }
+    .sl-search input { font-size: 16px; }
+    .sl-search button span { display: none; }
+    .sl-filters { width: 100%; }
+    .sl-sort { flex: 1; min-width: 0; }
+    /* Liste compacte : une ligne par boutique */
+    .sl-grid { grid-template-columns: 1fr; gap: 8px; }
+    .sl-card { flex-direction: row; align-items: center; padding: 12px; gap: 12px; }
+    .sl-card:hover { transform: none; }
+    .sl-banner { display: none; }
+    .sl-body { display: contents; }
+    .sl-avatar { width: 52px; height: 52px; border: 1px solid var(--border2); font-size: 1.15rem; }
+    .sl-main { margin: 0; text-align: left; flex: 1; }
+    .sl-name, .sl-city, .sl-stats { justify-content: flex-start; }
+    .sl-stats { margin-top: 4px; gap: .8rem; }
+    .sl-go { width: 34px; height: 34px; margin: 0; padding: 0; border-radius: 50%; flex-shrink: 0; }
+    .sl-go span { display: none; }
+}
+</style>
+{% endblock %}
 {% block content %}
 <div class="section">
-<div class="section-head" style="margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;">
-<h2>Tous les vendeurs ({{ total }})</h2>
-<a href="{% url 'seller_landing' %}" class="btn btn-orange" style="color:#fff !important;background:var(--orange);"><i class="fa-solid fa-store" style="color:#fff;"></i> Devenir vendeur</a>
+<div class="sl-head">
+<h2>Tous les vendeurs <small>({{ total }})</small></h2>
+<a href="{% url 'seller_landing' %}" class="btn btn-orange" style="color:#fff !important;"><i class="fa-solid fa-store"></i> Devenir vendeur</a>
 </div>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:1.2rem;">
-<form method="get" style="display:flex;gap:8px;flex:1;min-width:250px;">
-<input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un vendeur ou une ville..." class="form-control" style="max-width:350px;">
-<button type="submit" class="btn btn-orange">Rechercher</button>
+
+<div class="sl-tools">
+<form method="get" class="sl-search" role="search">
+<input type="search" name="q" value="{{ search_query }}" placeholder="Rechercher un vendeur ou une ville…" enterkeyhint="search" aria-label="Rechercher un vendeur">
 {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
 {% if verified_filter %}<input type="hidden" name="verified" value="1">{% endif %}
+<button type="submit" aria-label="Rechercher"><i class="fa-solid fa-magnifying-glass"></i><span>Rechercher</span></button>
 </form>
-<div style="display:flex;gap:6px;">
+<div class="sl-filters">
 {% if verified_filter %}
-<a href="?q={{ search_query }}&sort={{ sort }}" class="btn btn-sm btn-orange">Verifies seulement ✕</a>
+<a href="?q={{ search_query|urlencode }}&sort={{ sort }}" class="sl-chip on"><i class="fa-solid fa-circle-check"></i> Vérifiés <i class="fa-solid fa-xmark"></i></a>
 {% else %}
-<a href="?q={{ search_query }}&sort={{ sort }}&verified=1" class="btn btn-sm btn-outline">Verifies seulement</a>
+<a href="?q={{ search_query|urlencode }}&sort={{ sort }}&verified=1" class="sl-chip"><i class="fa-solid fa-circle-check"></i> Vérifiés seulement</a>
 {% endif %}
-<select onchange="window.location='?q={{ search_query }}&sort='+this.value+'{% if verified_filter %}&verified=1{% endif %}'" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:var(--font);">
-<option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>Plus recents</option>
+<select class="sl-sort" aria-label="Trier" onchange="window.location='?q={{ search_query|urlencode }}&sort='+this.value+'{% if verified_filter %}&verified=1{% endif %}'">
+<option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>Plus récents</option>
 <option value="name" {% if sort == 'name' %}selected{% endif %}>Nom A-Z</option>
 <option value="products" {% if sort == 'products' %}selected{% endif %}>Plus de produits</option>
 </select>
 </div>
 </div>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+
+<div class="sl-grid">
 {% for s in stores %}
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;transition:var(--transition);">
-{% if s.banner %}
-<div style="height:90px;background:url('{{ s.banner.url }}') center/cover;"></div>
-{% else %}
-<div style="height:90px;background:linear-gradient(135deg,#1a1a2e,#16213e);"></div>
-{% endif %}
-<div style="padding:1rem;text-align:center;margin-top:-30px;">
-<div style="width:56px;height:56px;border-radius:50%;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:var(--orange);margin:0 auto .5rem;border:3px solid var(--white);overflow:hidden;">
-{% if s.logo %}<img src="{{ s.logo.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}{{ s.name|truncatechars:2 }}{% endif %}
+<a href="{% url 'store:detail' slug=s.slug %}" class="sl-card">
+<div class="sl-banner"{% if s.banner %} style="background-image:url('{{ s.banner.url }}');"{% endif %}></div>
+<div class="sl-body">
+<div class="sl-avatar">{% if s.logo %}<img src="{{ s.logo.url }}" alt="">{% else %}{{ s.name|slice:":1"|upper }}{% endif %}</div>
+<div class="sl-main">
+<div class="sl-name"><span>{{ s.name }}</span>{% if s.is_verified %}<i class="fa-solid fa-circle-check" title="Vendeur vérifié"></i>{% endif %}</div>
+<div class="sl-city"><i class="fa-solid fa-location-dot"></i> {{ s.city }}{% if s.country %}, {{ s.country }}{% endif %}</div>
+<div class="sl-stats"><span><strong>{{ s.nb_products }}</strong> produit{{ s.nb_products|pluralize }}</span><span><i class="fa-solid fa-star"></i> {{ s.rating }}</span></div>
 </div>
-<div style="font-weight:600;font-size:14px;">{{ s.name }}</div>
-{% if s.is_verified %}<div class="verified-badge" style="justify-content:center;margin-top:3px;">✓ Verifie</div>{% endif %}
-<div style="font-size:12px;color:var(--text3);margin-top:4px;">{{ s.city }}, {{ s.country }}</div>
-<div style="display:flex;justify-content:center;gap:1rem;margin-top:10px;font-size:12px;color:var(--text2);">
-<span><strong>{{ s.nb_products }}</strong> produits</span>
-<span>{{ s.rating }}</span>
+<span class="sl-go"><span>Visiter la boutique</span><i class="fa-solid fa-chevron-right"></i></span>
 </div>
-<a href="{% url 'store:detail' slug=s.slug %}" class="btn btn-outline btn-sm btn-block" style="margin-top:10px;">Visiter la boutique</a>
-</div>
-</div>
+</a>
 {% empty %}
-<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3);">
-<p>Aucun vendeur trouve.</p>
-</div>
+<div class="sl-empty"><i class="fa-solid fa-store"></i>Aucun vendeur trouvé{% if search_query %} pour « {{ search_query }} »{% endif %}.</div>
 {% endfor %}
 </div>
 </div>

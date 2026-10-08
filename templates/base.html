@@ -10,6 +10,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/mobile.css' %}?v=7">
+<meta name="theme-color" content="#ff6a00">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/pwa/favicon-32.png' %}">
+<link rel="apple-touch-icon" href="{% static 'images/pwa/apple-touch-icon.png' %}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AfriMarket">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 {% block extra_css %}{% endblock %}
 </head>
@@ -63,6 +72,7 @@
 <!-- Header -->
 <header class="header">
 <div class="header-inner">
+<button type="button" class="m-burger" onclick="openMobileMenu()" aria-label="Ouvrir le menu" aria-controls="mDrawer" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
 <a href="{% url 'home' %}" class="logo">Afri<span>Market</span></a>
 <form method="get" action="{% url 'catalog:search' %}" class="search-bar" style="position:relative;">
 <div class="search-category">
@@ -73,25 +83,25 @@
 </select>
 </div>
 <div class="search-input-wrap">
-<input type="text" name="q" id="searchInput" placeholder="Rechercher des produits, marques, vendeurs..." value="{{ search_query|default:'' }}" autocomplete="off">
+<input type="search" name="q" id="searchInput" enterkeyhint="search" placeholder="Rechercher des produits, marques, vendeurs..." value="{{ search_query|default:'' }}" autocomplete="off">
 <div id="searchAutocomplete" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid var(--border2);border-radius:var(--radius);margin-top:4px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:1000;max-height:400px;overflow-y:auto;"></div>
 </div>
 <button type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
 </form>
 <div class="header-actions">
-<a href="{% url 'messaging:inbox' %}" class="header-icon" id="messagesIconMain">
+<a href="{% url 'messaging:inbox' %}" class="header-icon m-hide" id="messagesIconMain">
 <i class="fa-regular fa-comment-dots"></i>
 <span class="header-icon-label">Messages</span>
 {% if unread_messages_count > 0 %}<span class="badge" id="messagesBadgeMain">{{ unread_messages_count }}</span>{% endif %}
 </a>
 {% if user.is_authenticated %}
-<a href="{% url 'messaging:notifications' %}" class="header-icon">
+<a href="{% url 'messaging:notifications' %}" class="header-icon m-hide">
 <i class="fa-regular fa-bell"></i>
 <span class="header-icon-label">Notifs</span>
 {% if unread_notifications_count > 0 %}<span class="badge">{{ unread_notifications_count }}</span>{% endif %}
 </a>
 {% endif %}
-<a href="{% url 'catalog:wishlist' %}" class="header-icon">
+<a href="{% url 'catalog:wishlist' %}" class="header-icon m-hide">
 <i class="fa-regular fa-heart"></i>
 <span class="header-icon-label">Favoris</span>
 {% if wishlist_count %}<span class="badge">{{ wishlist_count }}</span>{% endif %}
@@ -101,13 +111,80 @@
 <span class="header-icon-label">Panier</span>
 {% if cart_count %}<span class="badge">{{ cart_count }}</span>{% endif %}
 </a>
+<a href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'accounts:login' %}{% endif %}" class="header-icon m-only" aria-label="Mon compte"><i class="fa-regular fa-user"></i></a>
 </div>
 </div>
 </header>
 
+<!-- Menu mobile -->
+<div class="m-overlay" id="mOverlay" onclick="closeMobileMenu()"></div>
+<aside class="m-drawer" id="mDrawer" aria-label="Menu" aria-hidden="true">
+<div class="m-drawer-head">
+<a href="{% url 'home' %}" class="logo">Afri<span>Market</span></a>
+<button type="button" class="m-close" onclick="closeMobileMenu()" aria-label="Fermer le menu"><i class="fa-solid fa-xmark"></i></button>
+</div>
+{% if user.is_authenticated %}
+<a href="{% url 'accounts:profile' %}" class="m-user">
+<span class="m-avatar">{{ user.display_name|slice:":1"|upper }}</span>
+<span class="m-user-main"><b>{{ user.display_name }}</b><small>Voir mon profil</small></span>
+<i class="fa-solid fa-chevron-right"></i>
+</a>
+{% else %}
+<div class="m-auth">
+<a href="{% url 'accounts:login' %}" class="btn btn-orange">Connexion</a>
+<a href="{% url 'accounts:register' %}" class="btn btn-outline">Inscription</a>
+</div>
+{% endif %}
+<nav class="m-links">
+<a href="{% url 'home' %}"><i class="fa-solid fa-house"></i> Accueil</a>
+<a href="{% url 'catalog:product_list' %}"><i class="fa-solid fa-table-cells-large"></i> Tous les produits</a>
+<a href="{% url 'catalog:flash_deals' %}"><i class="fa-solid fa-bolt"></i> Flash Deals</a>
+<a href="{% url 'catalog:promotions' %}"><i class="fa-solid fa-tags"></i> Promotions</a>
+<a href="{% url 'store:list' %}"><i class="fa-solid fa-store"></i> Vendeurs</a>
+{% if user.is_authenticated %}
+<a href="{% url 'orders:list' %}"><i class="fa-solid fa-box"></i> Mes commandes</a>
+<a href="{% url 'messaging:inbox' %}"><i class="fa-regular fa-comment-dots"></i> Messages{% if unread_messages_count > 0 %}<span class="m-count">{{ unread_messages_count }}</span>{% endif %}</a>
+<a href="{% url 'messaging:notifications' %}"><i class="fa-regular fa-bell"></i> Notifications{% if unread_notifications_count > 0 %}<span class="m-count">{{ unread_notifications_count }}</span>{% endif %}</a>
+{% if user.is_seller or user.is_superuser or user.role == 'admin' %}
+<a href="{% url 'orders:rfq_list' %}"><i class="fa-solid fa-file-invoice"></i> Demandes de devis</a>
+{% else %}
+<a href="{% url 'orders:my_rfqs' %}"><i class="fa-solid fa-file-invoice"></i> Mes demandes de devis</a>
+{% endif %}
+{% else %}
+<a href="{% url 'orders:create_rfq' %}"><i class="fa-solid fa-file-invoice"></i> Demander un devis</a>
+{% endif %}
+</nav>
+{% if nav_categories %}
+<div class="m-label" id="mCats">Catégories</div>
+<nav class="m-links m-cats">
+{% for cat in nav_categories %}<a href="{% url 'catalog:category' slug=cat.slug %}">{{ cat.name }}</a>{% endfor %}
+</nav>
+{% endif %}
+<div class="m-label">Espace vendeur</div>
+<nav class="m-links">
+{% if user.is_seller or user.is_superuser or user.role == 'admin' %}
+<a href="{% url 'dashboard:index' %}"><i class="fa-solid fa-gauge-high"></i> Tableau de bord</a>
+{% if user.store %}<a href="{% url 'store:detail' slug=user.store.slug %}"><i class="fa-solid fa-store"></i> Ma boutique</a>{% endif %}
+{% else %}
+<a href="{% url 'seller_landing' %}"><i class="fa-solid fa-store"></i> Vendre sur AfriMarket</a>
+{% endif %}
+<a href="{% url 'faq' %}"><i class="fa-solid fa-circle-question"></i> Aide</a>
+<a href="{% url 'contact' %}"><i class="fa-solid fa-envelope"></i> Contact</a>
+</nav>
+<form action="{% url 'set_language' %}" method="post" class="m-lang">{% csrf_token %}
+<input name="next" type="hidden" value="{{ request.path }}">
+<i class="fa-solid fa-globe"></i>
+<button type="submit" name="language" value="fr" class="{% if LANGUAGE_CODE == 'fr' %}on{% endif %}">Français</button>
+<button type="submit" name="language" value="en" class="{% if LANGUAGE_CODE == 'en' %}on{% endif %}">English</button>
+</form>
+{% if user.is_authenticated %}<button type="button" class="m-logout" onclick="closeMobileMenu();openLogoutModal();"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</button>{% endif %}
+</aside>
+
 <!-- Mega Nav -->
 <nav class="meganav">
 <div class="meganav-inner">
+<button type="button" class="nav-fade left" aria-label="Liens précédents" tabindex="-1"><i class="fa-solid fa-chevron-left"></i></button>
+<button type="button" class="nav-fade right" aria-label="Liens suivants" tabindex="-1"><i class="fa-solid fa-chevron-right"></i></button>
 <div class="meganav-links">
 <a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}"><i class="fa-solid fa-home"></i> Accueil</a>
 <a href="{% url 'catalog:flash_deals' %}" class="{% if request.resolver_match.url_name == 'flash_deals' and request.resolver_match.app_name == 'catalog' %}active{% endif %}"><i class="fa-solid fa-bolt"></i> Flash Deals</a>
@@ -204,6 +281,40 @@
 </div>
 </footer>
 
+
+<!-- Barre d'onglets mobile -->
+{% with rn=request.resolver_match.url_name an=request.resolver_match.app_name %}
+<nav class="m-tabbar" aria-label="Navigation principale">
+<a href="{% url 'home' %}" class="{% if rn == 'home' %}on{% endif %}"><i class="fa-solid fa-house"></i><span>Accueil</span></a>
+<button type="button" onclick="openMobileMenu('cats')"><i class="fa-solid fa-table-cells-large"></i><span>Catégories</span></button>
+<a href="{% url 'catalog:wishlist' %}" class="{% if rn == 'wishlist' %}on{% endif %}"><i class="fa-regular fa-heart"></i><span>Favoris</span>{% if wishlist_count %}<em>{{ wishlist_count }}</em>{% endif %}</a>
+<a href="{% url 'cart:view' %}" class="{% if an == 'cart' %}on{% endif %}"><i class="fa-solid fa-cart-shopping"></i><span>Panier</span>{% if cart_count %}<em>{{ cart_count }}</em>{% endif %}</a>
+<a href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'accounts:login' %}{% endif %}" class="{% if an == 'accounts' %}on{% endif %}"><i class="fa-regular fa-user"></i><span>{% if user.is_authenticated %}Compte{% else %}Connexion{% endif %}</span></a>
+</nav>
+{% endwith %}
+
+<!-- Proposition d'installation de l'application (téléphone) -->
+<div class="pwa-sheet" id="pwaSheet" role="dialog" aria-labelledby="pwaTitle" aria-hidden="true">
+<button type="button" class="pwa-x" onclick="pwaDismiss()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+<div class="pwa-top">
+<img src="{% static 'images/pwa/icon-192.png' %}" alt="" width="52" height="52">
+<div><b id="pwaTitle">Installer l'application AfriMarket</b><span>Accès en un appui depuis votre écran d'accueil, plein écran, plus rapide.</span></div>
+</div>
+<div class="pwa-ios" id="pwaIos">
+<div class="pwa-step"><em>1</em> Touchez <span class="pwa-key"><i class="fa-solid fa-arrow-up-from-bracket"></i> Partager</span> en bas de Safari</div>
+<div class="pwa-step"><em>2</em> Choisissez <span class="pwa-key"><i class="fa-regular fa-square-plus"></i> Sur l'écran d'accueil</span></div>
+<div class="pwa-step"><em>3</em> Touchez <b>Ajouter</b> en haut à droite</div>
+</div>
+<div class="pwa-other" id="pwaOther">
+<div class="pwa-step"><em>1</em> Ouvrez le menu du navigateur <span class="pwa-key"><i class="fa-solid fa-ellipsis-vertical"></i></span></div>
+<div class="pwa-step"><em>2</em> Choisissez <b>Installer l'application</b> ou <b>Ajouter à l'écran d'accueil</b></div>
+</div>
+<div class="pwa-actions">
+<button type="button" class="pwa-later" onclick="pwaDismiss()">Plus tard</button>
+<button type="button" class="pwa-install" id="pwaInstall"><i class="fa-solid fa-download"></i> Installer</button>
+</div>
+</div>
+
 <!-- Modale de confirmation de déconnexion -->
 <div id="logoutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;">
 <div style="background:var(--white);border-radius:var(--radius);padding:2rem;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.2);">
@@ -218,6 +329,25 @@
 </div>
 
 <script>
+/* Menu mobile */
+function openMobileMenu(section) {
+  var d = document.getElementById('mDrawer');
+  d.classList.add('open'); d.setAttribute('aria-hidden', 'false');
+  document.getElementById('mOverlay').classList.add('open');
+  document.body.classList.add('m-locked');
+  var b = document.querySelector('.m-burger'); if (b) b.setAttribute('aria-expanded', 'true');
+  var target = section === 'cats' ? document.getElementById('mCats') : null;
+  d.scrollTop = target ? target.offsetTop - 10 : 0;
+}
+function closeMobileMenu() {
+  var d = document.getElementById('mDrawer');
+  d.classList.remove('open'); d.setAttribute('aria-hidden', 'true');
+  document.getElementById('mOverlay').classList.remove('open');
+  document.body.classList.remove('m-locked');
+  var b = document.querySelector('.m-burger'); if (b) b.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeMobileMenu(); });
+window.addEventListener('resize', function() { if (window.innerWidth > 900) closeMobileMenu(); });
 function openLogoutModal() {
   document.getElementById('logoutModal').style.display = 'flex';
 }
@@ -333,6 +463,103 @@ if (searchInput && autocompleteDropdown) {
     }
   });
 }
+
+/* Rangée de liens sous la recherche (mobile) : glisser au doigt ou à la souris, molette, flèches */
+(function() {
+  var strip = document.querySelector('.meganav-links');
+  if (!strip) return;
+  var box = strip.parentElement;
+  var mobile = function() { return window.matchMedia('(max-width: 900px)').matches; };
+  function hints() {
+    var max = strip.scrollWidth - strip.clientWidth;
+    box.classList.toggle('can-left', mobile() && strip.scrollLeft > 4);
+    box.classList.toggle('can-right', mobile() && strip.scrollLeft < max - 4);
+  }
+  strip.addEventListener('scroll', hints, { passive: true });
+  window.addEventListener('resize', hints);
+  box.querySelector('.nav-fade.left').addEventListener('click', function() { strip.scrollBy({ left: -strip.clientWidth * 0.7, behavior: 'smooth' }); });
+  box.querySelector('.nav-fade.right').addEventListener('click', function() { strip.scrollBy({ left: strip.clientWidth * 0.7, behavior: 'smooth' }); });
+  /* Molette verticale -> défilement horizontal */
+  strip.addEventListener('wheel', function(e) {
+    if (!mobile() || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    var max = strip.scrollWidth - strip.clientWidth;
+    if ((e.deltaY < 0 && strip.scrollLeft <= 0) || (e.deltaY > 0 && strip.scrollLeft >= max)) return;
+    e.preventDefault(); strip.scrollLeft += e.deltaY;
+  }, { passive: false });
+  /* Glisser à la souris (le doigt utilise le défilement natif) */
+  var down = false, startX = 0, startLeft = 0, moved = false;
+  strip.addEventListener('pointerdown', function(e) {
+    if (e.pointerType !== 'mouse' || !mobile()) return;
+    down = true; moved = false; startX = e.clientX; startLeft = strip.scrollLeft;
+  });
+  window.addEventListener('pointermove', function(e) {
+    if (!down) return;
+    var dx = e.clientX - startX;
+    if (!moved && Math.abs(dx) > 5) { moved = true; strip.classList.add('dragging'); }
+    if (moved) strip.scrollLeft = startLeft - dx;
+  });
+  window.addEventListener('pointerup', function() {
+    if (!down) return;
+    down = false;
+    setTimeout(function() { strip.classList.remove('dragging'); }, 0);
+  });
+  strip.addEventListener('click', function(e) { if (moved) { e.preventDefault(); moved = false; } }, true);
+  strip.addEventListener('dragstart', function(e) { e.preventDefault(); });
+  /* Lien de la page en cours ramené à l'écran */
+  var active = strip.querySelector('a.active');
+  if (active && mobile()) strip.scrollLeft = Math.max(0, active.offsetLeft - 12);
+  hints();
+})();
+
+/* Application installable : service worker + proposition d'installation sur téléphone */
+(function() {
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    var registered = false;
+    var register = function() { if (registered) return; registered = true; navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {}); };
+    if (document.readyState === 'complete') register();
+    else { window.addEventListener('load', register); setTimeout(register, 3000); } /* sans attendre une ressource externe lente */
+  }
+  var KEY = 'afrimarket_pwa_dismissed', DAYS = 7;
+  var sheet = document.getElementById('pwaSheet');
+  if (!sheet) return;
+  var store = {
+    get: function() { try { return parseInt(localStorage.getItem(KEY) || '0', 10); } catch (e) { return 0; } },
+    set: function(v) { try { localStorage.setItem(KEY, String(v)); } catch (e) {} }
+  };
+  var ua = navigator.userAgent || '';
+  var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isPhone = isIOS || /android|mobile/i.test(ua) || window.matchMedia('(max-width: 900px) and (pointer: coarse)').matches;
+  var installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  var recentlyDismissed = Date.now() - store.get() < DAYS * 864e5;
+  var deferred = null, shown = false;
+
+  function show(mode) {
+    if (shown || installed || recentlyDismissed || !isPhone) return;
+    shown = true;
+    sheet.className = 'pwa-sheet mode-' + mode;
+    sheet.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(function() { sheet.classList.add('open'); });
+  }
+  function hide() { sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true'); }
+  window.pwaDismiss = function() { store.set(Date.now()); hide(); };
+
+  /* Android (Chrome, Edge, Samsung…) : vraie boîte d'installation */
+  window.addEventListener('beforeinstallprompt', function(e) {
+    if (isIOS) return;
+    e.preventDefault(); deferred = e;
+    setTimeout(function() { show('prompt'); }, 2500);
+  });
+  document.getElementById('pwaInstall').addEventListener('click', function() {
+    if (!deferred) { sheet.classList.add('mode-help'); return; }
+    deferred.prompt();
+    deferred.userChoice.then(function(choice) { if (choice.outcome !== 'accepted') store.set(Date.now()); deferred = null; hide(); });
+  });
+  window.addEventListener('appinstalled', function() { installed = true; store.set(Date.now() + 3650 * 864e5); hide(); });
+
+  /* iPhone / iPad : pas de bouton système, on explique la marche à suivre.
+     Autres navigateurs sans boîte d'installation : explication via le menu. */
+  setTimeout(function() { if (!deferred) show(isIOS ? 'ios' : 'other'); }, isIOS ? 3000 : 6000);
+})();
 
 // Dropdown de sélection de langue
 const languageSelector = document.getElementById('languageSelectorMain');
