@@ -1,106 +1,33 @@
-{% extends 'dashboard/base.html' %}
-{% load humanize %}
-
-{% block title %}Ouvrir une session{% endblock %}
-
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Ouvrir la caisse{% endblock %}
 {% block dash %}
-<div class="dash-header">
-    <h1>🔓 Ouvrir une session de caisse</h1>
-</div>
-
-<div style="max-width: 600px; margin: 2rem auto;">
-    <div class="card">
-        <div class="card-body" style="padding: 2rem;">
-            <form method="post">
-                {% csrf_token %}
-
+{% include 'pos/_styles.html' %}
+<div style="max-width:560px;margin:0 auto;">
+    <a href="{% url 'pos:dashboard' %}" class="pos-muted" style="font-size:12px;text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Caisses</a>
+    <div class="pos-card" style="margin-top:10px;">
+        <div class="pos-card-head"><h3><i class="fa-solid fa-lock-open"></i> Ouvrir {{ register.name }}</h3><span class="pill pill-gray">{{ register.code }}</span></div>
+        {% if busy %}
+        <div class="pos-card-body"><div class="alert alert-error" style="margin:0;">Cette caisse est déjà ouverte par {{ busy.cashier.display_name }} depuis {{ busy.opened_at|date:"H:i" }}.</div></div>
+        {% else %}
+        <form method="post" action="{% url 'pos:open_session' %}">{% csrf_token %}
+            <input type="hidden" name="register" value="{{ register.pk }}">
+            <div class="pos-card-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:12px;">
+                    <div style="background:var(--dash-bg);border-radius:6px;padding:10px;"><span class="pos-muted">Entrepôt (le stock vendu en sort)</span><div style="font-weight:700;margin-top:2px;">{{ register.warehouse.name }}</div></div>
+                    <div style="background:var(--dash-bg);border-radius:6px;padding:10px;"><span class="pos-muted">Caissier</span><div style="font-weight:700;margin-top:2px;">{{ request.user.display_name }}</div></div>
+                </div>
                 <div class="form-group">
-                    <label>👤 Caissier</label>
-                    <input type="text" value="{{ request.user.display_name }}" disabled class="form-control">
+                    <label>Fond de caisse compté dans le tiroir (F)</label>
+                    <input type="number" name="opening_cash" class="form-control" min="0" step="1" value="{{ suggested|floatformat:'0u' }}" required autofocus style="font-size:22px;font-weight:800;padding:12px 14px;">
+                    <div class="pos-muted" style="margin-top:6px;font-size:12px;">
+                        {% if last %}Dernière fermeture le {{ last.closed_at|date:"d/m à H:i" }} par {{ last.cashier.display_name }} : {{ last.closing_cash|floatformat:0|intcomma }} F comptés{% if last.cash_difference %}, écart {{ last.cash_difference|floatformat:0|intcomma }} F{% endif %}.{% else %}Première ouverture de cette caisse.{% endif %}
+                    </div>
                 </div>
-
-                {% if warehouses %}
-                <div class="form-group">
-                    <label for="posWarehouse">🏬 Entrepôt de la caisse</label>
-                    <select name="warehouse" id="posWarehouse" class="form-control">
-                        {% for w in warehouses %}<option value="{{ w.pk }}" {% if w.is_default %}selected{% endif %}>{{ w.name }} ({{ w.code }}){% if w.is_default %} — par défaut{% endif %}</option>{% endfor %}
-                    </select>
-                    <small class="form-text">Le stock des produits vendus sortira de cet entrepôt, et les ventes apparaîtront dans sa comptabilité.</small>
-                </div>
-                {% endif %}
-
-                <div class="form-group">
-                    <label>💵 Fond de caisse (Espèces de départ)</label>
-                    <input type="number" name="opening_cash" step="100" min="0" value="0" class="form-control" required autofocus>
-                    <small class="form-text">Montant en espèces dans la caisse au début de la session</small>
-                </div>
-
-                <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
-                    <strong>ℹ️ Information:</strong>
-                    <p style="margin: 0.5rem 0 0 0; font-size: 14px;">
-                        Une fois la session ouverte, vous pourrez enregistrer des ventes jusqu'à la fermeture de la session.
-                        Assurez-vous de bien compter votre fond de caisse avant de commencer.
-                    </p>
-                </div>
-
-                <div style="display: flex; gap: 1rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">
-                        ✓ Ouvrir la session
-                    </button>
-                    <a href="{% url 'pos:dashboard' %}" class="btn btn-outline">
-                        Annuler
-                    </a>
-                </div>
-            </form>
-        </div>
+                <div class="form-group" style="margin-bottom:0;"><label>Note (facultatif)</label><input type="text" name="notes" class="form-control" maxlength="200" placeholder="Ex : remplacement de Paul"></div>
+            </div>
+            <div class="dmodal-foot"><a href="{% url 'pos:dashboard' %}" class="btn btn-outline">Annuler</a><button class="btn btn-orange"><i class="fa-solid fa-lock-open"></i> Ouvrir la caisse</button></div>
+        </form>
+        {% endif %}
     </div>
 </div>
-
-<style>
-.card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.card-body {
-    padding: 1.5rem;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #374151;
-}
-
-.form-control {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 16px;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--orange);
-}
-
-.form-control:disabled {
-    background: #f9fafb;
-    color: #6b7280;
-}
-
-.form-text {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.875rem;
-    color: #6b7280;
-}
-</style>
 {% endblock %}

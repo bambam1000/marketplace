@@ -616,6 +616,7 @@ body {
 .alert-success { background: rgba(16,185,129,.08); color: #065f46; border-color: rgba(16,185,129,.15); }
 .alert-error { background: rgba(239,68,68,.08); color: #991b1b; border-color: rgba(239,68,68,.15); }
 .alert-info { background: rgba(59,130,246,.08); color: #1e40af; border-color: rgba(59,130,246,.15); }
+.alert-warning { background: rgba(247,144,9,.1); color: #93370d; border-color: rgba(247,144,9,.25); }
 
 /* Dashboard specific layout helpers */
 .dash-header {
@@ -923,12 +924,12 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <a href="{% url 'dashboard:assistant' %}" class="{% if rm.url_name == 'assistant' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
 </nav>
 
-{% if nav.can.orders or nav.can.sales or nav.can.invoices or nav.can.customers %}
+{% if nav.can.orders or nav.can.sales or nav.can.invoices or nav.can.customers or nav.can.pos %}
 <div class="dash-sidebar-label">Ventes</div>
 <nav class="dash-nav">
 {% if nav.can.orders %}<a href="{% url 'dashboard:orders' %}" class="{% if rm.url_name == 'orders' or rm.url_name == 'order_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-receipt"></i></span> Commandes{% if nav.badges.orders %}<span class="nav-badge warn" title="Commandes en attente">{{ nav.badges.orders }}</span>{% endif %}</a>{% endif %}
 {% if nav.can.sales %}<a href="{% url 'dashboard:sales' %}" class="{% if rm.url_name == 'sales' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Ventes</a>{% endif %}
-{% if nav.can.owner and nav.store %}<a href="{% url 'pos:dashboard' %}" class="{% if rm.app_name == 'pos' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span> Caisse POS</a>{% endif %}
+{% if nav.can.pos and nav.store %}<a href="{% url 'pos:dashboard' %}" class="{% if rm.app_name == 'pos' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span> Caisse POS{% if nav.badges.pos_open %}<span class="nav-badge wa" title="Votre caisse est ouverte">Ouverte</span>{% endif %}</a>{% endif %}
 {% if nav.can.invoices %}<a href="{% url 'invoicing:invoices' %}" class="{% if rm.app_name == 'invoicing' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice"></i></span> Facturation</a>{% endif %}
 {% if nav.can.orders %}<a href="{% url 'dashboard:rfqs' %}" class="{% if rm.url_name == 'rfqs' or rm.url_name == 'rfq_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-signature"></i></span> Devis RFQ{% if nav.badges.rfqs %}<span class="nav-badge" title="Demandes sans votre réponse">{{ nav.badges.rfqs }}</span>{% endif %}</a>{% endif %}
 {% if nav.can.customers %}<a href="{% url 'dashboard:customers' %}" class="{% if rm.url_name == 'customers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Clients</a>{% endif %}

@@ -1,0 +1,94 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Gérer les caisses{% endblock %}
+{% block dash %}
+{% include 'pos/_styles.html' %}
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-sliders" style="color:var(--dash-accent);"></i> Gérer les caisses</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">Chaque entrepôt a ses caisses. Une caisse n'accepte qu'une session ouverte à la fois, et le stock vendu sort de son entrepôt.</p>
+    </div>
+    <button type="button" class="btn btn-orange" onclick="openNew('')"><i class="fa-solid fa-plus"></i> Nouvelle caisse</button>
+</div>
+
+{% include 'pos/_tabs.html' %}
+
+{% for warehouse, regs in groups.items %}
+<div class="pos-card">
+    <div class="pos-card-head">
+        <h3><i class="fa-solid fa-warehouse"></i> {{ warehouse.name }} <span class="pos-muted">{{ warehouse.code }} · {{ regs|length }} caisse{{ regs|length|pluralize:"s" }}</span></h3>
+        <button type="button" class="btn btn-outline btn-sm" onclick="openNew('{{ warehouse.pk }}')"><i class="fa-solid fa-plus"></i> Ajouter une caisse</button>
+    </div>
+    {% if regs %}
+    <div style="overflow-x:auto;"><table class="pos-table">
+        <thead><tr><th>Caisse</th><th>Code</th><th class="num">Fond habituel</th><th class="num">Remise max.</th><th class="num pos-hide-sm">Sessions</th><th>État</th><th></th></tr></thead>
+        <tbody>{% for reg in regs %}
+        <tr>
+            <td><b>{{ reg.name }}</b></td>
+            <td>{{ reg.code }}</td>
+            <td class="num">{{ reg.default_opening_cash|floatformat:0|intcomma }} F</td>
+            <td class="num">{{ reg.max_discount_percent|floatformat:"-2" }} %</td>
+            <td class="num pos-hide-sm">{{ reg.n_sessions }}</td>
+            <td>{% if not reg.is_active %}<span class="pill pill-gray">Désactivée</span>{% elif reg.open_n %}<span class="pill pill-green pill-dot">Ouverte</span>{% else %}<span class="pill pill-blue">Prête</span>{% endif %}</td>
+            <td class="num">
+                <button type="button" class="btn btn-outline btn-sm" title="Modifier" data-pk="{{ reg.pk }}" data-name="{{ reg.name }}" data-code="{{ reg.code }}" data-float="{{ reg.default_opening_cash|floatformat:'0u' }}" data-disc="{{ reg.max_discount_percent|floatformat:'-2u' }}" onclick="openEdit(this)"><i class="fa-solid fa-pen"></i></button>
+                <form method="post" action="{% url 'pos:register_edit' reg.pk %}" style="display:inline;">{% csrf_token %}<input type="hidden" name="action" value="toggle">
+                    <button class="btn btn-outline btn-sm" title="{% if reg.is_active %}Désactiver{% else %}Activer{% endif %}"><i class="fa-solid {% if reg.is_active %}fa-power-off{% else %}fa-rotate-right{% endif %}"></i></button></form>
+            </td>
+        </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="pos-empty"><i class="fa-solid fa-cash-register"></i>Aucune caisse dans cet entrepôt.</div>{% endif %}
+</div>
+{% empty %}
+<div class="pos-card"><div class="pos-empty"><i class="fa-solid fa-warehouse"></i>Aucun entrepôt actif.</div></div>
+{% endfor %}
+
+<div class="pos-card"><div class="pos-card-body" style="font-size:12px;color:var(--dash-text2);line-height:1.7;">
+    <b style="color:var(--dash-text);">Droits des employés</b> — dans <a href="{% url 'dashboard:roles' %}" style="color:var(--dash-accent);">Rôles</a>, cochez
+    « Encaisser à la caisse » pour un caissier, et « Gérer les caisses » pour un responsable (remboursements, remises au-delà du plafond, fermeture de la caisse d'un autre, rapports de tous les caissiers).
+    Un employé rattaché à un entrepôt ne voit que les caisses de cet entrepôt.
+</div></div>
+
+<div class="dmodal" id="regModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head"><h3><i class="fa-solid fa-cash-register" style="color:var(--dash-accent);"></i> <span id="regTitle">Nouvelle caisse</span></h3>
+            <button type="button" class="dmodal-close" onclick="closeReg()"><i class="fa-solid fa-xmark"></i></button></div>
+        <form method="post" id="regForm" action="{% url 'pos:registers' %}">{% csrf_token %}
+            <div class="dmodal-body">
+                <div class="form-group" id="whField"><label>Entrepôt *</label>
+                    <select name="warehouse" id="regWarehouse" class="form-control">{% for wh in warehouses %}<option value="{{ wh.pk }}">{{ wh.name }} ({{ wh.code }})</option>{% endfor %}</select></div>
+                <div class="form-group"><label>Nom *</label><input type="text" name="name" id="regName" class="form-control" required maxlength="60" placeholder="Ex : Caisse 2, Comptoir entrée"></div>
+                <div class="form-group" id="codeField" style="display:none;"><label>Code (sur les tickets)</label><input type="text" name="code" id="regCode" class="form-control" maxlength="20"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="form-group"><label>Fond de caisse habituel (F)</label><input type="number" min="0" step="1" name="default_opening_cash" id="regFloat" class="form-control" value="0"></div>
+                    <div class="form-group"><label>Remise max. caissier (%)</label><input type="number" min="0" max="100" step="0.5" name="max_discount_percent" id="regDisc" class="form-control" value="10"></div>
+                </div>
+                <p class="pos-muted" style="font-size:12px;margin:0;">Au-delà de la remise maximale, seul un responsable de caisse peut valider.</p>
+            </div>
+            <div class="dmodal-foot"><button type="button" class="btn btn-outline" onclick="closeReg()">Annuler</button><button class="btn btn-orange">Enregistrer</button></div>
+        </form>
+    </div>
+</div>
+<script>
+var regModal = document.getElementById('regModal'), regForm = document.getElementById('regForm');
+function openNew(wh) {
+    regForm.action = "{% url 'pos:registers' %}";
+    document.getElementById('regTitle').textContent = 'Nouvelle caisse';
+    document.getElementById('whField').style.display = ''; document.getElementById('codeField').style.display = 'none';
+    if (wh) document.getElementById('regWarehouse').value = wh;
+    document.getElementById('regName').value = ''; document.getElementById('regFloat').value = 0; document.getElementById('regDisc').value = 10;
+    regModal.classList.add('open'); document.getElementById('regName').focus();
+}
+function openEdit(btn) {
+    var d = btn.dataset;
+    regForm.action = "{% url 'pos:registers' %}" + d.pk + '/';
+    document.getElementById('regTitle').textContent = 'Modifier ' + d.name;
+    document.getElementById('whField').style.display = 'none'; document.getElementById('codeField').style.display = '';
+    document.getElementById('regName').value = d.name; document.getElementById('regCode').value = d.code;
+    document.getElementById('regFloat').value = d.float; document.getElementById('regDisc').value = d.disc;
+    regModal.classList.add('open');
+}
+function closeReg() { regModal.classList.remove('open'); }
+regModal.addEventListener('click', function(e) { if (e.target === regModal) closeReg(); });
+</script>
+{% endblock %}

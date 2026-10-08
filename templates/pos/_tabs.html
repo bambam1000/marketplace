@@ -1,0 +1,8 @@
+{% with rn=request.resolver_match.url_name %}
+<nav class="pos-tabs" aria-label="Caisse">
+    <a href="{% url 'pos:dashboard' %}" class="{% if rn == 'dashboard' %}on{% endif %}"><i class="fa-solid fa-cash-register"></i> Caisses</a>
+    <a href="{% url 'pos:sessions' %}" class="{% if rn == 'sessions' or rn == 'session_detail' or rn == 'close_session' %}on{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i> Sessions</a>
+    <a href="{% url 'pos:sales_report' %}" class="{% if rn == 'sales_report' or rn == 'sale_detail' %}on{% endif %}"><i class="fa-solid fa-chart-column"></i> Ventes et rapports</a>
+    {% if scope.can_manage %}<a href="{% url 'pos:registers' %}" class="{% if rn == 'registers' %}on{% endif %}"><i class="fa-solid fa-sliders"></i> Gérer les caisses</a>{% endif %}
+</nav>
+{% endwith %}

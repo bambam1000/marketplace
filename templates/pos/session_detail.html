@@ -1,0 +1,118 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Session {{ session.session_number }}{% endblock %}
+{% block dash %}
+{% include 'pos/_styles.html' %}
+<style>
+.sum-line { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed var(--dash-border); }
+.sum-line:last-child { border-bottom: none; }
+.mv-in { color: #047857; font-weight: 700; }
+.mv-out { color: var(--dash-red); font-weight: 700; }
+</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-cash-register" style="color:var(--dash-accent);"></i> {{ session.register.name|default:"Caisse" }} — {{ session.session_number }}
+            {% if session.is_open %}<span class="pill pill-green pill-dot" style="vertical-align:middle;">Ouverte</span>{% else %}<span class="pill pill-gray" style="vertical-align:middle;">Fermée</span>{% endif %}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ session.warehouse.name|default:"—" }} · {{ session.cashier.display_name }} · {{ session.opened_at|date:"d/m/Y H:i" }}{% if session.closed_at %} → {{ session.closed_at|date:"d/m/Y H:i" }}{% if session.closed_by and session.closed_by != session.cashier %} (fermée par {{ session.closed_by.display_name }}){% endif %}{% endif %}</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        {% if session.is_open and session.cashier_id == request.user.pk %}<a href="{% url 'pos:interface' %}" class="btn btn-orange"><i class="fa-solid fa-arrow-right"></i> Encaisser</a>{% endif %}
+        {% if can_close %}<button type="button" class="btn btn-outline" onclick="document.getElementById('mvModal').classList.add('open')"><i class="fa-solid fa-right-left"></i> Entrée / sortie</button>{% endif %}
+        <a href="{% url 'pos:session_report' session.pk %}" target="_blank" class="btn btn-outline"><i class="fa-solid fa-print"></i> Ticket {% if session.is_open %}X{% else %}Z{% endif %}</a>
+        {% if can_close %}<a href="{% url 'pos:close_session' session.pk %}" class="btn btn-outline"><i class="fa-solid fa-lock"></i> Fermer</a>{% endif %}
+    </div>
+</div>
+
+{% include 'pos/_tabs.html' %}
+
+<div class="pos-kpis">
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-coins"></i> Ventes</div><div class="v">{{ session.total_sales|floatformat:0|intcomma }} F</div><div class="s">{{ session.sales_count }} ticket{{ session.sales_count|pluralize:"s" }}</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-rotate-left"></i> Remboursements</div><div class="v" style="{% if session.total_refunds %}color:var(--dash-red);{% endif %}">{{ session.total_refunds|floatformat:0|intcomma }} F</div><div class="s">Net : {{ session.net_sales|floatformat:0|intcomma }} F</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-money-bill-wave"></i> {% if session.is_open %}Espèces en caisse{% else %}Espèces comptées{% endif %}</div>
+        <div class="v">{% if session.is_open %}{{ balance|floatformat:0|intcomma }}{% else %}{{ session.closing_cash|floatformat:0|intcomma }}{% endif %} F</div>
+        <div class="s">{% if session.is_open %}Fond {{ session.opening_cash|floatformat:0|intcomma }} F{% else %}Attendu {{ session.expected_cash|floatformat:0|intcomma }} F{% endif %}</div></div>
+    {% if not session.is_open %}
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-scale-balanced"></i> Écart</div>
+        <div class="v {% if session.cash_difference > 0 %}gap-pos{% elif session.cash_difference < 0 %}gap-neg{% endif %}">{{ session.cash_difference|floatformat:0|intcomma }} F</div>
+        <div class="s">{% if session.cash_difference == 0 %}Tiroir juste{% elif session.cash_difference > 0 %}Excédent{% else %}Manquant{% endif %}</div></div>
+    {% endif %}
+</div>
+
+{% if session.notes %}<div class="alert alert-info" style="white-space:pre-line;"><b>Notes :</b> {{ session.notes }}</div>{% endif %}
+
+<div class="pos-grid-2">
+    <div>
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-receipt"></i> Ventes de la session</h3><span class="pos-muted">{{ sales|length }}</span></div>
+            {% if sales %}
+            <div style="overflow-x:auto;"><table class="pos-table">
+                <thead><tr><th>Ticket</th><th>Heure</th><th class="pos-hide-sm">Client</th><th>Paiement</th><th class="num">Total</th><th></th></tr></thead>
+                <tbody>{% for s in sales %}
+                <tr>
+                    <td><a href="{% url 'pos:sale_detail' s.pk %}">{{ s.sale_number }}</a></td>
+                    <td>{{ s.completed_at|date:"H:i" }}</td>
+                    <td class="pos-hide-sm">{{ s.customer_name|default:"—" }}</td>
+                    <td style="font-size:12px;">{% if s.cash_amount %}Espèces {% endif %}{% if s.mobile_money_amount %}Mobile {% endif %}{% if s.card_amount %}Carte{% endif %}</td>
+                    <td class="num">{{ s.total_amount|floatformat:0|intcomma }} F{% if s.refunded_amount %}<div class="pos-muted" style="color:var(--dash-red);">−{{ s.refunded_amount|floatformat:0|intcomma }} F</div>{% endif %}</td>
+                    <td>{% if s.status == 'refunded' %}<span class="pill pill-red">Remboursée</span>{% elif s.refunded_amount %}<span class="pill pill-orange">Partiel</span>{% endif %}</td>
+                </tr>{% endfor %}</tbody>
+            </table></div>
+            {% else %}<div class="pos-empty"><i class="fa-solid fa-receipt"></i>Aucune vente encaissée.</div>{% endif %}
+        </div>
+
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-book"></i> Journal de caisse (espèces)</h3><span class="pos-muted">Tout ce qui entre ou sort du tiroir</span></div>
+            <div style="overflow-x:auto;"><table class="pos-table">
+                <thead><tr><th>Heure</th><th>Type</th><th>Motif</th><th class="pos-hide-sm">Par</th><th class="num">Montant</th></tr></thead>
+                <tbody>{% for m in movements %}
+                <tr>
+                    <td>{{ m.created_at|date:"H:i" }}</td>
+                    <td><span class="pill {% if m.type == 'in' %}pill-green{% else %}pill-red{% endif %}">{{ m.get_category_display }}</span></td>
+                    <td>{{ m.description }}</td>
+                    <td class="pos-hide-sm">{{ m.created_by.display_name }}</td>
+                    <td class="num {% if m.type == 'in' %}mv-in{% else %}mv-out{% endif %}">{% if m.type == 'in' %}+{% else %}−{% endif %}{{ m.amount|floatformat:0|intcomma }} F</td>
+                </tr>{% empty %}<tr><td colspan="5" class="pos-empty">Aucun mouvement.</td></tr>{% endfor %}</tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <div>
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-credit-card"></i> Par moyen de paiement</h3></div>
+            <div class="pos-card-body">
+                {% for row in breakdown %}
+                <div class="sum-line"><span>{{ row.label }}</span><b>{{ row.net|floatformat:0|intcomma }} F</b></div>
+                {% if row.refunds %}<div class="sum-line pos-muted" style="font-size:11px;"><span>dont remboursé</span><span>−{{ row.refunds|floatformat:0|intcomma }} F</span></div>{% endif %}
+                {% endfor %}
+                {% if session.total_discounts %}<div class="sum-line"><span>Remises accordées</span><span>{{ session.total_discounts|floatformat:0|intcomma }} F</span></div>{% endif %}
+            </div>
+        </div>
+        {% if refunds %}
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-rotate-left"></i> Remboursements</h3></div>
+            <div class="pos-card-body">
+                {% for r in refunds %}
+                <div class="sum-line"><span><a href="{% url 'pos:sale_detail' r.sale_id %}" style="color:var(--dash-text);font-weight:600;">{{ r.sale.sale_number }}</a><div class="pos-muted">{{ r.get_method_display }} · {{ r.reason|default:"sans motif" }}</div></span><b style="color:var(--dash-red);">−{{ r.amount|floatformat:0|intcomma }} F</b></div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if top %}
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-trophy"></i> Meilleurs articles</h3></div>
+            <div class="pos-card-body">{% for p in top %}<div class="sum-line"><span>{{ p.product_name }} <span class="pos-muted">× {{ p.qty|floatformat:0 }}</span></span><b>{{ p.revenue|floatformat:0|intcomma }} F</b></div>{% endfor %}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if can_close %}
+<div class="dmodal" id="mvModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head"><h3><i class="fa-solid fa-right-left" style="color:var(--dash-accent);"></i> Entrée ou sortie d'espèces</h3>
+            <button type="button" class="dmodal-close" onclick="document.getElementById('mvModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button></div>
+        {% include 'pos/_movement_form.html' %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

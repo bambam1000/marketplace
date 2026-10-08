@@ -1,231 +1,149 @@
-{% extends 'dashboard/base.html' %}
-{% load humanize %}
-
-{% block title %}Point de Vente{% endblock %}
-
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Caisse{% endblock %}
 {% block dash %}
+{% include 'pos/_styles.html' %}
+<style>
+.reg-group { margin-bottom: 22px; }
+.reg-group-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.reg-group-head h2 { margin: 0; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+.reg-group-head h2 i { color: var(--dash-accent); }
+.reg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.reg { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 8px; padding: 16px; box-shadow: var(--dash-shadow); display: flex; flex-direction: column; gap: 12px; border-top: 3px solid var(--dash-border); }
+.reg.is-open { border-top-color: var(--dash-green); }
+.reg.is-mine { border-top-color: var(--dash-accent); box-shadow: 0 0 0 1px rgba(255,106,0,.25), var(--dash-shadow); }
+.reg.is-off { opacity: .6; }
+.reg-top { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.reg-name { font-weight: 700; font-size: 15px; }
+.reg-code { font-size: 11px; color: var(--dash-text3); }
+.reg-info { font-size: 12px; color: var(--dash-text2); display: flex; flex-direction: column; gap: 4px; }
+.reg-info i { width: 14px; color: var(--dash-text3); }
+.reg-figs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.reg-figs div { background: var(--dash-bg); border-radius: 6px; padding: 8px 10px; }
+.reg-figs b { display: block; font-size: 14px; }
+.reg-figs span { font-size: 10px; color: var(--dash-text3); }
+.reg-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.reg-actions .btn { flex: 1; justify-content: center; }
+.mine-banner { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; background: linear-gradient(135deg, rgba(255,106,0,.08), rgba(255,106,0,.02)); border: 1px solid rgba(255,106,0,.25); border-radius: 8px; padding: 14px 18px; margin-bottom: 18px; }
+.mine-banner b { font-size: 14px; }
+</style>
+
 <div class="dash-header">
     <div>
-        <h1>🏪 Point de Vente (POS)</h1>
-        <p>Gestion de caisse et ventes directes</p>
+        <h1><i class="fa-solid fa-cash-register" style="color:var(--dash-accent);"></i> Caisse</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ open_count }} caisse{{ open_count|pluralize:"s" }} ouverte{{ open_count|pluralize:"s" }} sur {{ register_count }}{% if selected %} · {{ selected.name }}{% endif %}</p>
     </div>
-    {% if active_session %}
-    <a href="{% url 'pos:interface' %}" class="btn btn-orange">🛒 Ouvrir la caisse</a>
-    {% else %}
-    <a href="{% url 'pos:open_session' %}" class="btn btn-orange">🔓 Ouvrir une session</a>
-    {% endif %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        {% if warehouses|length > 1 and not scope.limit %}
+        <form method="get"><select name="warehouse" class="form-control" onchange="this.form.submit()" style="padding:8px 10px;font-size:13px;">
+            <option value="">Tous les entrepôts</option>
+            {% for wh in warehouses %}<option value="{{ wh.pk }}" {% if selected.pk == wh.pk %}selected{% endif %}>{{ wh.name }}</option>{% endfor %}
+        </select></form>
+        {% endif %}
+        {% if my_session %}<a href="{% url 'pos:interface' %}" class="btn btn-orange"><i class="fa-solid fa-cash-register"></i> Reprendre ma caisse</a>{% endif %}
+    </div>
 </div>
 
-<!-- Session active -->
-{% if active_session %}
-<div style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; padding: 1.5rem; color: white; margin-bottom: 1.5rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div>
-            <h3 style="color: white; margin: 0 0 0.5rem 0;">✅ Session active</h3>
-            <div style="font-size: 14px; opacity: 0.9;">
-                Session: <strong>{{ active_session.session_number }}</strong> |
-                Ouverte: {{ active_session.opened_at|date:"H:i" }} |
-                Fond de caisse: {{ active_session.opening_cash|intcomma }} F{% if active_session.warehouse %} · Entrepôt : {{ active_session.warehouse.name }} ({{ active_session.warehouse.code }}){% endif %}
-            </div>
-            <div style="margin-top: 0.5rem; font-size: 18px; font-weight: 700;">
-                {{ active_session.sales_count }} vente{{ active_session.sales_count|pluralize:"s" }} -
-                {{ active_session.total_sales|intcomma }} F
-            </div>
-        </div>
-        <div style="display: flex; gap: 0.75rem;">
-            <a href="{% url 'pos:interface' %}" class="btn" style="background: white; color: #059669; font-weight: 600;">
-                🛒 Caisse
-            </a>
-            <a href="{% url 'pos:close_session' active_session.id %}" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white;">
-                🔒 Fermer
-            </a>
-        </div>
+{% include 'pos/_tabs.html' %}
+
+{% if my_session %}
+<div class="mine-banner">
+    <div>
+        <b><i class="fa-solid fa-circle" style="color:var(--dash-green);font-size:9px;"></i> Vous êtes sur {{ my_session.register.name|default:"une caisse" }}</b>
+        <div class="pos-muted" style="font-size:12px;margin-top:3px;">{{ my_session.warehouse.name }} · ouverte {{ my_session.opened_at|naturaltime }} · {{ my_session.sales_count }} vente{{ my_session.sales_count|pluralize:"s" }} · {{ my_session.total_sales|floatformat:0|intcomma }} F</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="{% url 'pos:interface' %}" class="btn btn-orange btn-sm"><i class="fa-solid fa-arrow-right"></i> Encaisser</a>
+        <a href="{% url 'pos:session_detail' my_session.pk %}" class="btn btn-outline btn-sm">Journal</a>
+        <a href="{% url 'pos:close_session' my_session.pk %}" class="btn btn-outline btn-sm"><i class="fa-solid fa-lock"></i> Fermer</a>
     </div>
 </div>
 {% endif %}
 
-<!-- Stats du jour -->
-<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">💰</div>
-        <div class="stat-content">
-            <div class="stat-value">{{ today_stats.total_revenue|floatformat:0|intcomma }} F</div>
-            <div class="stat-label">Chiffre d'affaires du jour</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">🛒</div>
-        <div class="stat-content">
-            <div class="stat-value">{{ today_stats.sales_count }}</div>
-            <div class="stat-label">Ventes aujourd'hui</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">📊</div>
-        <div class="stat-content">
-            <div class="stat-value">{{ today_stats.average_sale|floatformat:0|intcomma }} F</div>
-            <div class="stat-label">Panier moyen</div>
-        </div>
-    </div>
+<div class="pos-kpis">
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-coins"></i> Ventes du jour</div><div class="v">{{ today.net|floatformat:0|intcomma }} F</div>
+        <div class="s">{% if yesterday.net %}Hier : {{ yesterday.net|floatformat:0|intcomma }} F{% else %}Aucune vente hier{% endif %}</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-receipt"></i> Tickets</div><div class="v">{{ today.count }}</div><div class="s">Panier moyen {{ today.avg|floatformat:0|intcomma }} F</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-money-bill-wave"></i> Espèces / Mobile / Carte</div><div class="v" style="font-size:15px;line-height:1.5;">{{ today.cash|floatformat:0|intcomma }} · {{ today.momo|floatformat:0|intcomma }} · {{ today.card|floatformat:0|intcomma }}</div><div class="s">Encaissé aujourd'hui (F)</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-rotate-left"></i> Remboursé</div><div class="v" style="{% if today.refunded %}color:var(--dash-red);{% endif %}">{{ today.refunded|floatformat:0|intcomma }} F</div><div class="s">Remises : {{ today.discounts|floatformat:0|intcomma }} F</div></div>
+    {% if scope.can_manage %}
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-scale-unbalanced"></i> Écarts (30 jours)</div>
+        <div class="v {% if gap_total > 0 %}gap-pos{% elif gap_total < 0 %}gap-neg{% endif %}">{{ gap_total|floatformat:0|intcomma }} F</div>
+        <div class="s"><a href="{% url 'pos:sessions' %}?gap=1" style="color:inherit;">{{ gap_count }} fermeture{{ gap_count|pluralize:"s" }} avec écart</a></div></div>
+    {% endif %}
 </div>
 
-<!-- Sessions récentes -->
-<div class="card">
-    <div class="card-header">
-        <h3>📋 Sessions récentes</h3>
-        <a href="{% url 'pos:sales_report' %}" class="btn btn-sm">📈 Rapports complets</a>
+{% for warehouse, regs in groups.items %}
+<div class="reg-group">
+    <div class="reg-group-head">
+        <h2><i class="fa-solid fa-warehouse"></i> {{ warehouse.name }} <span class="pos-muted" style="font-weight:500;">{{ warehouse.code }}</span></h2>
+        {% if scope.can_manage %}<a href="{% url 'pos:registers' %}" class="btn btn-outline btn-sm"><i class="fa-solid fa-plus"></i> Caisse</a>{% endif %}
     </div>
-    <div class="card-body">
-        {% if recent_sessions %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>N° Session</th>
-                    <th>Caissier</th>
-                    <th>Ouverture</th>
-                    <th>Fermeture</th>
-                    <th>Ventes</th>
-                    <th>Total</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for session in recent_sessions %}
-                <tr>
-                    <td><strong>{{ session.session_number }}</strong></td>
-                    <td>{{ session.cashier.display_name }}</td>
-                    <td>{{ session.opened_at|date:"d/m/Y H:i" }}</td>
-                    <td>
-                        {% if session.closed_at %}
-                        {{ session.closed_at|date:"d/m/Y H:i" }}
-                        {% else %}
-                        <span class="badge badge-success">En cours</span>
+    <div class="reg-grid">
+        {% for reg in regs %}
+        <div class="reg {% if not reg.is_active %}is-off{% elif reg.current and reg.current.cashier_id == request.user.pk %}is-mine{% elif reg.current %}is-open{% endif %}">
+            <div class="reg-top">
+                <div><div class="reg-name">{{ reg.name }}</div><div class="reg-code">{{ reg.code }}</div></div>
+                {% if not reg.is_active %}<span class="pill pill-gray">Désactivée</span>
+                {% elif reg.current %}<span class="pill pill-green pill-dot">Ouverte</span>
+                {% else %}<span class="pill pill-gray pill-dot">Fermée</span>{% endif %}
+            </div>
+            <div class="reg-info">
+                {% if reg.current %}
+                <span><i class="fa-solid fa-user"></i> {{ reg.current.cashier.display_name }}</span>
+                <span><i class="fa-regular fa-clock"></i> Depuis {{ reg.current.opened_at|date:"H:i" }} ({{ reg.current.opened_at|timesince }})</span>
+                {% elif reg.last %}
+                <span><i class="fa-solid fa-lock"></i> Fermée le {{ reg.last.closed_at|date:"d/m à H:i" }}</span>
+                <span><i class="fa-solid fa-scale-balanced"></i> Écart : <span class="{% if reg.last.cash_difference > 0 %}gap-pos{% elif reg.last.cash_difference < 0 %}gap-neg{% else %}gap-zero{% endif %}">{{ reg.last.cash_difference|floatformat:0|intcomma }} F</span></span>
+                {% else %}
+                <span><i class="fa-solid fa-circle-info"></i> Jamais ouverte</span>
+                {% endif %}
+            </div>
+            <div class="reg-figs">
+                <div><b>{{ reg.today_total|floatformat:0|intcomma }} F</b><span>Aujourd'hui</span></div>
+                <div><b>{% if reg.current %}{{ reg.current.sales_count }}{% else %}{{ reg.default_opening_cash|floatformat:0|intcomma }} F{% endif %}</b><span>{% if reg.current %}Ventes de la session{% else %}Fond habituel{% endif %}</span></div>
+            </div>
+            <div class="reg-actions">
+                {% if reg.is_active %}
+                    {% if reg.current %}
+                        {% if reg.current.cashier_id == request.user.pk %}
+                        <a href="{% url 'pos:interface' %}" class="btn btn-orange btn-sm"><i class="fa-solid fa-arrow-right"></i> Encaisser</a>
                         {% endif %}
-                    </td>
-                    <td>{{ session.sales_count }}</td>
-                    <td><strong>{{ session.total_sales|floatformat:0|intcomma }} F</strong></td>
-                    <td>
-                        {% if session.status == 'open' %}
-                        <span class="badge badge-success">✓ Ouverte</span>
-                        {% else %}
-                        <span class="badge badge-secondary">🔒 Fermée</span>
+                        {% if reg.current.cashier_id == request.user.pk or scope.can_manage %}
+                        <a href="{% url 'pos:session_detail' reg.current.pk %}" class="btn btn-outline btn-sm">Session</a>
+                        <a href="{% url 'pos:close_session' reg.current.pk %}" class="btn btn-outline btn-sm" title="{% if reg.current.cashier_id != request.user.pk %}Fermer la caisse de {{ reg.current.cashier.display_name }}{% endif %}"><i class="fa-solid fa-lock"></i> Fermer</a>
                         {% endif %}
-                    </td>
-                    <td>
-                        {% if session.status == 'open' %}
-                        <a href="{% url 'pos:close_session' session.id %}" class="btn btn-sm">🔒 Fermer</a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div style="text-align: center; padding: 3rem; color: #6b7280;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🏪</div>
-            <p>Aucune session pour le moment.</p>
-            <a href="{% url 'pos:open_session' %}" class="btn btn-primary" style="margin-top: 1rem;">Ouvrir votre première session</a>
+                    {% elif not my_session %}
+                        <a href="{% url 'pos:open_session' %}?register={{ reg.pk }}" class="btn btn-orange btn-sm"><i class="fa-solid fa-lock-open"></i> Ouvrir</a>
+                    {% else %}
+                        <span class="pos-muted">Fermez votre caisse pour ouvrir celle-ci.</span>
+                    {% endif %}
+                {% endif %}
+            </div>
         </div>
-        {% endif %}
+        {% empty %}
+        <div class="pos-card" style="grid-column:1/-1;"><div class="pos-empty"><i class="fa-solid fa-cash-register"></i>Aucune caisse dans cet entrepôt.</div></div>
+        {% endfor %}
     </div>
 </div>
+{% empty %}
+<div class="pos-card"><div class="pos-empty"><i class="fa-solid fa-warehouse"></i>Aucun entrepôt actif. Créez un entrepôt pour y installer une caisse.<br><a href="{% url 'dashboard:warehouses' %}" class="btn btn-orange btn-sm" style="margin-top:12px;">Entrepôts</a></div></div>
+{% endfor %}
 
-<style>
-.stat-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.stat-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #111827;
-}
-
-.stat-label {
-    color: #6b7280;
-    font-size: 0.875rem;
-}
-
-.card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.card-header {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.card-header h3 {
-    margin: 0;
-    font-size: 1.125rem;
-}
-
-.card-body {
-    padding: 1.5rem;
-}
-
-.table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.table th {
-    text-align: left;
-    padding: 0.75rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: #374151;
-    border-bottom: 2px solid #e5e7eb;
-}
-
-.table td {
-    padding: 0.75rem;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.table tbody tr:hover {
-    background: #f9fafb;
-}
-
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.badge-success {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.badge-secondary {
-    background: #f3f4f6;
-    color: #6b7280;
-}
-</style>
+<div class="pos-card">
+    <div class="pos-card-head"><h3><i class="fa-solid fa-clock-rotate-left"></i> Dernières fermetures</h3><a href="{% url 'pos:sessions' %}" style="font-size:12px;color:var(--dash-accent);font-weight:600;">Toutes les sessions</a></div>
+    {% if recent_sessions %}
+    <div style="overflow-x:auto;"><table class="pos-table">
+        <thead><tr><th>Session</th><th>Caisse</th><th class="pos-hide-sm">Caissier</th><th class="pos-hide-sm">Fermée</th><th class="num">Ventes</th><th class="num">Écart</th></tr></thead>
+        <tbody>{% for s in recent_sessions %}
+        <tr>
+            <td><a href="{% url 'pos:session_detail' s.pk %}">{{ s.session_number }}</a></td>
+            <td>{{ s.register.name|default:"—" }}<div class="pos-muted">{{ s.warehouse.name|default:"" }}</div></td>
+            <td class="pos-hide-sm">{{ s.cashier.display_name }}</td>
+            <td class="pos-hide-sm">{{ s.closed_at|date:"d/m H:i" }}</td>
+            <td class="num">{{ s.net_sales|floatformat:0|intcomma }} F<div class="pos-muted">{{ s.sales_count }} ticket{{ s.sales_count|pluralize:"s" }}</div></td>
+            <td class="num {% if s.cash_difference > 0 %}gap-pos{% elif s.cash_difference < 0 %}gap-neg{% else %}gap-zero{% endif %}">{{ s.cash_difference|floatformat:0|intcomma }} F</td>
+        </tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<div class="pos-empty"><i class="fa-solid fa-clock-rotate-left"></i>Aucune session fermée pour l'instant.</div>{% endif %}
+</div>
 {% endblock %}

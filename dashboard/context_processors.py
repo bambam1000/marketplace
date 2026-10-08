@@ -12,6 +12,7 @@ PERMS = {
     'orders': 'orders.view', 'manage': 'orders.manage', 'sales': 'sales.view', 'sell': 'sales.create',
     'products': 'products.view', 'stock': 'stock.view', 'transfer': 'stock.transfer',
     'invoices': 'invoicing.view', 'customers': 'customers.view', 'finances': 'finances.view',
+    'pos': 'pos.use', 'pos_manage': 'pos.manage',
 }
 
 
@@ -26,6 +27,7 @@ def _build(request):
     can = {key: is_admin or (store is not None and access.has_perm(user, store, perm)) for key, perm in PERMS.items()}
     owner = is_admin or (store is not None and access.has_perm(user, store, None))
     can['owner'] = owner
+    can['pos'] = can['pos'] or can['pos_manage']
     limit = access.member_warehouse_id(user, store) if store is not None else None
 
     if is_admin and store is None:
@@ -50,6 +52,9 @@ def _build(request):
             from inventory.models import ProductStock
             out = ProductStock.objects.filter(warehouse__store=store, product__is_active=True, quantity=0)
             badges['stock'] = (out.filter(warehouse_id=limit) if limit else out).count()
+        if can['pos']:
+            from pos.models import POSSession
+            badges['pos_open'] = POSSession.objects.filter(store=store, cashier=user, status='open').exists()
         if can['manage']:
             from whatsapp.models import WhatsAppChat
             badges['whatsapp'] = (WhatsAppChat.objects.filter(instance__store=store)

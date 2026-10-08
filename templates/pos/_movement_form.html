@@ -1,0 +1,26 @@
+<form method="post" action="{% url 'pos:cash_movement' session.pk %}">{% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <div class="dmodal-body">
+        <div class="form-group"><label>Type</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <label style="display:flex;gap:8px;align-items:center;border:1.5px solid var(--dash-border);border-radius:8px;padding:10px;cursor:pointer;font-weight:600;"><input type="radio" name="type" value="out" checked onchange="mvCats(this.value)"> Sortie</label>
+                <label style="display:flex;gap:8px;align-items:center;border:1.5px solid var(--dash-border);border-radius:8px;padding:10px;cursor:pointer;font-weight:600;"><input type="radio" name="type" value="in" onchange="mvCats(this.value)"> Entrée</label>
+            </div>
+        </div>
+        <div class="form-group"><label>Catégorie</label>
+            <select name="category" id="mvCategory" class="form-control">
+                {% for c in categories_out %}<option value="{{ c.0 }}" data-type="out">{{ c.1 }}</option>{% endfor %}
+                {% for c in categories_in %}<option value="{{ c.0 }}" data-type="in" hidden>{{ c.1 }}</option>{% endfor %}
+            </select></div>
+        <div class="form-group"><label>Montant (F)</label><input type="number" name="amount" min="1" step="1" class="form-control" required></div>
+        <div class="form-group" style="margin-bottom:0;"><label>Motif</label><input type="text" name="description" class="form-control" required maxlength="200" placeholder="Ex : achat sacs, dépôt à la banque, monnaie apportée"></div>
+    </div>
+    <div class="dmodal-foot"><button class="btn btn-orange">Enregistrer</button></div>
+</form>
+<script>
+function mvCats(type) {
+    var sel = document.getElementById('mvCategory'), first = null;
+    Array.prototype.forEach.call(sel.options, function(o) { o.hidden = o.dataset.type !== type; if (!o.hidden && !first) first = o; });
+    if (first) sel.value = first.value;
+}
+</script>

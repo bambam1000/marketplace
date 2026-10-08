@@ -1,0 +1,96 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Ticket {{ sale.sale_number }}{% endblock %}
+{% block dash %}
+{% include 'pos/_styles.html' %}
+<style>.sum-line { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed var(--dash-border); } .sum-line:last-child { border-bottom: none; }</style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-receipt" style="color:var(--dash-accent);"></i> Ticket {{ sale.sale_number }}
+            {% if sale.status == 'refunded' %}<span class="pill pill-red" style="vertical-align:middle;">Remboursée</span>{% elif sale.refunded_amount %}<span class="pill pill-orange" style="vertical-align:middle;">Remboursée en partie</span>{% elif sale.status == 'completed' %}<span class="pill pill-green" style="vertical-align:middle;">Encaissée</span>{% else %}<span class="pill pill-gray" style="vertical-align:middle;">{{ sale.get_status_display }}</span>{% endif %}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ sale.completed_at|default:sale.created_at|date:"d/m/Y H:i" }} · {{ sale.session.register.name|default:"Caisse" }} ({{ sale.warehouse.name|default:"—" }}) · {{ sale.cashier.display_name }} · <a href="{% url 'pos:session_detail' sale.session_id %}" style="color:var(--dash-accent);">{{ sale.session.session_number }}</a></p>
+    </div>
+    <a href="{% url 'pos:print_receipt' sale.pk %}" target="_blank" class="btn btn-outline"><i class="fa-solid fa-print"></i> Ticket</a>
+</div>
+{% include 'pos/_tabs.html' %}
+
+<div class="pos-grid-2">
+    <div>
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-list"></i> Articles</h3></div>
+            <form method="post" action="{% url 'pos:refund_sale' sale.pk %}" id="refundForm">{% csrf_token %}
+            <div style="overflow-x:auto;"><table class="pos-table">
+                <thead><tr><th>Article</th><th class="num">Qté</th><th class="num">Prix</th><th class="num">Total</th>{% if scope.can_manage and sale.status == 'completed' %}<th class="num">À rembourser</th>{% endif %}</tr></thead>
+                <tbody>{% for item in items %}
+                <tr>
+                    <td><b>{{ item.product_name }}</b>{% if item.product_sku %}<div class="pos-muted">{{ item.product_sku }}</div>{% endif %}{% if item.refunded_quantity %}<div class="pos-muted" style="color:var(--dash-red);">{{ item.refunded_quantity|floatformat:0 }} remboursé{{ item.refunded_quantity|pluralize:"s" }}</div>{% endif %}</td>
+                    <td class="num">{{ item.quantity|floatformat:0 }}</td>
+                    <td class="num">{{ item.unit_price|floatformat:0|intcomma }} F</td>
+                    <td class="num">{{ item.total|floatformat:0|intcomma }} F</td>
+                    {% if scope.can_manage and sale.status == 'completed' %}
+                    <td class="num">{% if item.refundable_quantity > 0 %}<input type="number" name="qty_{{ item.pk }}" min="0" max="{{ item.refundable_quantity|floatformat:0 }}" step="1" value="0" class="form-control refund-qty" style="width:80px;display:inline-block;padding:6px 8px;text-align:center;">{% else %}—{% endif %}</td>
+                    {% endif %}
+                </tr>{% endfor %}</tbody>
+            </table></div>
+            {% if scope.can_manage and sale.status == 'completed' %}
+            <div class="pos-card-body" style="border-top:1px solid var(--dash-border);">
+                {% if my_session %}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group"><label>Rembourser en</label><select name="method" class="form-control">{% for code, label in methods %}<option value="{{ code }}" {% if code == sale.main_payment_method %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                    <div class="form-group"><label>Motif</label><input type="text" name="reason" class="form-control" maxlength="200" placeholder="Ex : article défectueux"></div>
+                </div>
+                <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px;"><input type="checkbox" name="restock" checked> Remettre les articles en stock ({{ my_session.warehouse.name }})</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-orange" onclick="return confirm('Rembourser les quantités choisies ?')"><i class="fa-solid fa-rotate-left"></i> Rembourser la sélection</button>
+                    <button type="button" class="btn btn-outline" onclick="document.querySelectorAll('.refund-qty').forEach(function(i){i.value=i.max;})">Tout sélectionner</button>
+                </div>
+                <p class="pos-muted" style="margin-top:8px;font-size:12px;">L'argent sort de votre caisse ouverte ({{ my_session.register.name|default:my_session.session_number }}). Reste remboursable : {{ sale.refundable_amount|floatformat:0|intcomma }} F.</p>
+                {% else %}
+                <div class="alert alert-info" style="margin:0;">Ouvrez une caisse pour rembourser : l'argent rendu doit sortir d'un tiroir. <a href="{% url 'pos:dashboard' %}" style="color:inherit;font-weight:700;">Ouvrir une caisse</a></div>
+                {% endif %}
+            </div>
+            {% endif %}
+            </form>
+        </div>
+
+        {% if refunds %}
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-rotate-left"></i> Remboursements</h3></div>
+            <div style="overflow-x:auto;"><table class="pos-table">
+                <thead><tr><th>N°</th><th>Date</th><th>Articles</th><th class="pos-hide-sm">Par</th><th class="num">Montant</th></tr></thead>
+                <tbody>{% for r in refunds %}
+                <tr><td>{{ r.refund_number }}<div class="pos-muted">{{ r.reason|default:"" }}</div></td>
+                    <td>{{ r.created_at|date:"d/m H:i" }}<div class="pos-muted">{{ r.session.register.name|default:"" }}</div></td>
+                    <td style="font-size:12px;">{% for l in r.items.all %}{{ l.quantity|floatformat:0 }} × {{ l.sale_item.product_name }}{% if not forloop.last %}<br>{% endif %}{% endfor %}{% if not r.restock %}<div class="pos-muted">non remis en stock</div>{% endif %}</td>
+                    <td class="pos-hide-sm">{{ r.created_by.display_name }}</td>
+                    <td class="num" style="color:var(--dash-red);font-weight:700;">−{{ r.amount|floatformat:0|intcomma }} F<div class="pos-muted">{{ r.get_method_display }}</div></td></tr>
+                {% endfor %}</tbody>
+            </table></div>
+        </div>
+        {% endif %}
+    </div>
+    <div>
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-coins"></i> Montants</h3></div>
+            <div class="pos-card-body">
+                <div class="sum-line"><span>Sous-total</span><span>{{ sale.subtotal|floatformat:0|intcomma }} F</span></div>
+                {% if sale.discount_amount %}<div class="sum-line"><span>Remise</span><span>−{{ sale.discount_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+                {% if sale.tax_amount %}<div class="sum-line"><span>TVA</span><span>{{ sale.tax_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+                <div class="sum-line"><b>Total</b><b>{{ sale.total_amount|floatformat:0|intcomma }} F</b></div>
+                {% if sale.refunded_amount %}<div class="sum-line"><span>Remboursé</span><span style="color:var(--dash-red);">−{{ sale.refunded_amount|floatformat:0|intcomma }} F</span></div><div class="sum-line"><b>Net</b><b>{{ sale.net_amount|floatformat:0|intcomma }} F</b></div>{% endif %}
+            </div>
+        </div>
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-credit-card"></i> Paiement</h3></div>
+            <div class="pos-card-body">
+                {% if sale.cash_amount %}<div class="sum-line"><span>Espèces reçues</span><span>{{ sale.cash_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+                {% if sale.change_amount %}<div class="sum-line"><span>Monnaie rendue</span><span>{{ sale.change_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+                {% if sale.mobile_money_amount %}<div class="sum-line"><span>Mobile Money</span><span>{{ sale.mobile_money_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+                {% if sale.card_amount %}<div class="sum-line"><span>Carte</span><span>{{ sale.card_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+                {% if sale.payment_reference %}<div class="sum-line"><span>Référence</span><span>{{ sale.payment_reference }}</span></div>{% endif %}
+                {% if sale.customer_name or sale.customer_phone %}<div class="sum-line"><span>Client</span><span>{{ sale.customer_name }} {{ sale.customer_phone }}</span></div>{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

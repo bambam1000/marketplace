@@ -345,7 +345,7 @@ check('Encaissement OK + monnaie rendue (6500)',
       f'-> {r.content[:100]}')
 sale.refresh_from_db()
 check('Vente complétée + mouvement caisse', sale.status == 'completed' and
-      CashMovement.objects.filter(session=session, category='sale', amount=20000).exists())
+      CashMovement.objects.filter(session=session, category='sale', amount=13500).exists())  # 20 000 reçus − 6 500 rendus
 
 # Stock décrémenté
 product.refresh_from_db()

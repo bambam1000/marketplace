@@ -1,268 +1,96 @@
-{% extends 'dashboard/base.html' %}
-{% load humanize %}
-
-{% block title %}Rapports de ventes POS{% endblock %}
-
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Ventes en caisse{% endblock %}
 {% block dash %}
-<div class="dash-header">
-    <h1>📊 Rapports de ventes</h1>
-    <a href="{% url 'pos:interface' %}" class="btn btn-orange">🛒 Retour à la caisse</a>
-</div>
-
-<!-- Filtres -->
-<div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-body">
-        <form method="get" style="display: flex; gap: 1rem; align-items: end;">
-            <div class="form-group" style="margin: 0; flex: 1;">
-                <label>Date de début</label>
-                <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
-            </div>
-            <div class="form-group" style="margin: 0; flex: 1;">
-                <label>Date de fin</label>
-                <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-primary">🔍 Filtrer</button>
-            <a href="{% url 'pos:sales_report' %}" class="btn btn-outline">✕ Réinitialiser</a>
-        </form>
-    </div>
-</div>
-
-<!-- Statistiques -->
-<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
-    <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">💰</div>
-        <div class="stat-content">
-            <div class="stat-value">{{ stats.total_revenue|floatformat:0|intcomma }} F</div>
-            <div class="stat-label">Chiffre d'affaires</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">🛒</div>
-        <div class="stat-content">
-            <div class="stat-value">{{ stats.total_sales }}</div>
-            <div class="stat-label">Nombre de ventes</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">💵</div>
-        <div class="stat-content">
-            <div class="stat-value">{{ stats.total_cash|floatformat:0|intcomma }} F</div>
-            <div class="stat-label">Espèces</div>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">💳</div>
-        <div class="stat-content">
-            <div class="stat-value">{{ stats.total_card|floatformat:0|intcomma }} F</div>
-            <div class="stat-label">Cartes</div>
-        </div>
-    </div>
-</div>
-
-<!-- Top produits -->
-<div class="card" style="margin-bottom: 1.5rem;">
-    <div class="card-header">
-        <h3>🏆 Top 10 Produits</h3>
-    </div>
-    <div class="card-body">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Produit</th>
-                    <th>Quantité vendue</th>
-                    <th>Chiffre d'affaires</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for product in top_products %}
-                <tr>
-                    <td><strong>{{ forloop.counter }}</strong></td>
-                    <td>{{ product.product__name }}</td>
-                    <td>{{ product.qty }}</td>
-                    <td><strong>{{ product.revenue|floatformat:0|intcomma }} F</strong></td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" style="text-align: center; padding: 2rem; color: #6b7280;">
-                        Aucune vente
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Liste des ventes -->
-<div class="card">
-    <div class="card-header">
-        <h3>📋 Détail des ventes</h3>
-    </div>
-    <div class="card-body">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>N° Vente</th>
-                    <th>Date</th>
-                    <th>Client</th>
-                    <th>Articles</th>
-                    <th>Total</th>
-                    <th>Paiement</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sale in sales %}
-                <tr>
-                    <td><strong>{{ sale.sale_number }}</strong></td>
-                    <td>{{ sale.completed_at|date:"d/m/Y H:i" }}</td>
-                    <td>{{ sale.customer_name|default:"—" }}</td>
-                    <td>{{ sale.items.count }}</td>
-                    <td><strong>{{ sale.total_amount|floatformat:0|intcomma }} F</strong></td>
-                    <td>
-                        {% if sale.cash_amount > 0 %}<span class="badge badge-success">💵 Espèces</span>{% endif %}
-                        {% if sale.card_amount > 0 %}<span class="badge badge-primary">💳 Carte</span>{% endif %}
-                        {% if sale.mobile_money_amount > 0 %}<span class="badge badge-warning">📱 Mobile</span>{% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'pos:print_receipt' sale.id %}" class="btn btn-sm" target="_blank">🖨️ Ticket</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 2rem; color: #6b7280;">
-                        Aucune vente pour cette période
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
+{% include 'pos/_styles.html' %}
 <style>
-.card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.card-header {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.card-header h3 {
-    margin: 0;
-    font-size: 1.125rem;
-}
-
-.card-body {
-    padding: 1.5rem;
-}
-
-.stat-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.stat-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-}
-
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #111827;
-}
-
-.stat-label {
-    color: #6b7280;
-    font-size: 0.875rem;
-}
-
-.form-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #374151;
-    font-size: 0.875rem;
-}
-
-.form-control {
-    width: 100%;
-    padding: 0.5rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
-    font-size: 14px;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--orange);
-}
-
-.table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.table th {
-    text-align: left;
-    padding: 0.75rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: #374151;
-    border-bottom: 2px solid #e5e7eb;
-}
-
-.table td {
-    padding: 0.75rem;
-    border-bottom: 1px solid #f3f4f6;
-    font-size: 0.875rem;
-}
-
-.table tbody tr:hover {
-    background: #f9fafb;
-}
-
-.badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    display: inline-block;
-    margin-right: 0.25rem;
-}
-
-.badge-success {
-    background: #d1fae5;
-    color: #065f46;
-}
-
-.badge-primary {
-    background: #dbeafe;
-    color: #1e40af;
-}
-
-.badge-warning {
-    background: #fef3c7;
-    color: #92400e;
-}
+.rep-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: 12px; padding: 7px 0; }
+.bar-row .bar { grid-column: 1 / -1; height: 5px; border-radius: 4px; background: var(--dash-bg); overflow: hidden; }
+.bar-row .bar span { display: block; height: 100%; background: var(--dash-accent); border-radius: 4px; }
+@media (max-width: 1100px) { .rep-grid { grid-template-columns: 1fr; } }
 </style>
+
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-chart-column" style="color:var(--dash-accent);"></i> Ventes en caisse</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">Du {{ date_from|date:"d/m/Y" }} au {{ date_to|date:"d/m/Y" }}{% if not scope.can_manage %} · vos ventes{% endif %}</p>
+    </div>
+    <a href="?{{ querystring }}&export=csv" class="btn btn-outline"><i class="fa-solid fa-file-csv"></i> Exporter</a>
+</div>
+{% include 'pos/_tabs.html' %}
+
+<div class="pos-card">
+    <form method="get" class="pos-filters">
+        <div><label>Du</label><input type="date" name="date_from" value="{{ date_from|date:'Y-m-d' }}" class="form-control"></div>
+        <div><label>Au</label><input type="date" name="date_to" value="{{ date_to|date:'Y-m-d' }}" class="form-control"></div>
+        {% if warehouses|length > 1 %}<div><label>Entrepôt</label><select name="warehouse" class="form-control"><option value="">Tous</option>{% for w in warehouses %}<option value="{{ w.pk }}" {% if f.warehouse == w.pk|stringformat:"s" %}selected{% endif %}>{{ w.name }}</option>{% endfor %}</select></div>{% endif %}
+        <div><label>Caisse</label><select name="register" class="form-control"><option value="">Toutes</option>{% for r in registers %}<option value="{{ r.pk }}" {% if f.register == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }} ({{ r.warehouse.code }})</option>{% endfor %}</select></div>
+        {% if scope.can_manage %}<div><label>Caissier</label><select name="cashier" class="form-control"><option value="">Tous</option>{% for u in cashiers %}<option value="{{ u.pk }}" {% if f.cashier == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}</select></div>{% endif %}
+        <div><label>Paiement</label><select name="payment" class="form-control"><option value="">Tous</option><option value="cash" {% if f.payment == 'cash' %}selected{% endif %}>Espèces</option><option value="mobile_money" {% if f.payment == 'mobile_money' %}selected{% endif %}>Mobile Money</option><option value="card" {% if f.payment == 'card' %}selected{% endif %}>Carte</option><option value="refunded" {% if f.payment == 'refunded' %}selected{% endif %}>Avec remboursement</option></select></div>
+        <div><label>Recherche</label><input type="search" name="q" value="{{ f.q }}" class="form-control" placeholder="N° ticket, client…"></div>
+        <button class="btn btn-orange btn-sm" style="margin-bottom:2px;">Filtrer</button>
+    </form>
+</div>
+
+<div class="pos-kpis">
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-coins"></i> Ventes nettes</div><div class="v">{{ stats.net|floatformat:0|intcomma }} F</div><div class="s">{% if previous.net %}Période précédente : {{ previous.net|floatformat:0|intcomma }} F{% else %}TTC, remboursements déduits{% endif %}</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-receipt"></i> Tickets</div><div class="v">{{ stats.count }}</div><div class="s">Panier moyen {{ stats.avg|floatformat:0|intcomma }} F</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-chart-pie"></i> Marge brute</div><div class="v">{{ stats.margin|floatformat:0|intcomma }} F</div><div class="s">HT {{ stats.net_ht|floatformat:0|intcomma }} F − coût {{ stats.cost|floatformat:0|intcomma }} F</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-rotate-left"></i> Remboursé</div><div class="v" style="{% if stats.refunded %}color:var(--dash-red);{% endif %}">{{ stats.refunded|floatformat:0|intcomma }} F</div><div class="s">Remises {{ stats.discounts|floatformat:0|intcomma }} F{% if stats.tax %} · TVA {{ stats.tax|floatformat:0|intcomma }} F{% endif %}</div></div>
+    <div class="pos-kpi"><div class="l"><i class="fa-solid fa-wallet"></i> Encaissements</div><div class="v" style="font-size:13px;line-height:1.7;font-weight:700;">Espèces {{ stats.cash|floatformat:0|intcomma }} F<br>Mobile {{ stats.momo|floatformat:0|intcomma }} F<br>Carte {{ stats.card|floatformat:0|intcomma }} F</div></div>
+</div>
+
+<div class="pos-grid-2">
+    <div class="pos-card"><div class="pos-card-head"><h3><i class="fa-solid fa-chart-line"></i> Ventes par jour</h3></div><div class="pos-card-body"><canvas id="repDays" height="110"></canvas></div></div>
+    <div class="pos-card"><div class="pos-card-head"><h3><i class="fa-regular fa-clock"></i> Affluence par heure</h3></div><div class="pos-card-body"><canvas id="repHours" height="170"></canvas></div></div>
+</div>
+
+<div class="rep-grid">
+    <div class="pos-card"><div class="pos-card-head"><h3><i class="fa-solid fa-cash-register"></i> Par caisse</h3></div><div class="pos-card-body">
+        {% for r in by_register %}<div class="bar-row"><span><b>{{ r.session__register__name|default:"Sans caisse" }}</b> <span class="pos-muted">{{ r.warehouse__name }} · {{ r.n }}</span></span><b>{{ r.t|floatformat:0|intcomma }} F</b><div class="bar"><span style="width:{% widthratio r.t stats.gross 100 %}%;"></span></div></div>
+        {% empty %}<div class="pos-empty">Aucune vente.</div>{% endfor %}</div></div>
+    <div class="pos-card"><div class="pos-card-head"><h3><i class="fa-solid fa-user"></i> Par caissier</h3></div><div class="pos-card-body">
+        {% for c in by_cashier %}<div class="bar-row"><span><b>{% if c.cashier__first_name %}{{ c.cashier__first_name }} {{ c.cashier__last_name }}{% else %}{{ c.cashier__username }}{% endif %}</b> <span class="pos-muted">{{ c.n }} ticket{{ c.n|pluralize:"s" }}{% if c.d %} · remises {{ c.d|floatformat:0|intcomma }} F{% endif %}</span></span><b>{{ c.t|floatformat:0|intcomma }} F</b><div class="bar"><span style="width:{% widthratio c.t stats.gross 100 %}%;"></span></div></div>
+        {% empty %}<div class="pos-empty">Aucune vente.</div>{% endfor %}</div></div>
+    <div class="pos-card"><div class="pos-card-head"><h3><i class="fa-solid fa-trophy"></i> Meilleurs articles</h3></div><div class="pos-card-body">
+        {% for p in top_products %}<div class="bar-row"><span><b>{{ p.product_name|truncatechars:34 }}</b> <span class="pos-muted">× {{ p.qty|floatformat:0 }}{% if p.back %} (−{{ p.back|floatformat:0 }}){% endif %}</span></span><b>{{ p.revenue|floatformat:0|intcomma }} F</b></div>
+        {% empty %}<div class="pos-empty">Aucune vente.</div>{% endfor %}</div></div>
+</div>
+
+<div class="pos-card">
+    <div class="pos-card-head"><h3><i class="fa-solid fa-list"></i> Tickets</h3><span class="pos-muted">{{ sales.paginator.count }}</span></div>
+    <div style="overflow-x:auto;"><table class="pos-table">
+        <thead><tr><th>Ticket</th><th>Date</th><th class="pos-hide-sm">Caisse</th><th class="pos-hide-sm">Caissier</th><th class="pos-hide-sm">Client</th><th>Paiement</th><th class="num">Total</th></tr></thead>
+        <tbody>{% for s in sales %}
+        <tr>
+            <td><a href="{% url 'pos:sale_detail' s.pk %}">{{ s.sale_number }}</a>{% if s.status == 'refunded' %} <span class="pill pill-red">Remboursée</span>{% elif s.refunded_amount %} <span class="pill pill-orange">Partiel</span>{% endif %}</td>
+            <td>{{ s.completed_at|date:"d/m H:i" }}</td>
+            <td class="pos-hide-sm">{{ s.session.register.name|default:"—" }}<div class="pos-muted">{{ s.warehouse.name|default:"" }}</div></td>
+            <td class="pos-hide-sm">{{ s.cashier.display_name }}</td>
+            <td class="pos-hide-sm">{{ s.customer_name|default:"—" }}</td>
+            <td style="font-size:12px;">{% if s.cash_amount %}Espèces {% endif %}{% if s.mobile_money_amount %}Mobile {% endif %}{% if s.card_amount %}Carte{% endif %}</td>
+            <td class="num">{{ s.total_amount|floatformat:0|intcomma }} F{% if s.refunded_amount %}<div class="pos-muted" style="color:var(--dash-red);">−{{ s.refunded_amount|floatformat:0|intcomma }} F</div>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="7"><div class="pos-empty"><i class="fa-solid fa-receipt"></i>Aucune vente sur cette période.</div></td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% if sales.has_other_pages %}
+    <div style="display:flex;justify-content:center;gap:8px;padding:14px;">
+        {% if sales.has_previous %}<a class="btn btn-outline btn-sm" href="?{{ querystring }}&page={{ sales.previous_page_number }}">Précédent</a>{% endif %}
+        <span class="pos-muted" style="align-self:center;">Page {{ sales.number }} / {{ sales.paginator.num_pages }}</span>
+        {% if sales.has_next %}<a class="btn btn-outline btn-sm" href="?{{ querystring }}&page={{ sales.next_page_number }}">Suivant</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{{ chart|json_script:"rep-chart" }}
+<script>
+(function() {
+    var d = JSON.parse(document.getElementById('rep-chart').textContent);
+    var money = function(v) { return Math.round(v).toLocaleString('fr-FR') + ' F'; };
+    new Chart(document.getElementById('repDays'), { type: 'bar', data: { labels: d.labels, datasets: [{ data: d.values, backgroundColor: 'rgba(255,106,0,.75)', borderRadius: 4 }] },
+        options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return money(c.parsed.y); } } } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return v >= 1000 ? (v / 1000) + 'k' : v; } } }, x: { grid: { display: false } } } } });
+    var hours = d.hours.map(function(_, i) { return i + 'h'; });
+    new Chart(document.getElementById('repHours'), { type: 'bar', data: { labels: hours.slice(6, 23), datasets: [{ data: d.hours.slice(6, 23), backgroundColor: 'rgba(59,130,246,.6)', borderRadius: 3 }] },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } } });
+})();
+</script>
 {% endblock %}

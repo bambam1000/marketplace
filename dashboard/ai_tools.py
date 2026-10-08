@@ -131,8 +131,9 @@ def obtenir_ventes(ctx, args):
     agg = items.aggregate(online=Sum(LINE, filter=~direct), direct=Sum(LINE, filter=direct),
                           qty=Sum('quantity'), cost=Sum(COST), orders=Count('order', distinct=True),
                           no_cost=Count('id', filter=Q(unit_cost__isnull=True, product__cost_price__isnull=True)))
-    pos = _pos_sales(store, start, end, wh).aggregate(total=Sum('total_amount'), tax=Sum('tax_amount'), n=Count('id'))
-    pos_rev = _money((pos['total'] or 0) - (pos['tax'] or 0))
+    from pos.services import NET_REVENUE
+    pos = _pos_sales(store, start, end, wh).aggregate(net=Sum(NET_REVENUE), n=Count('id'))
+    pos_rev = _money(pos['net'] or 0)
     revenue = _money(agg['online']) + _money(agg['direct']) + pos_rev
     result = {
         'periode': f'{start} au {end}', 'entrepot': wh.code if wh else 'tous',

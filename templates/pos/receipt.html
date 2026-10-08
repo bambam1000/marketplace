@@ -1,297 +1,49 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Ticket {{ sale.sale_number }}</title>
-    <style>
-        @media print {
-            @page {
-                size: 80mm auto;
-                margin: 0;
-            }
-            body {
-                margin: 0;
-            }
-            .no-print {
-                display: none !important;
-            }
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.4;
-            padding: 10mm;
-            max-width: 80mm;
-            margin: 0 auto;
-            background: white;
-        }
-
-        .receipt {
-            border: 1px dashed #000;
-            padding: 5mm;
-        }
-
-        .header {
-            text-align: center;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 5mm;
-            margin-bottom: 5mm;
-        }
-
-        .store-name {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 2mm;
-        }
-
-        .store-info {
-            font-size: 10px;
-        }
-
-        .section {
-            margin-bottom: 5mm;
-        }
-
-        .section-title {
-            font-weight: bold;
-            border-bottom: 1px solid #000;
-            margin-bottom: 2mm;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1mm;
-        }
-
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 5mm 0;
-        }
-
-        .items-table th {
-            text-align: left;
-            border-bottom: 1px solid #000;
-            padding: 1mm 0;
-        }
-
-        .items-table td {
-            padding: 1mm 0;
-            vertical-align: top;
-        }
-
-        .item-name {
-            max-width: 35mm;
-        }
-
-        .item-qty {
-            text-align: center;
-            width: 15mm;
-        }
-
-        .item-price {
-            text-align: right;
-            width: 20mm;
-        }
-
-        .totals {
-            border-top: 1px solid #000;
-            padding-top: 3mm;
-            margin-top: 3mm;
-        }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 1mm;
-        }
-
-        .total-row.main {
-            font-size: 14px;
-            font-weight: bold;
-            border-top: 2px solid #000;
-            border-bottom: 2px solid #000;
-            padding: 2mm 0;
-            margin-top: 2mm;
-        }
-
-        .payment-info {
-            border-top: 1px dashed #000;
-            padding-top: 3mm;
-            margin-top: 3mm;
-        }
-
-        .footer {
-            text-align: center;
-            border-top: 1px dashed #000;
-            padding-top: 5mm;
-            margin-top: 5mm;
-            font-size: 10px;
-        }
-
-        .barcode {
-            text-align: center;
-            margin: 5mm 0;
-            font-size: 10px;
-        }
-
-        .print-btn {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            padding: 10px 20px;
-            background: #ff6a00;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            font-family: Arial, sans-serif;
-        }
-    </style>
-</head>
-<body>
-    <button class="print-btn no-print" onclick="window.print()">🖨️ Imprimer</button>
-
-    <div class="receipt">
-        <!-- Header -->
-        <div class="header">
-            <div class="store-name">{{ store.name|upper }}</div>
-            {% if store.address %}
-            <div class="store-info">{{ store.address }}</div>
-            {% endif %}
-            {% if store.phone %}
-            <div class="store-info">Tel: {{ store.phone }}</div>
-            {% endif %}
-        </div>
-
-        <!-- Transaction info -->
-        <div class="section">
-            <div class="info-row">
-                <span>N° Vente:</span>
-                <strong>{{ sale.sale_number }}</strong>
-            </div>
-            <div class="info-row">
-                <span>Date:</span>
-                <span>{{ sale.completed_at|date:"d/m/Y H:i" }}</span>
-            </div>
-            <div class="info-row">
-                <span>Caissier:</span>
-                <span>{{ sale.cashier.display_name }}</span>
-            </div>
-            {% if sale.customer_name %}
-            <div class="info-row">
-                <span>Client:</span>
-                <span>{{ sale.customer_name }}</span>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Items -->
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th>Article</th>
-                    <th class="item-qty">Qté</th>
-                    <th class="item-price">Prix</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in sale.items.all %}
-                <tr>
-                    <td class="item-name">{{ item.product_name }}</td>
-                    <td class="item-qty">{{ item.quantity }}</td>
-                    <td class="item-price">{{ item.total|floatformat:0 }}</td>
-                </tr>
-                <tr>
-                    <td colspan="3" style="font-size: 10px; padding-left: 3mm;">
-                        {{ item.unit_price|floatformat:0 }} F x {{ item.quantity }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- Totals -->
-        <div class="totals">
-            <div class="total-row">
-                <span>Sous-total:</span>
-                <span>{{ sale.subtotal|floatformat:0 }} F</span>
-            </div>
-            {% if sale.discount_amount > 0 %}
-            <div class="total-row">
-                <span>Remise {% if sale.discount_percent %}({{ sale.discount_percent }}%){% endif %}:</span>
-                <span>-{{ sale.discount_amount|floatformat:0 }} F</span>
-            </div>
-            {% endif %}
-            {% if sale.tax_amount > 0 %}
-            <div class="total-row">
-                <span>TVA:</span>
-                <span>{{ sale.tax_amount|floatformat:0 }} F</span>
-            </div>
-            {% endif %}
-            <div class="total-row main">
-                <span>TOTAL:</span>
-                <span>{{ sale.total_amount|floatformat:0 }} F</span>
-            </div>
-        </div>
-
-        <!-- Payment -->
-        <div class="payment-info">
-            {% if sale.cash_amount > 0 %}
-            <div class="total-row">
-                <span>Espèces:</span>
-                <span>{{ sale.cash_amount|floatformat:0 }} F</span>
-            </div>
-            {% endif %}
-            {% if sale.card_amount > 0 %}
-            <div class="total-row">
-                <span>Carte:</span>
-                <span>{{ sale.card_amount|floatformat:0 }} F</span>
-            </div>
-            {% endif %}
-            {% if sale.mobile_money_amount > 0 %}
-            <div class="total-row">
-                <span>Mobile Money:</span>
-                <span>{{ sale.mobile_money_amount|floatformat:0 }} F</span>
-            </div>
-            {% endif %}
-            {% if sale.amount_tendered > 0 and sale.cash_amount > 0 %}
-            <div class="total-row">
-                <span>Reçu:</span>
-                <span>{{ sale.amount_tendered|floatformat:0 }} F</span>
-            </div>
-            <div class="total-row" style="font-weight: bold;">
-                <span>Monnaie:</span>
-                <span>{{ sale.change_amount|floatformat:0 }} F</span>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Barcode -->
-        <div class="barcode">
-            <div>*{{ sale.sale_number }}*</div>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <div>Articles: {{ sale.items.count }}</div>
-            <div style="margin-top: 3mm;">Merci pour votre visite !</div>
-            <div>A bientôt</div>
-        </div>
+{% load humanize %}<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ticket {{ sale.sale_number }}</title>
+{% include 'pos/_ticket_css.html' %}
+</head><body>
+<div class="ticket">
+    <div class="c b big">{{ store.name }}</div>
+    {% if sale.warehouse %}<div class="c small">{{ sale.warehouse.name }}{% if sale.warehouse.address %} — {{ sale.warehouse.address }}{% endif %}{% if sale.warehouse.city %}, {{ sale.warehouse.city }}{% endif %}</div>{% endif %}
+    {% if store.phone %}<div class="c small">Tél. {{ store.phone }}</div>{% endif %}
+    <div class="sep"></div>
+    <div class="row"><span>Ticket</span><span class="b">{{ sale.sale_number }}</span></div>
+    <div class="row"><span>Date</span><span>{{ sale.completed_at|default:sale.created_at|date:"d/m/Y H:i" }}</span></div>
+    <div class="row"><span>Caisse</span><span>{{ sale.session.register.code|default:sale.session.register.name|default:"—" }}</span></div>
+    <div class="row"><span>Caissier</span><span>{{ sale.cashier.display_name }}</span></div>
+    {% if sale.customer_name %}<div class="row"><span>Client</span><span>{{ sale.customer_name }}</span></div>{% endif %}
+    {% if sale.customer_phone %}<div class="row"><span>Tél. client</span><span>{{ sale.customer_phone }}</span></div>{% endif %}
+    <div class="sep"></div>
+    {% for item in items %}
+    <div class="item">
+        <div>{{ item.product_name }}</div>
+        <div class="row"><span>{{ item.quantity|floatformat:0 }} × {{ item.unit_price|floatformat:0|intcomma }}{% if item.discount_percent %} (−{{ item.discount_percent|floatformat:"-2" }} %){% endif %}</span><span>{{ item.total|floatformat:0|intcomma }}</span></div>
+        {% if item.refunded_quantity %}<div class="small">  dont {{ item.refunded_quantity|floatformat:0 }} remboursé{{ item.refunded_quantity|pluralize:"s" }}</div>{% endif %}
     </div>
-
-    <script>
-        // Auto-print on load (optional)
-        // window.onload = () => window.print();
-    </script>
-</body>
-</html>
+    {% endfor %}
+    <div class="sep"></div>
+    <div class="row"><span>Sous-total</span><span>{{ sale.subtotal|floatformat:0|intcomma }} F</span></div>
+    {% if sale.discount_amount %}<div class="row"><span>Remise{% if sale.discount_percent %} {{ sale.discount_percent|floatformat:"-2" }} %{% endif %}</span><span>−{{ sale.discount_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+    {% if sale.tax_amount %}<div class="row"><span>TVA</span><span>{{ sale.tax_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+    <div class="row b big" style="margin-top:1mm;"><span>TOTAL</span><span>{{ sale.total_amount|floatformat:0|intcomma }} F</span></div>
+    <div class="sep"></div>
+    {% if sale.cash_amount %}<div class="row"><span>Espèces reçues</span><span>{{ sale.cash_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+    {% if sale.mobile_money_amount %}<div class="row"><span>Mobile Money</span><span>{{ sale.mobile_money_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+    {% if sale.card_amount %}<div class="row"><span>Carte</span><span>{{ sale.card_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+    {% if sale.payment_reference %}<div class="row small"><span>Réf. paiement</span><span>{{ sale.payment_reference }}</span></div>{% endif %}
+    {% if sale.change_amount %}<div class="row b"><span>Monnaie rendue</span><span>{{ sale.change_amount|floatformat:0|intcomma }} F</span></div>{% endif %}
+    {% if refunds %}
+    <div class="sep"></div>
+    {% for r in refunds %}<div class="row"><span>Remboursé {{ r.created_at|date:"d/m" }} ({{ r.get_method_display }})</span><span>−{{ r.amount|floatformat:0|intcomma }} F</span></div>{% endfor %}
+    {% endif %}
+    {% if sale.status == 'pending' or sale.status == 'held' %}<div class="sep"></div><div class="c b">*** VENTE NON ENCAISSÉE ***</div>{% endif %}
+    <div class="sep"></div>
+    <div class="c">Merci de votre visite !</div>
+    <div class="c small">Conservez ce ticket pour tout échange ou remboursement.</div>
+</div>
+<div class="actions no-print">
+    <button class="primary" onclick="window.print()">Imprimer</button>
+    <button onclick="window.close()">Fermer</button>
+</div>
+{% if request.GET.print %}<script>window.addEventListener('load', function() { window.print(); });</script>{% endif %}
+</body></html>

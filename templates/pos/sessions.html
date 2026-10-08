@@ -1,0 +1,43 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Sessions de caisse{% endblock %}
+{% block dash %}
+{% include 'pos/_styles.html' %}
+<div class="dash-header">
+    <div>
+        <h1><i class="fa-solid fa-clock-rotate-left" style="color:var(--dash-accent);"></i> Sessions de caisse</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ sessions.paginator.count }} session{{ sessions.paginator.count|pluralize:"s" }}{% if scope.can_manage %} · écart cumulé <span class="{% if gap_sum > 0 %}gap-pos{% elif gap_sum < 0 %}gap-neg{% endif %}">{{ gap_sum|floatformat:0|intcomma }} F</span>{% else %} (les vôtres){% endif %}</p>
+    </div>
+</div>
+{% include 'pos/_tabs.html' %}
+
+<div class="pos-card">
+    <form method="get" class="pos-filters">
+        {% if warehouses|length > 1 %}<div><label>Entrepôt</label><select name="warehouse" class="form-control"><option value="">Tous</option>{% for w in warehouses %}<option value="{{ w.pk }}" {% if f.warehouse == w.pk|stringformat:"s" %}selected{% endif %}>{{ w.name }}</option>{% endfor %}</select></div>{% endif %}
+        <div><label>Caisse</label><select name="register" class="form-control"><option value="">Toutes</option>{% for r in registers %}<option value="{{ r.pk }}" {% if f.register == r.pk|stringformat:"s" %}selected{% endif %}>{{ r.name }} ({{ r.warehouse.code }})</option>{% endfor %}</select></div>
+        <div><label>État</label><select name="status" class="form-control"><option value="">Tous</option><option value="open" {% if f.status == 'open' %}selected{% endif %}>Ouvertes</option><option value="closed" {% if f.status == 'closed' %}selected{% endif %}>Fermées</option></select></div>
+        <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--dash-text2);margin-bottom:9px;"><input type="checkbox" name="gap" value="1" {% if f.gap == '1' %}checked{% endif %}> Avec écart</label>
+        <button class="btn btn-orange btn-sm" style="margin-bottom:2px;">Filtrer</button>
+    </form>
+    <div style="overflow-x:auto;"><table class="pos-table">
+        <thead><tr><th>Session</th><th>Caisse</th><th class="pos-hide-sm">Caissier</th><th>Période</th><th class="num">Ventes nettes</th><th class="num pos-hide-sm">Espèces</th><th class="num">Écart</th></tr></thead>
+        <tbody>{% for s in sessions %}
+        <tr>
+            <td><a href="{% url 'pos:session_detail' s.pk %}">{{ s.session_number }}</a><div>{% if s.is_open %}<span class="pill pill-green pill-dot">Ouverte</span>{% endif %}</div></td>
+            <td>{{ s.register.name|default:"—" }}<div class="pos-muted">{{ s.warehouse.name|default:"" }}</div></td>
+            <td class="pos-hide-sm">{{ s.cashier.display_name }}</td>
+            <td>{{ s.opened_at|date:"d/m H:i" }}<div class="pos-muted">{% if s.closed_at %}→ {{ s.closed_at|date:"d/m H:i" }}{% else %}en cours{% endif %}</div></td>
+            <td class="num">{{ s.net_sales|floatformat:0|intcomma }} F<div class="pos-muted">{{ s.sales_count }} ticket{{ s.sales_count|pluralize:"s" }}</div></td>
+            <td class="num pos-hide-sm">{% if s.is_open %}—{% else %}{{ s.closing_cash|floatformat:0|intcomma }} F<div class="pos-muted">attendu {{ s.expected_cash|floatformat:0|intcomma }}</div>{% endif %}</td>
+            <td class="num {% if s.is_open %}gap-zero{% elif s.cash_difference > 0 %}gap-pos{% elif s.cash_difference < 0 %}gap-neg{% else %}gap-zero{% endif %}">{% if s.is_open %}—{% else %}{{ s.cash_difference|floatformat:0|intcomma }} F{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="7"><div class="pos-empty"><i class="fa-solid fa-clock-rotate-left"></i>Aucune session.</div></td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% if sessions.has_other_pages %}
+    <div style="display:flex;justify-content:center;gap:8px;padding:14px;">
+        {% if sessions.has_previous %}<a class="btn btn-outline btn-sm" href="?{{ request.GET.urlencode }}&page={{ sessions.previous_page_number }}">Précédent</a>{% endif %}
+        <span class="pos-muted" style="align-self:center;">Page {{ sessions.number }} / {{ sessions.paginator.num_pages }}</span>
+        {% if sessions.has_next %}<a class="btn btn-outline btn-sm" href="?{{ request.GET.urlencode }}&page={{ sessions.next_page_number }}">Suivant</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

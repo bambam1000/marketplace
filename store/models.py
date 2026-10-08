@@ -76,6 +76,8 @@ class StoreRole(models.Model):
         ('invoicing.create', 'Créer des factures'),
         ('customers.view', 'Voir les clients'),
         ('finances.view', 'Voir les finances'),
+        ('pos.use', 'Encaisser à la caisse'),
+        ('pos.manage', 'Gérer les caisses (remboursements, écarts, remises)'),
     ]
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='roles')
     name = models.CharField(max_length=100)

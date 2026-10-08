@@ -76,8 +76,9 @@ def _period_figures(store, warehouse_id, start, end):
     agg = items.aggregate(online=Sum(line, filter=~direct), direct=Sum(line, filter=direct), cost=Sum(cost),
                           costed=Sum(line, filter=Q(unit_cost__isnull=False) | Q(product__cost_price__isnull=False)),
                           orders=Count('order', distinct=True), qty=Sum('quantity'))
-    pos_agg = pos.aggregate(total=Sum('total_amount'), tax=Sum('tax_amount'), n=Count('id'))
-    pos_rev = int((pos_agg['total'] or 0) - (pos_agg['tax'] or 0))
+    from pos.services import NET_REVENUE
+    pos_agg = pos.aggregate(net=Sum(NET_REVENUE), n=Count('id'))
+    pos_rev = int(pos_agg['net'] or 0)
     online, direct_rev = int(agg['online'] or 0), int(agg['direct'] or 0)
     revenue = online + direct_rev + pos_rev
     sales = (agg['orders'] or 0) + (pos_agg['n'] or 0)
@@ -1096,8 +1097,16 @@ def dash_warehouse_detail(request, pk):
     out_of_stock_count = warehouse.stocks.filter(quantity=0).count()
     unpaid_invoices = Invoice.objects.filter(warehouse=warehouse, status='sent').count()
     employees_count = StoreMember.objects.filter(warehouse=warehouse, is_active=True).count()
+    from pos import services as pos_services
+    pos_scope = pos_services.scope_for(request.user)
+    pos_info = None
+    if pos_scope and pos_scope.can_use and pos_scope.store == warehouse.store and pos_scope.warehouse_ok(warehouse.pk):
+        regs = warehouse.cash_registers.filter(is_active=True)
+        pos_info = {'count': regs.count(), 'open': regs.filter(sessions__status='open').count(),
+                    'today': pos_services.figures(warehouse.pos_sales.filter(completed_at__date=timezone.localdate()))['net']}
 
     return render(request, 'dashboard/warehouse_detail.html', {
+        'pos_info': pos_info,
         'warehouse': warehouse,
         'stocks': stocks,
         'search_query': q,
@@ -1411,11 +1420,12 @@ def _warehouse_month_figures(warehouse, year, month):
 
     pos_sales = POSSale.objects.filter(warehouse=warehouse, status='completed',
                                        created_at__year=year, created_at__month=month)
-    pos_sums = pos_sales.aggregate(total=Sum('total_amount'), tax=Sum('tax_amount'), count=Count('id'))
-    pos_items = POSSaleItem.objects.filter(sale__in=pos_sales).aggregate(cogs=Sum(cost_of()), missing=Count('id', filter=no_cost))
+    from pos.services import NET_REVENUE, item_cost
+    pos_sums = pos_sales.aggregate(net=Sum(NET_REVENUE), count=Count('id'))
+    pos_items = POSSaleItem.objects.filter(sale__in=pos_sales).aggregate(cogs=Sum(item_cost()), missing=Count('id', filter=no_cost))
 
     online, direct_rev = int(sums['online'] or 0), int(sums['direct'] or 0)
-    pos_rev = int((pos_sums['total'] or 0) - (pos_sums['tax'] or 0))
+    pos_rev = int(pos_sums['net'] or 0)
     commission = int(Decimal(online) * Decimal(str(settings.SALES_COMMISSION_RATE)))
     cogs = int((sums['cogs'] or 0) + (pos_items['cogs'] or 0))
     expenses = int(warehouse.expenses.filter(date__year=year, date__month=month).aggregate(t=Sum('amount'))['t'] or 0)

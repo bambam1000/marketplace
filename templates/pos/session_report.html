@@ -1,0 +1,51 @@
+{% load humanize %}<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ticket {{ kind }} {{ session.session_number }}</title>
+{% include 'pos/_ticket_css.html' %}
+</head><body>
+<div class="ticket">
+    <div class="c b big">{{ store.name }}</div>
+    <div class="c b">{% if kind == 'X' %}TICKET X — LECTURE{% else %}TICKET Z — CLÔTURE{% endif %}</div>
+    {% if kind == 'X' %}<div class="c small">Caisse toujours ouverte, imprimé le {{ now|date:"d/m/Y H:i" }}</div>{% endif %}
+    <div class="sep"></div>
+    <div class="row"><span>Session</span><span>{{ session.session_number }}</span></div>
+    <div class="row"><span>Caisse</span><span>{{ session.register.name|default:"—" }}</span></div>
+    <div class="row"><span>Entrepôt</span><span>{{ session.warehouse.name|default:"—" }}</span></div>
+    <div class="row"><span>Caissier</span><span>{{ session.cashier.display_name }}</span></div>
+    <div class="row"><span>Ouverture</span><span>{{ session.opened_at|date:"d/m/Y H:i" }}</span></div>
+    {% if session.closed_at %}<div class="row"><span>Clôture</span><span>{{ session.closed_at|date:"d/m/Y H:i" }}</span></div>{% endif %}
+    {% if session.closed_by and session.closed_by != session.cashier %}<div class="row"><span>Fermée par</span><span>{{ session.closed_by.display_name }}</span></div>{% endif %}
+    <div class="sep"></div>
+    <div class="b">VENTES</div>
+    <div class="row"><span>Tickets</span><span>{{ session.sales_count }}</span></div>
+    <div class="row"><span>Total TTC</span><span>{{ session.total_sales|floatformat:0|intcomma }} F</span></div>
+    {% if session.total_discounts %}<div class="row"><span>dont remises</span><span>{{ session.total_discounts|floatformat:0|intcomma }} F</span></div>{% endif %}
+    {% if session.total_refunds %}<div class="row"><span>Remboursements</span><span>−{{ session.total_refunds|floatformat:0|intcomma }} F</span></div>{% endif %}
+    <div class="row b"><span>NET</span><span>{{ session.net_sales|floatformat:0|intcomma }} F</span></div>
+    <div class="sep"></div>
+    <div class="b">PAR MOYEN DE PAIEMENT</div>
+    {% for row in breakdown %}<div class="row"><span>{{ row.label }}</span><span>{{ row.net|floatformat:0|intcomma }} F</span></div>{% endfor %}
+    <div class="sep"></div>
+    <div class="b">ESPÈCES</div>
+    <div class="row"><span>Fond d'ouverture</span><span>{{ session.opening_cash|floatformat:0|intcomma }} F</span></div>
+    <div class="row"><span>+ Ventes espèces</span><span>{{ session.total_cash|floatformat:0|intcomma }} F</span></div>
+    {% for m in movements %}<div class="row small"><span>{% if m.type == 'in' %}+{% else %}−{% endif %} {{ m.get_category_display }} : {{ m.description|truncatechars:22 }}</span><span>{{ m.amount|floatformat:0|intcomma }} F</span></div>{% endfor %}
+    <div class="row b"><span>{% if kind == 'X' %}En caisse{% else %}Attendu{% endif %}</span><span>{% if kind == 'X' %}{{ balance|floatformat:0|intcomma }}{% else %}{{ session.expected_cash|floatformat:0|intcomma }}{% endif %} F</span></div>
+    {% if kind == 'Z' %}
+    <div class="row b"><span>Compté</span><span>{{ session.closing_cash|floatformat:0|intcomma }} F</span></div>
+    <div class="row b big"><span>ÉCART</span><span>{{ session.cash_difference|floatformat:0|intcomma }} F</span></div>
+    {% if count_rows %}
+    <div class="sep"></div><div class="b">COMPTAGE</div>
+    {% for d, n, sub in count_rows %}<div class="row small"><span>{{ n }} × {{ d|intcomma }} F</span><span>{{ sub|intcomma }} F</span></div>{% endfor %}
+    {% endif %}
+    {% endif %}
+    {% if top %}
+    <div class="sep"></div><div class="b">ARTICLES</div>
+    {% for p in top %}<div class="row small"><span>{{ p.qty|floatformat:0 }} × {{ p.product_name|truncatechars:24 }}</span><span>{{ p.revenue|floatformat:0|intcomma }}</span></div>{% endfor %}
+    {% endif %}
+    {% if session.notes %}<div class="sep"></div><div class="small">{{ session.notes|linebreaksbr }}</div>{% endif %}
+    <div class="sep"></div>
+    <div class="row small" style="margin-top:6mm;"><span>Signature caissier</span><span>Signature responsable</span></div>
+    <div style="height:12mm;"></div>
+</div>
+<div class="actions no-print"><button class="primary" onclick="window.print()">Imprimer</button><button onclick="window.close()">Fermer</button></div>
+</body></html>

@@ -98,6 +98,12 @@
         <div><div class="t">Comptabilité</div><div class="s">Revenus, dépenses, résultat</div></div>
     </a>
     {% endif %}
+    {% if pos_info %}
+    <a href="{% url 'pos:dashboard' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
+        <div class="ic" style="background:rgba(16,185,129,.1);color:#047857;"><i class="fa-solid fa-cash-register"></i></div>
+        <div><div class="t">Caisses</div><div class="s">{{ pos_info.count }} caisse{{ pos_info.count|pluralize:"s" }} · {{ pos_info.open }} ouverte{{ pos_info.open|pluralize:"s" }} · {{ pos_info.today|floatformat:0|intcomma }} F aujourd'hui</div></div>
+    </a>
+    {% endif %}
     {% if can.finances %}
     <a href="{% url 'dashboard:warehouse_expenses' warehouse.pk %}" class="wh-link-card">
         <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-money-bill-wave"></i></div>

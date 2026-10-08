@@ -1,209 +1,112 @@
-{% extends 'dashboard/base.html' %}
-{% load humanize %}
-
-{% block title %}Fermer la session{% endblock %}
-
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Fermer la caisse{% endblock %}
 {% block dash %}
+{% include 'pos/_styles.html' %}
+<style>
+.count-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; }
+.count-row { display: grid; grid-template-columns: 80px 1fr 100px; gap: 10px; align-items: center; font-size: 13px; }
+.count-row .den { font-weight: 700; }
+.count-row input { padding: 7px 10px; text-align: center; }
+.count-row .sub { text-align: right; color: var(--dash-text2); font-variant-numeric: tabular-nums; }
+.sum-line { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px dashed var(--dash-border); }
+.sum-line:last-child { border-bottom: none; }
+.sum-line.big { font-size: 16px; font-weight: 800; }
+.gap-box { border-radius: 8px; padding: 14px; text-align: center; margin-top: 12px; background: var(--dash-bg); }
+.gap-box .v { font-size: 26px; font-weight: 800; }
+@media (max-width: 700px) { .count-grid { grid-template-columns: 1fr; } }
+</style>
+
 <div class="dash-header">
-    <h1>🔒 Fermeture de session de caisse</h1>
+    <div>
+        <h1><i class="fa-solid fa-lock" style="color:var(--dash-accent);"></i> Fermer {{ session.register.name|default:"la caisse" }}</h1>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ session.session_number }} · {{ session.warehouse.name }} · {{ session.cashier.display_name }} · ouverte le {{ session.opened_at|date:"d/m à H:i" }}</p>
+    </div>
+    <a href="{% url 'pos:session_report' session.pk %}" target="_blank" class="btn btn-outline"><i class="fa-solid fa-print"></i> Ticket X</a>
 </div>
 
-<div style="max-width: 800px; margin: 2rem auto;">
-    <!-- Résumé de la session -->
-    <div class="card" style="margin-bottom: 1.5rem;">
-        <div class="card-header">
-            <h3>📊 Résumé de la session</h3>
-        </div>
-        <div class="card-body">
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
-                <div>
-                    <div class="info-row">
-                        <span>N° Session:</span>
-                        <strong>{{ session.session_number }}</strong>
-                    </div>
-                    <div class="info-row">
-                        <span>Caissier:</span>
-                        <span>{{ session.cashier.display_name }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span>Ouverture:</span>
-                        <span>{{ session.opened_at|date:"d/m/Y H:i" }}</span>
-                    </div>
-                    <div class="info-row">
-                        <span>Fond de caisse initial:</span>
-                        <strong>{{ session.opening_cash|intcomma }} F</strong>
-                    </div>
-                </div>
+{% if session.cashier_id != request.user.pk %}<div class="alert alert-info">Vous fermez la caisse de {{ session.cashier.display_name }} en tant que responsable.</div>{% endif %}
+{% if pending_carts %}<div class="alert alert-info">{{ pending_carts }} panier{{ pending_carts|pluralize:"s" }} non encaissé{{ pending_carts|pluralize:"s" }} (en cours ou en attente) ser{{ pending_carts|pluralize:"a,ont" }} annulé{{ pending_carts|pluralize:"s" }} à la fermeture. Le stock n'a pas bougé.</div>{% endif %}
 
-                <div style="background: #f9fafb; padding: 1rem; border-radius: 8px;">
-                    <div class="info-row">
-                        <span>Nombre de ventes:</span>
-                        <strong style="color: #3b82f6;">{{ session.sales_count }}</strong>
-                    </div>
-                    <div class="info-row">
-                        <span>Total des ventes:</span>
-                        <strong style="color: #10b981;">{{ session.total_sales|floatformat:0|intcomma }} F</strong>
-                    </div>
-                    <div class="info-row">
-                        <span>Espèces:</span>
-                        <span>{{ session.total_cash|floatformat:0|intcomma }} F</span>
-                    </div>
-                    <div class="info-row">
-                        <span>Cartes:</span>
-                        <span>{{ session.total_card|floatformat:0|intcomma }} F</span>
-                    </div>
-                    <div class="info-row">
-                        <span>Mobile Money:</span>
-                        <span>{{ session.total_mobile_money|floatformat:0|intcomma }} F</span>
-                    </div>
-                </div>
+<form method="post" id="closeForm">{% csrf_token %}
+<div class="pos-grid-2">
+    <div class="pos-card">
+        <div class="pos-card-head"><h3><i class="fa-solid fa-money-bill-wave"></i> Comptage du tiroir</h3><span class="pos-muted">Saisissez le nombre de billets et de pièces</span></div>
+        <div class="pos-card-body">
+            <div class="count-grid">
+                {% for d in denominations %}
+                <div class="count-row"><span class="den">{{ d|intcomma }} F</span>
+                    <input type="number" min="0" step="1" name="d{{ d }}" data-den="{{ d }}" class="form-control den-input" placeholder="0" inputmode="numeric">
+                    <span class="sub" id="sub{{ d }}">0 F</span></div>
+                {% endfor %}
+            </div>
+            <div class="form-group" style="margin:18px 0 0;">
+                <label>Total compté (F)</label>
+                <input type="number" min="0" step="1" name="closing_cash" id="closingCash" class="form-control" required style="font-size:22px;font-weight:800;padding:12px 14px;" placeholder="Calculé à partir du comptage, ou saisi directement">
             </div>
         </div>
     </div>
 
-    <!-- Formulaire de fermeture -->
-    <div class="card">
-        <div class="card-header">
-            <h3>💵 Comptage de caisse</h3>
+    <div>
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-calculator"></i> Espèces attendues</h3></div>
+            <div class="pos-card-body">
+                <div class="sum-line"><span>Fond d'ouverture</span><b>{{ session.opening_cash|floatformat:0|intcomma }} F</b></div>
+                <div class="sum-line"><span>+ Ventes en espèces</span><b>{{ session.total_cash|floatformat:0|intcomma }} F</b></div>
+                {% if session.cash_in %}<div class="sum-line"><span>+ Apports</span><b>{{ session.cash_in|floatformat:0|intcomma }} F</b></div>{% endif %}
+                {% for row in breakdown %}{% if row.code == 'cash' and row.refunds %}<div class="sum-line"><span>− Remboursements espèces</span><b>{{ row.refunds|floatformat:0|intcomma }} F</b></div>{% endif %}{% endfor %}
+                {% if session.cash_out %}<div class="sum-line"><span>− Sorties (dépenses, dépôts…)</span><b>{{ session.cash_out|floatformat:0|intcomma }} F</b></div>{% endif %}
+                <div class="sum-line big"><span>Attendu</span><span>{{ expected|floatformat:0|intcomma }} F</span></div>
+                <div class="gap-box" id="gapBox"><div class="pos-muted">Écart</div><div class="v" id="gapValue">—</div><div class="pos-muted" id="gapText">Saisissez le comptage</div></div>
+            </div>
         </div>
-        <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-
-                <div class="form-group">
-                    <label>💰 Espèces attendues en caisse</label>
-                    <input type="text" value="{{ session.opening_cash|add:session.total_cash|floatformat:0|intcomma }} F" disabled class="form-control" style="font-size: 18px; font-weight: 700; color: #10b981;">
-                    <small class="form-text">Fond de caisse ({{ session.opening_cash|intcomma }} F) + Ventes espèces ({{ session.total_cash|floatformat:0|intcomma }} F)</small>
-                </div>
-
-                <div class="form-group">
-                    <label>💵 Espèces réellement présentes en caisse *</label>
-                    <input type="number" name="closing_cash" step="1" required autofocus class="form-control" placeholder="Comptez les espèces et entrez le montant total" id="closingCash">
-                    <small class="form-text">Comptez manuellement toutes les espèces dans la caisse</small>
-                </div>
-
-                <div id="differenceAlert" style="display: none; padding: 1rem; border-radius: 8px; margin: 1rem 0;"></div>
-
-                <div class="form-group">
-                    <label>📝 Notes (optionnel)</label>
-                    <textarea name="notes" rows="3" class="form-control" placeholder="Remarques, incidents, etc."></textarea>
-                </div>
-
-                <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 1rem; margin: 1.5rem 0;">
-                    <strong>⚠️ Attention:</strong>
-                    <p style="margin: 0.5rem 0 0 0; font-size: 14px;">
-                        La fermeture de session est définitive. Assurez-vous d'avoir bien compté votre caisse avant de valider.
-                    </p>
-                </div>
-
-                <div style="display: flex; gap: 1rem;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">
-                        ✓ Fermer la session
-                    </button>
-                    <a href="{% url 'pos:dashboard' %}" class="btn btn-outline">
-                        Annuler
-                    </a>
-                </div>
-            </form>
+        <div class="pos-card">
+            <div class="pos-card-head"><h3><i class="fa-solid fa-receipt"></i> Session</h3></div>
+            <div class="pos-card-body">
+                <div class="sum-line"><span>Ventes ({{ session.sales_count }})</span><b>{{ session.total_sales|floatformat:0|intcomma }} F</b></div>
+                {% for row in breakdown %}<div class="sum-line"><span class="pos-muted" style="font-size:12px;">{{ row.label }}</span><span>{{ row.net|floatformat:0|intcomma }} F</span></div>{% endfor %}
+                {% if session.total_refunds %}<div class="sum-line"><span>Remboursements</span><b style="color:var(--dash-red);">−{{ session.total_refunds|floatformat:0|intcomma }} F</b></div>{% endif %}
+                {% if session.total_discounts %}<div class="sum-line"><span>Remises accordées</span><span>{{ session.total_discounts|floatformat:0|intcomma }} F</span></div>{% endif %}
+            </div>
+        </div>
+        <div class="pos-card">
+            <div class="pos-card-body">
+                <div class="form-group"><label>Note de clôture <span id="noteReq" style="color:var(--dash-red);display:none;">(obligatoire en cas d'écart)</span></label>
+                    <textarea name="notes" id="closeNotes" class="form-control" rows="2" placeholder="Ex : billet de 1 000 F déchiré, erreur de monnaie…"></textarea></div>
+                <button class="btn btn-orange" style="width:100%;justify-content:center;padding:12px;"><i class="fa-solid fa-lock"></i> Fermer la caisse</button>
+            </div>
         </div>
     </div>
 </div>
-
-<style>
-.card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.card-header {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.card-header h3 {
-    margin: 0;
-    font-size: 1.125rem;
-}
-
-.card-body {
-    padding: 1.5rem;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f3f4f6;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: #374151;
-}
-
-.form-control {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    font-size: 16px;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--orange);
-}
-
-.form-control:disabled {
-    background: #f9fafb;
-    color: #6b7280;
-}
-
-.form-text {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.875rem;
-    color: #6b7280;
-}
-</style>
-
+</form>
 <script>
-const expectedCash = {{ session.opening_cash|add:session.total_cash|floatformat:0 }};
-
-document.getElementById('closingCash').addEventListener('input', function() {
-    const closingCash = parseFloat(this.value) || 0;
-    const difference = closingCash - expectedCash;
-    const alert = document.getElementById('differenceAlert');
-
-    if (this.value && difference !== 0) {
-        alert.style.display = 'block';
-        if (difference > 0) {
-            alert.style.background = '#d1fae5';
-            alert.style.border = '1px solid #10b981';
-            alert.style.color = '#065f46';
-            alert.innerHTML = `<strong>✓ Excédent:</strong> +${difference.toLocaleString()} F`;
-        } else {
-            alert.style.background = '#fee2e2';
-            alert.style.border = '1px solid #dc2626';
-            alert.style.color = '#991b1b';
-            alert.innerHTML = `<strong>⚠️ Manquant:</strong> ${difference.toLocaleString()} F`;
-        }
-    } else if (this.value && difference === 0) {
-        alert.style.display = 'block';
-        alert.style.background = '#d1fae5';
-        alert.style.border = '1px solid #10b981';
-        alert.style.color = '#065f46';
-        alert.innerHTML = `<strong>✓ Parfait:</strong> La caisse est juste !`;
-    } else {
-        alert.style.display = 'none';
+(function() {
+    var expected = {{ expected|floatformat:'0u' }};
+    var inputs = document.querySelectorAll('.den-input'), total = document.getElementById('closingCash');
+    var fmt = function(n) { return Math.round(n).toLocaleString('fr-FR').replace(/ /g, ' ') + ' F'; };
+    var manual = false;
+    function recount() {
+        var sum = 0, any = false;
+        inputs.forEach(function(i) { var n = parseInt(i.value || 0, 10) || 0; if (i.value !== '') any = true;
+            sum += n * parseInt(i.dataset.den, 10); document.getElementById('sub' + i.dataset.den).textContent = fmt(n * parseInt(i.dataset.den, 10)); });
+        if (any) { total.value = sum; manual = false; }
+        gap();
     }
-});
+    function gap() {
+        var box = document.getElementById('gapBox'), v = document.getElementById('gapValue'), t = document.getElementById('gapText');
+        if (total.value === '') { v.textContent = '—'; t.textContent = 'Saisissez le comptage'; box.style.background = ''; v.style.color = ''; return; }
+        var d = parseFloat(total.value) - expected;
+        v.textContent = (d > 0 ? '+' : '') + fmt(d);
+        v.style.color = d === 0 ? '#047857' : (d > 0 ? '#b54708' : 'var(--dash-red)');
+        box.style.background = d === 0 ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.06)';
+        t.textContent = d === 0 ? 'Le tiroir est juste' : (d > 0 ? 'Excédent de caisse' : 'Manquant dans la caisse');
+        document.getElementById('noteReq').style.display = d === 0 ? 'none' : 'inline';
+        document.getElementById('closeNotes').required = d !== 0;
+    }
+    inputs.forEach(function(i) { i.addEventListener('input', recount); });
+    total.addEventListener('input', gap);
+    document.getElementById('closeForm').addEventListener('submit', function(e) {
+        if (!confirm('Fermer la caisse avec ' + fmt(parseFloat(total.value || 0)) + ' comptés ?')) e.preventDefault();
+    });
+})();
 </script>
 {% endblock %}
