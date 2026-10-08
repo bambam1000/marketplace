@@ -1,0 +1,4 @@
+{% extends layout %}
+{% block title %}{% if conversation %}{{ other.name }} — Messages{% else %}Messages{% endif %}{% endblock %}
+{% block content %}<div class="section mx-page">{% include 'messaging/_messenger.html' %}</div>{% endblock %}
+{% block dash %}{% include 'messaging/_messenger.html' %}{% endblock %}

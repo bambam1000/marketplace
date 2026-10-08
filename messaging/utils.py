@@ -29,6 +29,7 @@ def notify(user, notif_type, title, message, url='', send_email=False, email_sub
             html = render_to_string('emails/notification.html', {
                 'user': user, 'title': title, 'message': message,
                 'url': f"{settings.SITE_URL}{url}" if url else settings.SITE_URL,
+                'site_url': settings.SITE_URL.rstrip('/'),
             })
             email = EmailMessage(
                 subject=email_subject or f'{title} — Comptoir',
@@ -72,7 +73,7 @@ def send_new_message_notification(message):
         'sender_name': sender.display_name,
         'message_content': message.content,
         'conversation_url': conversation_url,
-        'site_url': settings.SITE_URL,
+        'site_url': settings.SITE_URL.rstrip('/'),
     }
 
     # Générer le contenu HTML et texte

@@ -239,10 +239,25 @@ class Review(models.Model):
 class Wishlist(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='wishlists')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    price_when_added = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True,
+                                           help_text="Prix du produit au moment de l'ajout aux favoris")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('user', 'product')
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.price_when_added is None and self.product_id:
+            self.price_when_added = self.product.price
+        super().save(*args, **kwargs)
+
+    @property
+    def price_drop(self):
+        """Baisse de prix depuis l'ajout (0 si le prix n'a pas baissé)."""
+        if self.price_when_added is None:
+            return 0
+        return max(0, int(self.price_when_added - self.product.price))
 
 
 class HeroBanner(models.Model):

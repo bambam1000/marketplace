@@ -621,6 +621,17 @@ def dash_product_unarchive(request, pk):
 SALES_PERIODS = [('today', "Aujourd'hui"), ('7d', '7 jours'), ('30d', '30 jours'), ('month', 'Ce mois'), ('all', 'Tout')]
 
 
+def _pdf_brand(p, x, baseline, size_mm=8):
+    """Dessine le symbole Comptoir à gauche d'un titre de PDF ; retourne l'abscisse du texte."""
+    from reportlab.lib.units import mm
+    from django.contrib.staticfiles import finders
+    path = finders.find('images/brand/mark-96.png')
+    if path:
+        p.drawImage(path, x, baseline - 1.6 * mm, width=size_mm * mm, height=size_mm * mm, mask='auto')
+        return x + (size_mm + 3) * mm
+    return x
+
+
 def _sales_queryset(request):
     """Lignes de vente payées visibles + filtres GET (page Ventes et son export).
     Retourne None si l'accès est refusé."""
@@ -1830,7 +1841,7 @@ def dash_transfers_export_pdf(request):
     width, height = landscape(A4)
 
     p.setFont('Helvetica-Bold', 16)
-    p.drawString(15*mm, height - 18*mm, 'Comptoir — Mouvements entre entrepôts')
+    p.drawString(_pdf_brand(p, 15*mm, height - 18*mm), height - 18*mm, 'Comptoir — Mouvements entre entrepôts')
     p.setFont('Helvetica', 9)
     p.drawString(15*mm, height - 24*mm, f'Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — {transfers.count()} transfert(s)')
     p.line(15*mm, height - 27*mm, width - 15*mm, height - 27*mm)
@@ -2369,7 +2380,7 @@ def dash_movements_export_pdf(request):
     width, height = landscape(A4)
 
     p.setFont('Helvetica-Bold', 16)
-    p.drawString(15*mm, height - 18*mm, 'Comptoir — Mouvements de stock')
+    p.drawString(_pdf_brand(p, 15*mm, height - 18*mm), height - 18*mm, 'Comptoir — Mouvements de stock')
     p.setFont('Helvetica', 9)
     p.drawString(15*mm, height - 24*mm, f'Généré le {timezone.now().strftime("%d/%m/%Y à %H:%M")} — {movements.count()} mouvement(s)')
     p.line(15*mm, height - 27*mm, width - 15*mm, height - 27*mm)
@@ -2472,7 +2483,7 @@ def dash_movement_pdf(request, pk):
     width, height = A4
 
     p.setFont('Helvetica-Bold', 20)
-    p.drawString(20*mm, height - 25*mm, 'Comptoir — Mouvement de stock')
+    p.drawString(_pdf_brand(p, 20*mm, height - 25*mm, 10), height - 25*mm, 'Comptoir — Mouvement de stock')
     p.setLineWidth(1)
     p.line(20*mm, height - 30*mm, width - 20*mm, height - 30*mm)
 

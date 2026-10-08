@@ -160,21 +160,105 @@ def promotions(request):
     products = Product.objects.filter(is_active=True, old_price__isnull=False).exclude(old_price=0)
     return render(request, 'catalog/promotions.html', {'products': products})
 
+WISHLIST_SORTS = {
+    'recent': ('Ajoutés récemment', ['-created_at']),
+    'prix': ('Prix croissant', ['product__price']),
+    '-prix': ('Prix décroissant', ['-product__price']),
+    'nom': ('Nom', ['product__name']),
+}
+WISHLIST_FILTERS = [('tous', 'Tous'), ('dispo', 'Disponibles'), ('baisse', 'Prix en baisse'), ('promo', 'En promotion')]
+
+
+def _safe_next(request, default):
+    """Adresse de retour : seulement une page de ce site (jamais un site externe)."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    for candidate in (request.POST.get('next'), request.GET.get('next'), request.META.get('HTTP_REFERER')):
+        if candidate and url_has_allowed_host_and_scheme(candidate, allowed_hosts={request.get_host()},
+                                                         require_https=request.is_secure()):
+            return candidate
+    return default
+
+
 @login_required
 def wishlist_view(request):
-    items = Wishlist.objects.filter(user=request.user).select_related('product', 'product__store')
-    return render(request, 'catalog/wishlist.html', {'items': items})
+    from django.urls import reverse
+    sort = request.GET.get('tri', 'recent')
+    if sort not in WISHLIST_SORTS:
+        sort = 'recent'
+    current = request.GET.get('filtre', 'tous')
+    items = list(Wishlist.objects.filter(user=request.user)
+                 .select_related('product', 'product__store', 'product__category')
+                 .order_by(*WISHLIST_SORTS[sort][1]))
+    for w in items:
+        p = w.product
+        w.available = p.is_active and p.stock > 0
+        w.archived = not p.is_active
+    groups = {
+        'tous': items,
+        'dispo': [w for w in items if w.available],
+        'baisse': [w for w in items if w.price_drop and not w.archived],
+        'promo': [w for w in items if w.product.discount_percent and not w.archived],
+    }
+    if current not in groups:
+        current = 'tous'
+    suggestions = []
+    if not items:
+        suggestions = (Product.objects.filter(is_active=True, stock__gt=0).select_related('store')
+                       .order_by('-orders_count')[:8])
+    return render(request, 'catalog/wishlist.html', {
+        'items': groups[current], 'all_count': len(items), 'current': current, 'sort': sort,
+        'sorts': [(k, v[0]) for k, v in WISHLIST_SORTS.items()],
+        'filters': [(k, label, len(groups[k])) for k, label in WISHLIST_FILTERS],
+        'available_count': len(groups['dispo']),
+        'total_value': sum(int(w.product.price) for w in groups['dispo']),
+        'saved': sum(w.price_drop for w in groups['baisse']),
+        'suggestions': suggestions, 'here': reverse('catalog:wishlist'),
+    })
+
 
 @login_required
 def toggle_wishlist(request, product_id):
+    """Ajoute le produit aux favoris, ou l'en retire s'il y est déjà. Répond en JSON aux appels AJAX."""
     product = get_object_or_404(Product, pk=product_id)
-    wish, created = Wishlist.objects.get_or_create(user=request.user, product=product)
-    if not created:
+    wish = Wishlist.objects.filter(user=request.user, product=product).first()
+    if wish:
         wish.delete()
-        messages.info(request, 'Retiré de la wishlist.')
+        added, text = False, f'« {product.name} » retiré de vos favoris.'
     else:
-        messages.success(request, 'Ajouté à la wishlist !')
-    return redirect(request.META.get('HTTP_REFERER', 'home'))
+        if not product.is_active:
+            messages.error(request, "Ce produit n'est plus disponible.")
+            return redirect(_safe_next(request, 'catalog:wishlist'))
+        Wishlist.objects.create(user=request.user, product=product)
+        added, text = True, f'« {product.name} » ajouté à vos favoris.'
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'added': added, 'count': Wishlist.objects.filter(user=request.user).count(), 'message': text})
+    (messages.success if added else messages.info)(request, text)
+    return redirect(_safe_next(request, 'home'))
+
+
+@login_required
+def wishlist_add_all_to_cart(request):
+    """Met dans le panier tous les favoris disponibles (quantité minimale de commande respectée)."""
+    if request.method != 'POST':
+        return redirect('catalog:wishlist')
+    from cart.views import get_cart, save_cart
+    cart = get_cart(request)
+    added = 0
+    for w in Wishlist.objects.filter(user=request.user).select_related('product', 'product__store'):
+        p = w.product
+        if not p.is_active or p.stock <= 0 or str(p.pk) in cart:
+            continue
+        cart[str(p.pk)] = {'name': p.name, 'price': int(p.price), 'quantity': max(1, p.min_order),
+                           'image': p.image.url if p.image else '', 'store': p.store.name, 'store_id': p.store.id,
+                           'color': '', 'size': ''}
+        added += 1
+    save_cart(request, cart)
+    if added:
+        s = 's' if added > 1 else ''
+        messages.success(request, f'{added} produit{s} ajouté{s} au panier.')
+    else:
+        messages.info(request, 'Tous vos favoris disponibles sont déjà dans le panier.')
+    return redirect('cart:view')
 
 def add_review(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
@@ -274,7 +358,7 @@ def search_autocomplete(request):
             'name': product['name'],
             'url': f"/boutique/produit/{product['slug']}/",
             'price': float(product['price']),
-            'icon': '🏷️'
+            'icon': 'fa-tag'
         })
 
     for store in stores:
@@ -284,7 +368,7 @@ def search_autocomplete(request):
             'name': store['name'],
             'url': f"/vendeur/{store['slug']}/",
             'city': store['city'],
-            'icon': '🏪'
+            'icon': 'fa-store'
         })
 
     return JsonResponse({'suggestions': suggestions})

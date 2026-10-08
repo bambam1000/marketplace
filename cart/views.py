@@ -10,9 +10,13 @@ from .utils import get_cart, save_cart
 @require_POST
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
+    if not product.is_active:
+        messages.error(request, "Ce produit n'est plus disponible.")
+        return redirect(request.META.get('HTTP_REFERER', 'home'))
     cart = get_cart(request)
     pid = str(product_id)
-    qty = int(request.POST.get('quantity', 1))
+    raw_qty = str(request.POST.get('quantity', 1)).strip()
+    qty = max(1, int(raw_qty)) if raw_qty.isdigit() else 1
     color = request.POST.get('color', '')
     size = request.POST.get('size', '')
     if pid in cart:

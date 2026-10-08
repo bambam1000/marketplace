@@ -1,105 +1,124 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages as flash
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.db.models import Q
-from .models import Conversation, Message, Notification
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+
 from accounts.models import User
+from .models import Conversation, Message, Notification
+from . import services
+
+
+def _layout(user):
+    """Vendeurs, administrateurs et employés restent dans le tableau de bord ; les acheteurs sur le site."""
+    from store import access
+    if access.is_admin(user) or user.is_seller or access.acting_store(user) is not None:
+        return 'dashboard/base.html'
+    return 'base.html'
+
+
+def _conversation_or_404(user, pk):
+    convo = get_object_or_404(Conversation.objects.select_related('buyer', 'seller', 'product'), pk=pk)
+    if not services.can_access(user, convo):
+        raise Http404
+    return convo
+
+
+def _wants_json(request):
+    return request.headers.get('x-requested-with') == 'XMLHttpRequest' or 'application/json' in request.headers.get('accept', '')
+
+
+def _messenger(request, convo=None):
+    query = request.GET.get('q', '').strip()[:80]
+    only_unread = request.GET.get('filtre') == 'non-lus'
+    conversations = list(services.inbox(request.user, query, only_unread))
+    for c in conversations:
+        c.other = services.counterpart(request.user, c)
+        c.when = services.short_when(c.last_at)
+        c.last_mine = c.last_sender == request.user.pk or (
+            not services.is_buyer_side(request.user, c) and c.last_sender != c.buyer_id)
+    context = {
+        'layout': _layout(request.user), 'conversations': conversations, 'q': query, 'only_unread': only_unread,
+        'conversation': convo, 'max_length': services.MAX_LENGTH,
+        'total_unread': services.unread_count(request.user),
+    }
+    if convo is not None:
+        msgs = list(convo.messages.select_related('sender'))
+        context.update(
+            other=services.counterpart(request.user, convo),
+            messages_list=[services.message_payload(m, request.user, convo) | {'obj': m} for m in msgs],
+            last_id=msgs[-1].pk if msgs else 0,
+        )
+    return render(request, 'messaging/messenger.html', context)
+
 
 @login_required
 def inbox(request):
-    convos = Conversation.objects.filter(
-        buyer=request.user
-    ) | Conversation.objects.filter(seller=request.user)
-    convos = convos.distinct().order_by('-updated_at')
+    return _messenger(request)
 
-    # Ajouter le compteur de messages non lus pour chaque conversation
-    for convo in convos:
-        convo.unread_count = Message.objects.filter(
-            conversation=convo,
-            is_read=False
-        ).exclude(sender=request.user).count()
-
-    return render(request, 'messaging/inbox.html', {'conversations': convos})
 
 @login_required
 def conversation(request, pk):
-    convo = get_object_or_404(Conversation, pk=pk)
+    convo = _conversation_or_404(request.user, pk)
     if request.method == 'POST':
         content = request.POST.get('content', '').strip()
-        if content:
-            Message.objects.create(conversation=convo, sender=request.user, content=content)
-            convo.save()  # updates updated_at
-    msgs = convo.messages.all()
-    msgs.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
-    all_convos = Conversation.objects.filter(
-        buyer=request.user
-    ) | Conversation.objects.filter(seller=request.user)
-    return render(request, 'messaging/conversation.html', {
-        'conversation': convo, 'messages_list': msgs,
-        'conversations': all_convos.distinct().order_by('-updated_at'),
-    })
+        if not content:
+            if _wants_json(request):
+                return JsonResponse({'error': 'Le message est vide.'}, status=400)
+            return redirect('messaging:conversation', pk=convo.pk)
+        if len(content) > services.MAX_LENGTH:
+            error = f'Message trop long ({len(content)} caractères, {services.MAX_LENGTH} au maximum).'
+            if _wants_json(request):
+                return JsonResponse({'error': error}, status=400)
+            flash.error(request, error)
+            return redirect('messaging:conversation', pk=convo.pk)
+        msg = Message.objects.create(conversation=convo, sender=request.user, content=content)
+        convo.save(update_fields=['updated_at'])
+        if _wants_json(request):
+            return JsonResponse({'message': services.message_payload(msg, request.user, convo)})
+        return redirect('messaging:conversation', pk=convo.pk)  # pas de renvoi du formulaire au rechargement
+
+    services.incoming(request.user, Conversation.objects.filter(pk=convo.pk)).filter(is_read=False).update(is_read=True)
+    return _messenger(request, convo)
+
 
 @login_required
 def new_conversation(request, seller_id):
-    seller = get_object_or_404(User, pk=seller_id, role='seller')
-    convo, _ = Conversation.objects.get_or_create(buyer=request.user, seller=seller)
-    product_id = request.GET.get('product')
-    if product_id:
-        convo.product_id = product_id
-        convo.save()
+    """Contacter une boutique (depuis un produit ou une boutique) ou un client (depuis le tableau de bord)."""
+    other = get_object_or_404(User, pk=seller_id, is_active=True)
+    product = None
+    raw = request.GET.get('product', '')
+    if raw.isdigit():
+        from catalog.models import Product
+        product = Product.objects.filter(pk=raw).select_related('store').first()
+    convo = services.start_conversation(request.user, other, product)
+    if convo is None:
+        flash.error(request, "Impossible d'ouvrir cette conversation.")
+        return redirect('messaging:inbox')
     return redirect('messaging:conversation', pk=convo.pk)
 
 
 @login_required
 def get_unread_count(request):
-    """API pour récupérer le nombre de messages non lus"""
-    user_conversations = Conversation.objects.filter(
-        Q(buyer=request.user) | Q(seller=request.user)
-    ).values_list('id', flat=True)
-
-    unread_count = Message.objects.filter(
-        conversation_id__in=user_conversations,
-        is_read=False
-    ).exclude(
-        sender=request.user
-    ).count()
-
-    return JsonResponse({'unread_count': unread_count})
+    """Nombre de messages non lus (badge de l'en-tête)."""
+    return JsonResponse({'unread_count': services.unread_count(request.user)})
 
 
 @login_required
 def get_new_messages(request, conversation_id):
-    """API pour récupérer les nouveaux messages d'une conversation"""
-    conversation = get_object_or_404(Conversation, pk=conversation_id)
-
-    # Vérifier que l'utilisateur fait partie de la conversation
-    if conversation.buyer != request.user and conversation.seller != request.user:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-
-    last_message_id = request.GET.get('last_id', 0)
-
-    # Récupérer les nouveaux messages
-    new_messages = Message.objects.filter(
-        conversation=conversation,
-        id__gt=last_message_id
-    ).order_by('created_at')
-
-    messages_data = [{
-        'id': msg.id,
-        'sender_name': msg.sender.display_name,
-        'sender_id': msg.sender.id,
-        'content': msg.content,
-        'created_at': msg.created_at.strftime('%H:%M'),
-        'is_mine': msg.sender == request.user
-    } for msg in new_messages]
-
-    # Marquer les messages comme lus
-    new_messages.exclude(sender=request.user).update(is_read=True)
-
-    return JsonResponse({
-        'messages': messages_data,
-        'count': len(messages_data)
-    })
+    """Messages arrivés depuis `last_id`, et le dernier de mes messages lu par l'autre côté."""
+    convo = Conversation.objects.filter(pk=conversation_id).select_related('buyer', 'seller').first()
+    if convo is None or not services.can_access(request.user, convo):
+        return JsonResponse({'error': 'Conversation introuvable'}, status=404)
+    raw = request.GET.get('last_id', '0')
+    last_id = int(raw) if raw.isdigit() else 0
+    new = list(convo.messages.filter(pk__gt=last_id).select_related('sender'))
+    incoming = services.incoming(request.user, Conversation.objects.filter(pk=convo.pk))
+    incoming.filter(is_read=False).update(is_read=True)
+    payload = [services.message_payload(m, request.user, convo) for m in new]
+    mine_read = (convo.messages.filter(is_read=True).exclude(pk__in=incoming.values('pk'))
+                 .order_by('-pk').values_list('pk', flat=True).first() or 0)
+    return JsonResponse({'messages': payload, 'count': len(payload), 'read_upto': mine_read,
+                         'unread_total': services.unread_count(request.user)})
 
 
 # ========== NOTIFICATIONS ==========

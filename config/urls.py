@@ -7,6 +7,10 @@ from django.conf.urls.i18n import i18n_patterns
 from whatsapp import views as whatsapp_views
 from config import pwa
 
+admin.site.site_header = 'Comptoir — Administration'
+admin.site.site_title = 'Comptoir'
+admin.site.index_title = 'Gestion de la plateforme'
+
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     # Appelé par Evolution API (serveur à serveur) : hors préfixe de langue

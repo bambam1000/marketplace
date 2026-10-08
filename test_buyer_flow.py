@@ -102,7 +102,7 @@ from messaging.models import Conversation
 convo = Conversation.objects.filter(buyer__username='acheteur_test', seller=seller).first()
 check('Conversation créée', convo is not None)
 r = c.post(f'/fr/messages/conversation/{convo.id}/', {'content': 'Bonjour, question sur le produit'})
-check('Envoi message', r.status_code == 200)
+check('Envoi message', r.status_code == 302)  # redirection après envoi (pas de renvoi au rechargement)
 check('Message enregistré', convo.messages.filter(content__contains='Bonjour').exists())
 r = c.get('/fr/messages/')
 check('Boîte de réception accessible', r.status_code == 200)

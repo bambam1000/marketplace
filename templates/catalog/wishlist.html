@@ -1,9 +1,184 @@
 {% extends 'base.html' %}{% load humanize %}
-{% block title %}Ma Wishlist{% endblock %}
+{% block title %}Mes favoris{% endblock %}
+{% block extra_css %}
+<style>
+.wl-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.wl-head h1 { font-size: 26px; display: flex; align-items: center; gap: 10px; }
+.wl-head h1 i { color: var(--red); font-size: 22px; }
+.wl-head h1 small { font-family: var(--font); font-size: 15px; color: var(--text3); font-weight: 500; }
+.wl-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.wl-stat { display: inline-flex; align-items: center; gap: 7px; background: var(--white); border: 1px solid var(--border2); border-radius: 50px; padding: 6px 12px; font-size: 12.5px; color: var(--text2); }
+.wl-stat b { color: var(--text); }
+.wl-stat i { color: var(--text3); font-size: 12px; }
+.wl-stat.save { background: var(--green-bg); border-color: #a7f3d0; color: #047857; }
+.wl-stat.save i, .wl-stat.save b { color: #047857; }
+.wl-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.wl-actions form { margin: 0; }
+.wl-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.wl-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; max-width: 100%; }
+.wl-toolbar > * { min-width: 0; }
+.wl-filters::-webkit-scrollbar { display: none; }
+.wl-filters a { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 50px; border: 1px solid var(--border); background: var(--white); font-size: 13px; font-weight: 600; color: var(--text2); }
+.wl-filters a span { font-size: 11px; color: var(--text3); font-weight: 700; }
+.wl-filters a.on { background: var(--orange); border-color: var(--orange); color: #fff; }
+.wl-filters a.on span { color: rgba(255,255,255,.85); }
+.wl-filters a.off { opacity: .45; pointer-events: none; }
+.wl-sort { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text3); }
+.wl-sort select { padding: 7px 12px; border: 1px solid var(--border); border-radius: 50px; font: 600 13px var(--font); color: var(--text2); background: var(--white); }
+.wl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.wl-card { background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; transition: var(--transition); position: relative; min-width: 0; }
+.wl-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,.09); border-color: #fcd5b5; }
+.wl-card.off .wl-img img, .wl-card.off .wl-img i { filter: grayscale(1); opacity: .55; }
+.wl-img { display: block; aspect-ratio: 1; background: #fafafa; position: relative; overflow: hidden; }
+.wl-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.wl-card:hover .wl-img img { transform: scale(1.03); }
+.wl-img > i { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 2.4rem; color: var(--text3); }
+.wl-tags { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.wl-tag { font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 4px; color: #fff; display: inline-flex; align-items: center; gap: 4px; }
+.wl-tag.promo { background: var(--red); }
+.wl-tag.drop { background: var(--green); }
+.wl-tag.out { background: #475467; }
+.wl-tag.gone { background: #101828; }
+.wl-remove { position: absolute; top: 8px; right: 8px; margin: 0; }
+.wl-remove button { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,.95); color: var(--red); font-size: 15px; box-shadow: 0 2px 8px rgba(0,0,0,.12); transition: var(--transition); }
+.wl-remove button:hover { background: var(--red); color: #fff; }
+.wl-body { padding: 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.wl-store { font-size: 11.5px; color: var(--text3); display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl-name { font-size: 13.5px; font-weight: 500; color: var(--text); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 38px; }
+.wl-name:hover { color: var(--orange); }
+.wl-prices { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
+.wl-price { font-size: 17px; font-weight: 800; color: var(--red); }
+.wl-old { font-size: 12px; color: var(--text3); text-decoration: line-through; }
+.wl-meta { font-size: 11.5px; color: var(--text3); display: flex; justify-content: space-between; gap: 6px; }
+.wl-meta .drop { color: #047857; font-weight: 700; }
+.wl-cta { margin-top: auto; padding-top: 8px; }
+.wl-cta form { margin: 0; }
+.wl-cta .btn { width: 100%; justify-content: center; padding: 9px; font-size: 13px; }
+.wl-cta .btn[disabled] { background: var(--bg); color: var(--text3); border: 1px solid var(--border); cursor: not-allowed; }
+.wl-empty { background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); text-align: center; padding: 3rem 1.5rem; }
+.wl-empty .ic { width: 72px; height: 72px; border-radius: 50%; background: var(--red-bg); color: var(--red); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 14px; }
+.wl-empty h3 { font-size: 19px; margin-bottom: 6px; }
+.wl-empty p { color: var(--text2); font-size: 13.5px; max-width: 420px; margin: 0 auto 16px; line-height: 1.6; }
+.wl-sugg h2 { font-size: 18px; margin: 2rem 0 1rem; }
+@media (max-width: 600px) {
+    .wl-head h1 { font-size: 21px; }
+    .wl-actions, .wl-actions form, .wl-actions .btn { width: 100%; }
+    .wl-actions .btn { justify-content: center; }
+    .wl-toolbar { flex-direction: column; align-items: stretch; }
+    .wl-sort { justify-content: space-between; }
+    .wl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .wl-body { padding: 9px; }
+    .wl-name { font-size: 12.5px; min-height: 35px; }
+    .wl-price { font-size: 15px; }
+    .wl-meta .added { display: none; }
+    .wl-remove button { width: 32px; height: 32px; font-size: 13px; }
+    .wl-cta .btn { font-size: 12px; padding: 8px 6px; }
+    .wl-cta .btn span { display: none; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Favoris</div>
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Mes favoris</div>
 <div class="section" style="padding-top:0;">
-<h2 style="font-size:16px;margin-bottom:1rem;">❤️ Ma Wishlist ({{ items|length }})</h2>
-<div class="products-grid">{% for w in items %}{% include 'includes/product_card.html' with product=w.product %}{% empty %}<div class="empty-state" style="grid-column:1/-1;"><div class="icon">❤️</div><h3>Votre wishlist est vide</h3><p>Explorez nos produits et ajoutez vos favoris.</p><a href="{% url 'catalog:product_list' %}" class="btn btn-orange" style="margin-top:12px;">Explorer</a></div>{% endfor %}</div>
+    <div class="wl-head">
+        <div>
+            <h1><i class="fa-solid fa-heart"></i> Mes favoris {% if all_count %}<small>({{ all_count }})</small>{% endif %}</h1>
+            {% if all_count %}
+            <div class="wl-stats">
+                <span class="wl-stat"><i class="fa-solid fa-circle-check"></i><b>{{ available_count }}</b> disponible{{ available_count|pluralize }}</span>
+                {% if total_value %}<span class="wl-stat"><i class="fa-solid fa-tag"></i>Valeur <b>{{ total_value|intcomma }} F</b></span>{% endif %}
+                {% if saved %}<span class="wl-stat save"><i class="fa-solid fa-arrow-trend-down"></i>Prix en baisse : <b>−{{ saved|intcomma }} F</b> depuis l'ajout</span>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% if all_count %}
+        <div class="wl-actions">
+            {% if available_count %}
+            <form method="post" action="{% url 'catalog:wishlist_add_all' %}">{% csrf_token %}
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-cart-plus"></i> Tout mettre au panier</button>
+            </form>
+            {% endif %}
+            <a href="{% url 'catalog:product_list' %}" class="btn btn-outline"><i class="fa-solid fa-magnifying-glass"></i> Continuer mes achats</a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if all_count %}
+    <div class="wl-toolbar">
+        <nav class="wl-filters" aria-label="Filtrer les favoris">
+            {% for key, label, n in filters %}
+            <a href="?filtre={{ key }}&tri={{ sort }}" class="{% if key == current %}on{% elif not n %}off{% endif %}">{{ label }} <span>{{ n }}</span></a>
+            {% endfor %}
+        </nav>
+        <form method="get" class="wl-sort">
+            <input type="hidden" name="filtre" value="{{ current }}">
+            <label for="wlSort">Trier par</label>
+            <select name="tri" id="wlSort" onchange="this.form.submit()">
+                {% for key, label in sorts %}<option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if items %}
+    <div class="wl-grid">
+        {% for w in items %}{% with p=w.product %}
+        <article class="wl-card {% if not w.available %}off{% endif %}">
+            <a href="{{ p.get_absolute_url }}" class="wl-img" aria-label="{{ p.name }}">
+                {% if p.image %}<img src="{{ p.image.url }}" alt="" loading="lazy">{% else %}<i class="fa-solid fa-bag-shopping"></i>{% endif %}
+                <span class="wl-tags">
+                    {% if w.archived %}<span class="wl-tag gone"><i class="fa-solid fa-ban"></i> Plus disponible</span>
+                    {% elif p.stock <= 0 %}<span class="wl-tag out"><i class="fa-solid fa-box-open"></i> Rupture</span>
+                    {% else %}
+                        {% if w.price_drop %}<span class="wl-tag drop"><i class="fa-solid fa-arrow-trend-down"></i> −{{ w.price_drop|intcomma }} F</span>{% endif %}
+                        {% if p.discount_percent %}<span class="wl-tag promo">−{{ p.discount_percent }} %</span>{% endif %}
+                    {% endif %}
+                </span>
+            </a>
+            <form method="post" action="{% url 'catalog:toggle_wishlist' p.id %}" class="wl-remove">{% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" title="Retirer de mes favoris" aria-label="Retirer {{ p.name }} de mes favoris"><i class="fa-solid fa-heart-crack"></i></button>
+            </form>
+            <div class="wl-body">
+                <div class="wl-store"><i class="fa-solid fa-store"></i> {{ p.store.name }}</div>
+                <a href="{{ p.get_absolute_url }}" class="wl-name">{{ p.name }}</a>
+                <div class="wl-prices"><span class="wl-price">{{ p.price|intcomma }} F</span>{% if p.old_price and p.old_price > p.price %}<span class="wl-old">{{ p.old_price|intcomma }} F</span>{% endif %}</div>
+                <div class="wl-meta">
+                    {% if w.price_drop and not w.archived %}<span class="drop">au lieu de {{ w.price_when_added|intcomma }} F</span>{% elif p.min_order > 1 %}<span>Min. {{ p.min_order }} pièces</span>{% else %}<span></span>{% endif %}
+                    <span class="added">ajouté le {{ w.created_at|date:"d/m/Y" }}</span>
+                </div>
+                <div class="wl-cta">
+                    {% if w.available %}
+                    <form method="post" action="{% url 'cart:add' p.id %}">{% csrf_token %}
+                        <input type="hidden" name="quantity" value="{{ p.min_order|default:1 }}">
+                        <button type="submit" class="btn btn-orange"><i class="fa-solid fa-cart-plus"></i> <span>Ajouter au panier</span></button>
+                    </form>
+                    {% elif w.archived %}
+                    <button type="button" class="btn" disabled>Retiré de la vente</button>
+                    {% else %}
+                    <a href="{% url 'store:detail' slug=p.store.slug %}" class="btn btn-outline" style="width:100%;justify-content:center;">Voir la boutique</a>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+        {% endwith %}{% endfor %}
+    </div>
+    {% else %}
+    <div class="wl-empty"><div class="ic"><i class="fa-solid fa-filter"></i></div><h3>Aucun favori dans ce filtre</h3><p>Essayez un autre filtre pour retrouver vos produits.</p><a href="{{ here }}" class="btn btn-outline">Voir tous mes favoris</a></div>
+    {% endif %}
+
+    {% else %}
+    <div class="wl-empty">
+        <div class="ic"><i class="fa-regular fa-heart"></i></div>
+        <h3>Vous n'avez pas encore de favoris</h3>
+        <p>Touchez le bouton « Favoris » sur la page d'un produit pour le retrouver ici, suivre son prix et le commander plus tard.</p>
+        <a href="{% url 'catalog:product_list' %}" class="btn btn-orange"><i class="fa-solid fa-magnifying-glass"></i> Découvrir les produits</a>
+    </div>
+    {% if suggestions %}
+    <div class="wl-sugg">
+        <h2>Les produits les plus commandés</h2>
+        <div class="products-grid">{% for p in suggestions %}{% include 'includes/product_card.html' with product=p %}{% endfor %}</div>
+    </div>
+    {% endif %}
+    {% endif %}
 </div>
 {% endblock %}

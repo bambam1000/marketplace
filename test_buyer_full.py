@@ -199,7 +199,7 @@ from messaging.models import Conversation
 convo = Conversation.objects.filter(buyer__username=f'acheteur{TS}', seller=seller).first()
 check('Conversation créée', convo is not None)
 r = c.post(f'/fr/messages/conversation/{convo.id}/', {'content': 'Bonjour, question sur le produit'})
-check('Envoi message (200)', r.status_code == 200, f'-> {r.status_code}')
+check('Envoi message (redirection vers la conversation)', r.status_code == 302 and r.url.endswith(f'/conversation/{convo.id}/'), f'-> {r.status_code}')
 check('Message enregistré', convo.messages.filter(content__contains='Bonjour').exists())
 r = c.get('/fr/messages/')
 check('Boîte de réception (200)', r.status_code == 200)

@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Connexion — Comptoir</title>
+<link rel="icon" type="image/svg+xml" href="{% static 'images/brand/favicon.svg' %}">
+<link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/pwa/favicon-32.png' %}">
+<link rel="stylesheet" href="{% static 'css/brand.css' %}?v=2">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -69,10 +72,7 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
 <div class="auth-split">
     <!-- Gauche : présentation -->
     <div class="auth-left">
-        <a href="{% url 'home' %}" class="auth-logo">
-            <span class="logo-ic"><i class="fa-solid fa-store"></i></span>
-            Comptoir
-        </a>
+        <a href="{% url 'home' %}" class="auth-logo" aria-label="Comptoir — accueil">{% include 'includes/logo.html' with size=38 tone='inverse' %}</a>
         <div class="auth-left-content">
             <h1>Bonjour !</h1>
             <div class="subtitle">Content de vous revoir sur Comptoir</div>

@@ -1,0 +1,239 @@
+{% load humanize %}
+<style>
+.mx { --mx-orange: #ff6a00; --mx-orange-soft: #fff4ec; --mx-text: #101828; --mx-text2: #475467; --mx-text3: #98a2b3; --mx-border: #eaecf0; --mx-bg: #f6f7f9;
+    display: grid; grid-template-columns: 340px minmax(0, 1fr); height: calc(100vh - 190px); min-height: 520px; background: #fff; border: 1px solid var(--mx-border);
+    border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(16,24,40,.06); color: var(--mx-text); }
+.mx-page { padding-top: 1rem; }
+.mx-side { border-right: 1px solid var(--mx-border); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.mx-side-head { padding: 16px 16px 10px; border-bottom: 1px solid var(--mx-border); }
+.mx-side-head h1 { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; font-family: inherit; font-weight: 800; }
+.mx-side-head h1 .n { background: var(--mx-orange); color: #fff; font-size: 11px; border-radius: 50px; padding: 1px 8px; }
+.mx-search { position: relative; }
+.mx-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--mx-text3); font-size: 13px; }
+.mx-search input { width: 100%; padding: 9px 12px 9px 34px; border: 1.5px solid var(--mx-border); border-radius: 10px; font: inherit; font-size: 13px; background: var(--mx-bg); }
+.mx-search input:focus { outline: none; border-color: var(--mx-orange); background: #fff; }
+.mx-filters { display: flex; gap: 6px; margin-top: 10px; }
+.mx-filters a { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 50px; border: 1px solid var(--mx-border); color: var(--mx-text2); text-decoration: none; }
+.mx-filters a.on { background: var(--mx-orange); border-color: var(--mx-orange); color: #fff; }
+.mx-list { flex: 1; overflow-y: auto; }
+.mx-item { display: flex; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f2f4f7; text-decoration: none; color: inherit; position: relative; }
+.mx-item:hover { background: var(--mx-bg); }
+.mx-item.on { background: var(--mx-orange-soft); }
+.mx-item.on::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--mx-orange); }
+.mx-av { width: 44px; height: 44px; border-radius: 50%; background: var(--mx-orange-soft); color: var(--mx-orange); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex-shrink: 0; }
+.mx-av.store { border-radius: 12px; background: #eef4ff; color: #2e6bd8; }
+.mx-item-main { flex: 1; min-width: 0; }
+.mx-item-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.mx-item-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-item-time { font-size: 11px; color: var(--mx-text3); white-space: nowrap; }
+.mx-item-sub { font-size: 11px; color: var(--mx-text3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-item-last { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; }
+.mx-item-last span { font-size: 12.5px; color: var(--mx-text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-item.unread .mx-item-name, .mx-item.unread .mx-item-last span { font-weight: 700; color: var(--mx-text); }
+.mx-badge { background: var(--mx-orange); color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 50px; min-width: 20px; padding: 1px 6px; text-align: center; flex-shrink: 0; }
+.mx-empty { text-align: center; padding: 3rem 1.5rem; color: var(--mx-text3); font-size: 13px; line-height: 1.6; }
+.mx-empty i { font-size: 34px; opacity: .3; display: block; margin-bottom: 12px; }
+.mx-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.mx-head { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--mx-border); }
+.mx-back { display: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--mx-border); align-items: center; justify-content: center; color: var(--mx-text); text-decoration: none; flex-shrink: 0; }
+.mx-head-main { flex: 1; min-width: 0; }
+.mx-head-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-head-role { font-size: 12px; color: var(--mx-text3); }
+.mx-head a.mx-link { font-size: 12px; font-weight: 600; color: var(--mx-orange); text-decoration: none; white-space: nowrap; }
+.mx-product { display: flex; align-items: center; gap: 10px; margin: 10px 18px 0; padding: 8px 10px; border: 1px solid var(--mx-border); border-radius: 10px; text-decoration: none; color: inherit; background: var(--mx-bg); }
+.mx-product img, .mx-product .ph { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #fff; display: flex; align-items: center; justify-content: center; color: var(--mx-text3); flex-shrink: 0; }
+.mx-product b { font-size: 13px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-product span { font-size: 12px; color: var(--mx-orange); font-weight: 700; }
+.mx-thread { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; background: var(--mx-bg); }
+.mx-day { align-self: center; font-size: 11px; font-weight: 600; color: var(--mx-text2); background: #fff; border: 1px solid var(--mx-border); padding: 3px 12px; border-radius: 50px; margin: 10px 0 6px; text-transform: capitalize; }
+.mx-msg { max-width: min(72%, 560px); padding: 9px 13px 7px; border-radius: 16px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; position: relative; }
+.mx-msg.in { align-self: flex-start; background: #fff; border: 1px solid var(--mx-border); border-bottom-left-radius: 5px; }
+.mx-msg.out { align-self: flex-end; background: var(--mx-orange); color: #fff; border-bottom-right-radius: 5px; }
+.mx-meta { display: flex; justify-content: flex-end; align-items: center; gap: 5px; font-size: 10.5px; margin-top: 3px; opacity: .75; white-space: nowrap; }
+.mx-who { font-size: 11px; font-weight: 700; margin-bottom: 2px; opacity: .85; }
+.mx-msg.out .mx-meta i.read { color: #fff; opacity: 1; }
+.mx-msg.pending { opacity: .6; }
+.mx-compose { display: flex; gap: 10px; align-items: flex-end; padding: 12px 18px; border-top: 1px solid var(--mx-border); background: #fff; }
+.mx-compose textarea { flex: 1; resize: none; border: 1.5px solid var(--mx-border); border-radius: 12px; padding: 10px 14px; font: inherit; font-size: 14px; line-height: 1.4; max-height: 140px; min-height: 44px; background: var(--mx-bg); }
+.mx-compose textarea:focus { outline: none; border-color: var(--mx-orange); background: #fff; }
+.mx-send { width: 44px; height: 44px; border-radius: 50%; border: none; background: var(--mx-orange); color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+.mx-send:disabled { opacity: .4; cursor: not-allowed; }
+.mx-count { font-size: 11px; color: var(--mx-text3); padding: 0 18px 8px; text-align: right; background: #fff; display: none; }
+.mx-count.warn { display: block; color: #d92d20; }
+.mx-hint { font-size: 11px; color: var(--mx-text3); padding: 0 18px 10px; background: #fff; }
+.mx-placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--mx-text3); padding: 2rem; background: var(--mx-bg); }
+.mx-placeholder i { font-size: 46px; opacity: .25; margin-bottom: 14px; }
+.mx-placeholder b { color: var(--mx-text); font-size: 16px; margin-bottom: 6px; }
+.mx-toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #d92d20; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 3000; display: none; }
+@media (max-width: 900px) {
+    .mx { grid-template-columns: minmax(0, 1fr); height: calc(100vh - 230px); min-height: 460px; border-radius: 12px; }
+    .mx.has-convo .mx-side { display: none; }
+    .mx:not(.has-convo) .mx-main { display: none; }
+    .mx-back { display: inline-flex; }
+    .mx-msg { max-width: 85%; }
+    .mx-hint { display: none; }
+    .mx-compose textarea { font-size: 16px; }
+}
+</style>
+
+<div class="mx {% if conversation %}has-convo{% endif %}">
+    <!-- Liste des conversations -->
+    <aside class="mx-side">
+        <div class="mx-side-head">
+            <h1><i class="fa-solid fa-comments" style="color:var(--mx-orange);"></i> Messages {% if total_unread %}<span class="n" id="mxTotal">{{ total_unread }}</span>{% endif %}</h1>
+            <form method="get" action="{% url 'messaging:inbox' %}" class="mx-search" role="search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="search" name="q" value="{{ q }}" placeholder="Rechercher un nom, un produit, un message…" aria-label="Rechercher dans les messages">
+                {% if only_unread %}<input type="hidden" name="filtre" value="non-lus">{% endif %}
+            </form>
+            <div class="mx-filters">
+                <a href="{% url 'messaging:inbox' %}{% if q %}?q={{ q|urlencode }}{% endif %}" class="{% if not only_unread %}on{% endif %}">Toutes</a>
+                <a href="{% url 'messaging:inbox' %}?filtre=non-lus{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if only_unread %}on{% endif %}">Non lues</a>
+            </div>
+        </div>
+        <div class="mx-list">
+            {% for c in conversations %}
+            <a href="{% url 'messaging:conversation' c.pk %}" class="mx-item {% if c.unread %}unread{% endif %} {% if conversation and c.pk == conversation.pk %}on{% endif %}">
+                <div class="mx-av {% if c.other.role == 'Boutique' %}store{% endif %}">{{ c.other.initials }}</div>
+                <div class="mx-item-main">
+                    <div class="mx-item-top"><span class="mx-item-name">{{ c.other.name }}</span><span class="mx-item-time">{{ c.when }}</span></div>
+                    {% if c.product %}<div class="mx-item-sub"><i class="fa-solid fa-tag"></i> {{ c.product.name }}</div>{% endif %}
+                    <div class="mx-item-last"><span>{% if c.last_mine %}Vous : {% endif %}{{ c.last_content|truncatechars:70 }}</span>{% if c.unread %}<b class="mx-badge">{{ c.unread }}</b>{% endif %}</div>
+                </div>
+            </a>
+            {% empty %}
+            <div class="mx-empty"><i class="fa-regular fa-comments"></i>
+                {% if q or only_unread %}Aucune conversation ne correspond.{% else %}Aucune conversation pour l'instant.<br>Contactez une boutique depuis la page d'un produit ou d'un vendeur.{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </aside>
+
+    <!-- Conversation ouverte -->
+    <section class="mx-main">
+        {% if conversation %}
+        <div class="mx-head">
+            <a href="{% url 'messaging:inbox' %}" class="mx-back" aria-label="Retour aux conversations"><i class="fa-solid fa-arrow-left"></i></a>
+            <div class="mx-av {% if other.role == 'Boutique' %}store{% endif %}">{{ other.initials }}</div>
+            <div class="mx-head-main">
+                <div class="mx-head-name">{{ other.name }}</div>
+                <div class="mx-head-role">{{ other.role }}{% if other.role == 'Client' and other.user.email %} · {{ other.user.email }}{% endif %}</div>
+            </div>
+            {% if other.store %}<a href="{% url 'store:detail' slug=other.store.slug %}" class="mx-link">Voir la boutique</a>{% endif %}
+        </div>
+        {% if conversation.product %}
+        <a href="{{ conversation.product.get_absolute_url }}" class="mx-product">
+            {% if conversation.product.image %}<img src="{{ conversation.product.image.url }}" alt="">{% else %}<span class="ph"><i class="fa-solid fa-box"></i></span>{% endif %}
+            <div style="min-width:0;"><b>{{ conversation.product.name }}</b><span>{{ conversation.product.price|intcomma }} F</span></div>
+        </a>
+        {% endif %}
+        <div class="mx-thread" id="mxThread" aria-live="polite">
+            {% for m in messages_list %}
+            {% ifchanged m.day %}<div class="mx-day">{{ m.day }}</div>{% endifchanged %}
+            <div class="mx-msg {% if m.mine %}out{% else %}in{% endif %}" data-id="{{ m.id }}">{% if m.mine and m.sender_id != request.user.pk %}<div class="mx-who">{{ m.sender_name }}</div>{% endif %}{{ m.content }}<div class="mx-meta">{{ m.obj.created_at|time:"H:i" }}{% if m.mine %} <i class="fa-solid {% if m.read %}fa-check-double read{% else %}fa-check{% endif %}" title="{% if m.read %}Lu{% else %}Envoyé{% endif %}"></i>{% endif %}</div></div>
+            {% empty %}
+            <div class="mx-placeholder" style="background:none;"><i class="fa-regular fa-paper-plane"></i><b>Démarrez la conversation</b>Écrivez votre premier message à {{ other.name }}.</div>
+            {% endfor %}
+        </div>
+        <form method="post" class="mx-compose" id="mxForm">{% csrf_token %}
+            <textarea name="content" id="mxInput" rows="1" maxlength="{{ max_length }}" placeholder="Écrire un message…" aria-label="Votre message" required></textarea>
+            <button type="submit" class="mx-send" id="mxSend" aria-label="Envoyer" disabled><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+        <div class="mx-count" id="mxCount"></div>
+        <div class="mx-hint">Entrée pour envoyer · Maj + Entrée pour aller à la ligne</div>
+        {% else %}
+        <div class="mx-placeholder"><i class="fa-regular fa-comments"></i><b>Vos conversations</b>Choisissez une conversation dans la liste pour la lire et répondre.</div>
+        {% endif %}
+    </section>
+</div>
+<div class="mx-toast" id="mxToast"></div>
+
+{% if conversation %}
+<script>
+(function() {
+    var thread = document.getElementById('mxThread'), form = document.getElementById('mxForm'),
+        input = document.getElementById('mxInput'), send = document.getElementById('mxSend'),
+        counter = document.getElementById('mxCount'), toast = document.getElementById('mxToast');
+    var MAX = {{ max_length }}, lastId = {{ last_id }}, me = {{ request.user.pk }}, busy = false, polling = false;
+    var POLL_URL = "{% url 'messaging:new_messages' conversation.pk %}";
+    var DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    var MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    var lastDay = (function() { var d = thread.querySelectorAll('.mx-day'); return d.length ? d[d.length - 1].textContent : ''; })();
+
+    function bottom() { thread.scrollTop = thread.scrollHeight; }
+    function showError(text) { toast.textContent = text; toast.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(function() { toast.style.display = 'none'; }, 3500); }
+    function dayLabel(date) {
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        var d = new Date(date); d.setHours(0, 0, 0, 0);
+        var diff = Math.round((today - d) / 864e5);
+        if (diff === 0) return "aujourd'hui";
+        if (diff === 1) return 'hier';
+        return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+    }
+    /* Le texte est inséré avec textContent : aucun HTML d'un message n'est interprété */
+    function render(m) {
+        if (thread.querySelector('[data-id="' + m.id + '"]')) return;
+        var empty = thread.querySelector('.mx-placeholder'); if (empty) empty.remove();
+        var when = new Date(m.time), label = m.day || dayLabel(when);
+        if (label !== lastDay) {
+            var sep = document.createElement('div'); sep.className = 'mx-day'; sep.textContent = label; thread.appendChild(sep); lastDay = label;
+        }
+        var el = document.createElement('div');
+        el.className = 'mx-msg ' + (m.mine ? 'out' : 'in'); el.dataset.id = m.id;
+        if (m.mine && m.sender_id !== me) { var who = document.createElement('div'); who.className = 'mx-who'; who.textContent = m.sender_name; el.appendChild(who); }
+        el.appendChild(document.createTextNode(m.content));
+        var meta = document.createElement('div'); meta.className = 'mx-meta';
+        meta.textContent = String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0');
+        if (m.mine) { var tick = document.createElement('i'); tick.className = 'fa-solid ' + (m.read ? 'fa-check-double read' : 'fa-check'); meta.appendChild(document.createTextNode(' ')); meta.appendChild(tick); }
+        el.appendChild(meta);
+        thread.appendChild(el);
+        lastId = Math.max(lastId, m.id);
+    }
+    function markRead(upto) {
+        thread.querySelectorAll('.mx-msg.out').forEach(function(el) {
+            if (+el.dataset.id <= upto) { var i = el.querySelector('.mx-meta i'); if (i) { i.className = 'fa-solid fa-check-double read'; i.title = 'Lu'; } }
+        });
+    }
+    function poll() {
+        if (polling || document.hidden) return;
+        polling = true;
+        fetch(POLL_URL + '?last_id=' + lastId, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                var atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+                (d.messages || []).forEach(render);
+                if (d.read_upto) markRead(d.read_upto);
+                if ((d.messages || []).length && atBottom) bottom();
+            })
+            .catch(function() {})
+            .finally(function() { polling = false; });
+    }
+    function resize() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 140) + 'px'; }
+    function refreshState() {
+        var len = input.value.length;
+        send.disabled = !input.value.trim() || busy;
+        counter.textContent = len + ' / ' + MAX;
+        counter.className = 'mx-count' + (len > MAX * 0.9 ? ' warn' : '');
+    }
+    input.addEventListener('input', function() { resize(); refreshState(); });
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && window.matchMedia('(min-width: 901px)').matches) { e.preventDefault(); form.requestSubmit(); }
+    });
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var text = input.value.trim();
+        if (!text || busy) return;
+        busy = true; refreshState();
+        fetch(form.action || location.pathname, { method: 'POST', body: new FormData(form), credentials: 'same-origin',
+                                                  headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || "Le message n'a pas pu être envoyé."); return d; }); })
+            .then(function(d) { render(d.message); bottom(); input.value = ''; resize(); })
+            .catch(function(err) { showError(err.message || "Le message n'a pas pu être envoyé. Vérifiez votre connexion."); })
+            .finally(function() { busy = false; refreshState(); input.focus(); });
+    });
+    setInterval(poll, 4000);
+    document.addEventListener('visibilitychange', function() { if (!document.hidden) poll(); });
+    bottom(); input.focus();
+})();
+</script>
+{% endif %}

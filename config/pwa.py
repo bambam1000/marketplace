@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.views.decorators.cache import cache_control
 
 # À incrémenter quand la liste des fichiers mis en cache change : les anciens caches sont supprimés.
-CACHE_VERSION = 'comptoir-v2'
+CACHE_VERSION = 'comptoir-v3'
 
 
 @cache_control(max_age=3600)

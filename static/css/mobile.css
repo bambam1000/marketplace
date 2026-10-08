@@ -51,6 +51,8 @@ body.m-locked { overflow: hidden; }
     .header { box-shadow: 0 1px 0 var(--border2); }
     .header-inner { flex-wrap: wrap; gap: 8px 10px; padding: 10px 14px; min-height: 0; }
     .logo { font-size: 1.55rem; margin-right: auto; }
+    .header .cpt-logo { --s: 32px; }
+    .m-drawer-head .cpt-logo { --s: 30px; }
     .header-actions { gap: 2px; }
     .header-icon { padding: 9px; }
     .header-icon-label, .m-hide { display: none !important; }

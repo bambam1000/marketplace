@@ -1,0 +1,7 @@
+{% comment %}
+Logo Comptoir. Paramètres :
+  size : hauteur du symbole en px (34 par défaut)
+  tone : dark (fond clair, défaut) | light (fond sombre) | inverse (fond orange)
+  mark_only : n'affiche que le symbole
+Exemple : {% include 'includes/logo.html' with size=36 tone='light' %}
+{% endcomment %}<span class="cpt-logo cpt-{{ tone|default:'dark' }}" style="--s:{{ size|default:34 }}px"><svg class="cpt-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect class="cpt-bg" width="64" height="64" rx="16"/><path class="cpt-c" d="M41.6 21.4A15 15 0 1 0 41.6 42.6" fill="none" stroke-width="9" stroke-linecap="round"/><rect class="cpt-dot" x="43.5" y="28.5" width="7" height="7" rx="2"/></svg>{% if not mark_only %}<span class="cpt-word">Comptoir</span>{% endif %}</span>

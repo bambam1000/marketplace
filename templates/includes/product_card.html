@@ -19,7 +19,7 @@
 </div>
 {% if product.min_order > 1 %}<div style="font-size:11px;color:var(--text3);margin-top:3px;">Min. {{ product.min_order }} pièces</div>{% endif %}
 <div class="product-meta">
-<span class="product-rating">{% if product.avg_rating %}★ {{ product.avg_rating }}{% else %}☆{% endif %} ({{ product.review_count }})</span>
+<span class="product-rating"><i class="fa-{% if product.avg_rating %}solid{% else %}regular{% endif %} fa-star"></i> {% if product.avg_rating %}{{ product.avg_rating }} {% endif %}({{ product.review_count }})</span>
 <span>{{ product.orders_count }} vendus</span>
 </div>
 <div class="product-store-info"><i class="fa-solid fa-store"></i> {{ product.store.name }}</div>
