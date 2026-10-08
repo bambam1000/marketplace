@@ -1,0 +1,302 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}WhatsApp — Connexion{% endblock %}
+{% block dash %}
+<style>
+.wa-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 0 0 20px; flex-wrap: wrap; }
+.wa-head h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wa-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--dash-text3); }
+.wa-meta i { margin-right: 4px; }
+.wa-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.wa-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.wa-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.wa-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.wa-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.wa-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.wa-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.wa-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; margin-bottom: 16px; align-items: start; }
+.wa-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); }
+.wa-card-head { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wa-card-head h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.wa-card-head h3 i { color: var(--dash-accent); }
+.wa-card-body { padding: 18px; }
+.wa-status { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 700; }
+.wa-status .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.wa-status.open { background: rgba(18,183,106,.1); color: var(--dash-green); }
+.wa-status.connecting { background: rgba(247,144,9,.1); color: var(--dash-yellow); }
+.wa-status.close { background: var(--dash-bg); color: var(--dash-text3); }
+.wa-info { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; font-size: 13px; margin: 0 0 16px; }
+.wa-info dt { color: var(--dash-text3); font-weight: 600; }
+.wa-info dd { margin: 0; color: var(--dash-text); font-weight: 600; }
+.wa-qr { display: none; text-align: center; padding: 6px 0 0; }
+.wa-qr img { width: 240px; max-width: 100%; height: auto; border: 1px solid var(--dash-border); border-radius: 8px; background: #fff; padding: 8px; }
+.wa-steps { list-style: none; counter-reset: step; margin: 16px 0 0; padding: 0; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.wa-steps li { counter-increment: step; display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--dash-text2); }
+.wa-steps li::before { content: counter(step); width: 20px; height: 20px; border-radius: 50%; background: var(--dash-bg); color: var(--dash-text2); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.wa-warn { display: flex; gap: 10px; padding: 12px 14px; border-radius: 6px; font-size: 12px; line-height: 1.6; background: rgba(247,144,9,.08); border: 1px solid rgba(247,144,9,.3); color: var(--dash-text2); margin-top: 16px; }
+.wa-warn i { color: var(--dash-yellow); margin-top: 2px; }
+.wa-diag { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.wa-diag li { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.wa-diag li.ok > i { color: var(--dash-green); margin-top: 2px; }
+.wa-diag li.ko > i { color: var(--dash-red); margin-top: 2px; }
+.wa-diag-help { font-size: 12px; color: var(--dash-text2); margin-top: 3px; line-height: 1.5; }
+.wa-err { display: flex; gap: 10px; padding: 12px 14px; border-radius: 6px; font-size: 13px; background: rgba(240,68,56,.08); border: 1px solid rgba(240,68,56,.3); color: var(--dash-red); margin-bottom: 16px; }
+.svc-cols { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); }
+.svc-col { padding: 12px 16px 14px; border-right: 1px solid var(--dash-border); }
+.svc-col:last-child { border-right: none; }
+.svc-col-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700; color: var(--dash-text3); text-transform: uppercase; letter-spacing: .04em; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid var(--dash-border); }
+.svc-col-head i { color: var(--dash-accent); margin-right: 4px; }
+.svc-col-count { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.svc { display: flex; gap: 10px; padding: 9px 0; cursor: help; }
+.svc + .svc { border-top: 1px dashed var(--dash-border); }
+.svc-ic { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.svc.active .svc-ic { background: rgba(37,211,102,.12); color: #128C7E; }
+.svc.inactive .svc-ic { background: var(--dash-bg); color: var(--dash-text3); }
+.svc-main { flex: 1; min-width: 0; }
+.svc-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.svc-title { font-weight: 700; font-size: 13px; color: var(--dash-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc.inactive .svc-title { color: var(--dash-text2); }
+.svc-right { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.svc-count { font-size: 11px; font-weight: 700; color: var(--dash-text2); background: var(--dash-bg); border-radius: 50px; padding: 0 7px; }
+.svc-dot { width: 8px; height: 8px; border-radius: 50%; }
+.svc-dot.active { background: var(--dash-green); }
+.svc-dot.inactive { background: var(--dash-border); box-shadow: inset 0 0 0 1px var(--dash-text3); }
+.svc-tags { font-size: 11px; color: var(--dash-text3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc-reason { font-size: 11px; color: var(--dash-yellow); font-weight: 600; margin-top: 2px; line-height: 1.4; }
+.log-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; border-bottom: 1px solid var(--dash-border); }
+.log-row:last-child { border-bottom: none; }
+.log-dir { color: var(--dash-text3); font-size: 11px; width: 12px; text-align: center; }
+.log-main { flex: 1; min-width: 0; }
+.log-title { font-size: 13px; font-weight: 600; color: var(--dash-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-title a { color: var(--dash-accent); }
+.log-sub { font-size: 11px; color: var(--dash-text3); }
+.log-sub a { color: var(--dash-text2); }
+.wa-test { display: flex; gap: 8px; flex-wrap: wrap; }
+.wa-test input { flex: 1; min-width: 160px; padding: 9px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+.wa-test input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.st-sent { background: rgba(46,144,250,.1); color: var(--dash-blue); }
+.st-read { background: rgba(122,90,248,.1); color: var(--dash-purple); }
+.st-failed { background: rgba(240,68,56,.1); color: var(--dash-red); }
+.st-queued, .st-sending, .st-received { background: var(--dash-bg); color: var(--dash-text3); }
+@media (max-width: 1000px) { .wa-grid { grid-template-columns: 1fr; } .svc-cols { grid-template-columns: 1fr; } .svc-col { border-right: none; border-bottom: 1px solid var(--dash-border); } .svc-col:last-child { border-bottom: none; } }
+@media (max-width: 900px) { .wa-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<!-- ═══ En-tête ═══ -->
+<div class="wa-head">
+    <div>
+        <h1><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> WhatsApp{% if is_platform %} — Numéro AfriMarket{% elif store %} — {{ store.name }}{% endif %}</h1>
+        <div class="wa-meta">
+            {% if is_platform %}
+            <span><i class="fa-solid fa-building"></i>Numéro de la plateforme : alertes vendeurs et relais pour les boutiques non connectées</span>
+            {% else %}
+            <span><i class="fa-solid fa-store"></i>Numéro de la boutique : messages à vos clients et conversations</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="wa-actions">
+        <a href="{% url 'whatsapp:inbox' %}{% if scope %}?scope={{ scope }}{% endif %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-comments"></i> Conversations{% if stats.unread %} ({{ stats.unread }}){% endif %}</a>
+        {% if is_admin %}
+        <a href="{% url 'whatsapp:settings' %}" class="btn btn-sm {% if not is_platform %}btn-orange{% else %}btn-outline{% endif %}">Ma boutique</a>
+        <a href="{% url 'whatsapp:settings' %}?scope=platform" class="btn btn-sm {% if is_platform %}btn-orange{% else %}btn-outline{% endif %}">Numéro AfriMarket</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══ Stats (30 derniers jours) ═══ -->
+<div class="wa-stats">
+    <div class="wa-stat">
+        <div><div class="lbl">Statut</div><div class="val" id="waStatVal" style="font-size:18px;color:{% if instance.is_connected %}var(--dash-green){% else %}var(--dash-text3){% endif %};">{% if instance %}{{ instance.get_status_display }}{% else %}Déconnecté{% endif %}</div><div class="sub">{% if instance.phone %}+{{ instance.phone }}{% else %}Aucun numéro{% endif %}</div></div>
+        <div class="ic" style="background:rgba(37,211,102,.12);color:#128C7E;"><i class="fa-brands fa-whatsapp"></i></div>
+    </div>
+    <div class="wa-stat">
+        <div><div class="lbl">Messages envoyés</div><div class="val">{{ stats.sent }}</div><div class="sub">30 derniers jours</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-paper-plane"></i></div>
+    </div>
+    <div class="wa-stat">
+        <div><div class="lbl">Taux de lecture</div><div class="val" style="color:var(--dash-purple);">{% if stats.read_rate is not None %}{{ stats.read_rate }} %{% else %}—{% endif %}</div><div class="sub">Messages lus par le destinataire</div></div>
+        <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-check-double"></i></div>
+    </div>
+    <div class="wa-stat">
+        <div><div class="lbl">Échecs</div><div class="val" style="color:{% if stats.failed %}var(--dash-red){% else %}var(--dash-text){% endif %};">{{ stats.failed }}</div><div class="sub">{% if stats.pending %}{{ stats.pending }} en attente ou en relance{% else %}Aucun envoi en attente{% endif %}</div></div>
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    </div>
+</div>
+
+{% if not ready %}
+<!-- ═══ Diagnostic ═══ -->
+<div class="wa-card" style="margin-bottom:16px;border-left:3px solid var(--dash-red);">
+    <div class="wa-card-head"><h3><i class="fa-solid fa-stethoscope" style="color:var(--dash-red);"></i> Pourquoi la connexion est impossible</h3></div>
+    <div class="wa-card-body">
+        <ul class="wa-diag">
+            {% for c in diagnostics %}
+            <li class="{% if c.ok %}ok{% else %}ko{% endif %}">
+                <i class="fa-solid {% if c.ok %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+                <div><strong>{{ c.label }}</strong>{% if not c.ok and c.help %}<div class="wa-diag-help">{{ c.help }}</div>{% endif %}</div>
+            </li>
+            {% endfor %}
+        </ul>
+        <p style="font-size:12px;color:var(--dash-text3);margin:14px 0 0;">Guide complet : <code>deploy/evolution/README.md</code>. Rechargez cette page une fois corrigé.</p>
+    </div>
+</div>
+{% elif api_error %}
+<div class="wa-err"><i class="fa-solid fa-triangle-exclamation"></i> Evolution API ne répond pas : vérifiez que le service est démarré.</div>
+{% endif %}
+
+<div class="wa-grid">
+    <!-- ═══ Connexion (+ test quand connecté) ═══ -->
+    <div class="wa-card">
+        <div class="wa-card-head">
+            <h3><i class="fa-solid fa-link"></i> Connexion</h3>
+            <span class="wa-status {{ instance.status|default:'close' }}" id="waStatus"><span class="dot"></span><span id="waStatusLabel">{% if instance %}{{ instance.get_status_display }}{% else %}Déconnecté{% endif %}</span></span>
+        </div>
+        <div class="wa-card-body">
+            <div id="waConnected" {% if not instance.is_connected %}style="display:none;"{% endif %}>
+                <dl class="wa-info">
+                    <dt>Numéro</dt><dd>{% if instance.phone %}+{{ instance.phone }}{% else %}—{% endif %}</dd>
+                    <dt>Profil</dt><dd>{{ instance.profile_name|default:"—" }}</dd>
+                    <dt>Connecté le</dt><dd>{{ instance.connected_at|date:"d/m/Y H:i"|default:"—" }}</dd>
+                </dl>
+                <form method="post" action="{% url 'whatsapp:test' %}" class="wa-test">
+                    {% csrf_token %}<input type="hidden" name="scope" value="{{ scope }}">
+                    <input type="tel" name="number" placeholder="Numéro de test, ex : 690 00 00 01" required aria-label="Numéro de test">
+                    <button type="submit" class="btn btn-sm btn-orange"><i class="fa-solid fa-paper-plane"></i> Tester</button>
+                </form>
+                <form method="post" action="{% url 'whatsapp:disconnect' %}" onsubmit="return confirm('Déconnecter ce numéro WhatsApp ?');" style="margin-top:12px;">
+                    {% csrf_token %}<input type="hidden" name="scope" value="{{ scope }}">
+                    <button type="submit" class="btn btn-sm btn-outline" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-link-slash"></i> Déconnecter</button>
+                </form>
+            </div>
+            <div id="waDisconnected" {% if instance.is_connected %}style="display:none;"{% endif %}>
+                <p style="font-size:13px;color:var(--dash-text2);margin:0 0 14px;line-height:1.6;">Aucun numéro connecté. Cliquez sur « Connecter WhatsApp », puis scannez le QR code avec le téléphone {% if is_platform %}d'AfriMarket{% else %}de la boutique{% endif %}.</p>
+                <button type="button" class="btn btn-orange" id="waConnectBtn" onclick="startConnect()" {% if not ready %}disabled style="opacity:.5;cursor:not-allowed;" title="Voir « Pourquoi la connexion est impossible »"{% endif %}><i class="fa-brands fa-whatsapp"></i> Connecter WhatsApp</button>
+                <div class="wa-qr" id="waQr">
+                    <img id="waQrImg" alt="QR code à scanner avec WhatsApp">
+                    <ol class="wa-steps">
+                        <li>Ouvrez WhatsApp sur le téléphone</li>
+                        <li><span>Menu <i class="fa-solid fa-ellipsis-vertical"></i> puis <strong>Appareils connectés</strong> puis <strong>Connecter un appareil</strong></span></li>
+                        <li>Scannez ce QR code (il se renouvelle tout seul)</li>
+                    </ol>
+                </div>
+                <p id="waError" style="display:none;color:var(--dash-red);font-size:13px;margin:12px 0 0;"></p>
+            </div>
+            <div class="wa-warn"><i class="fa-solid fa-triangle-exclamation"></i><span>Connexion de type WhatsApp Web (non officielle) : évitez les envois en masse à des inconnus, le numéro pourrait être bloqué. Utilisez un numéro dédié.</span></div>
+        </div>
+    </div>
+
+    <!-- ═══ Derniers messages (compact) ═══ -->
+    <div class="wa-card">
+        <div class="wa-card-head">
+            <h3><i class="fa-solid fa-clock-rotate-left"></i> Derniers messages</h3>
+            <a href="{% url 'whatsapp:inbox' %}{% if scope %}?scope={{ scope }}{% endif %}" style="font-size:12px;color:var(--dash-accent);font-weight:600;">Toutes les conversations</a>
+        </div>
+        {% for m in logs %}
+        <div class="log-row">
+            <i class="fa-solid {% if m.direction == 'in' %}fa-arrow-down{% else %}fa-arrow-up{% endif %} log-dir" title="{{ m.get_direction_display }}"></i>
+            <div class="log-main">
+                <div class="log-title">{{ m.get_purpose_display }}{% if m.order %} · <a href="{% url 'dashboard:order_detail' m.order.order_number %}">#{{ m.order.order_number }}</a>{% endif %}</div>
+                <div class="log-sub">{% if m.chat %}<a href="{% url 'whatsapp:chat' m.chat.pk %}">+{{ m.to_number }}</a>{% else %}+{{ m.to_number }}{% endif %} · {{ m.created_at|date:"d/m H:i" }}</div>
+            </div>
+            <span class="status-badge {% if m.status == 'delivered' %}st-delivered{% else %}st-{{ m.status }}{% endif %}" {% if m.error %}title="{{ m.error|truncatechars:200 }}"{% endif %}>{{ m.get_status_display }}</span>
+        </div>
+        {% empty %}
+        <div style="text-align:center;padding:2.5rem 1rem;color:var(--dash-text3);font-size:13px;">
+            <div style="font-size:28px;opacity:.3;margin-bottom:8px;"><i class="fa-solid fa-inbox"></i></div>
+            Aucun message pour l'instant
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ═══ Services disponibles : 3 colonnes compactes ═══ -->
+<div class="wa-card">
+    <div class="wa-card-head">
+        <h3><i class="fa-solid fa-layer-group"></i> Services disponibles</h3>
+        {% if instance.is_connected %}<span style="font-size:12px;color:var(--dash-text3);">Survolez un service pour le détail · activité sur 30 jours</span>
+        {% else %}<span style="font-size:12px;color:var(--dash-yellow);font-weight:600;"><i class="fa-solid fa-circle-info"></i> Connectez le numéro WhatsApp pour activer ces services.</span>{% endif %}
+    </div>
+    <div class="svc-cols">
+        {% for g in catalog_groups %}
+        <div class="svc-col">
+            <div class="svc-col-head"><span><i class="fa-solid {{ g.icon }}"></i> {{ g.label }}</span><span class="svc-col-count">{{ g.active }}/{{ g.items|length }} actif{{ g.active|pluralize:"s" }}</span></div>
+            {% for s in g.items %}
+            <div class="svc {{ s.state }}" title="{{ s.description }}">
+                <div class="svc-ic"><i class="fa-solid {{ s.icon }}"></i></div>
+                <div class="svc-main">
+                    <div class="svc-top">
+                        <span class="svc-title">{{ s.title }}</span>
+                        <span class="svc-right">{% if s.count %}<span class="svc-count">{{ s.count }}</span>{% endif %}<span class="svc-dot {{ s.state }}" aria-label="{% if s.state == 'active' %}Actif{% else %}Inactif{% endif %}"></span></span>
+                    </div>
+                    <div class="svc-tags">{{ s.trigger }}{% if s.recipient != '—' %} · {{ s.recipient }}{% endif %}</div>
+                    {% if s.reason %}<div class="svc-reason">{{ s.reason }}</div>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var WA = {
+    connect: "{% url 'whatsapp:connect' %}",
+    status: "{% url 'whatsapp:status' %}{% if scope %}?scope={{ scope }}{% endif %}",
+    scope: "{{ scope }}",
+    csrf: "{{ csrf_token }}",
+    labels: { open: 'Connecté', connecting: 'En attente du QR code', close: 'Déconnecté' }
+};
+var pollTimer = null;
+
+function setStatus(state) {
+    document.getElementById('waStatus').className = 'wa-status ' + state;
+    document.getElementById('waStatusLabel').textContent = WA.labels[state] || state;
+    document.getElementById('waStatVal').textContent = WA.labels[state] || state;
+}
+function showError(text) {
+    var el = document.getElementById('waError');
+    el.textContent = text;
+    el.style.display = text ? 'block' : 'none';
+}
+function showQr(src) {
+    if (!src) return;
+    document.getElementById('waQrImg').src = src;
+    document.getElementById('waQr').style.display = 'block';
+    document.getElementById('waConnectBtn').style.display = 'none';
+}
+
+function startConnect() {
+    showError('');
+    var btn = document.getElementById('waConnectBtn');
+    btn.disabled = true;
+    var body = new FormData();
+    body.append('scope', WA.scope);
+    fetch(WA.connect, { method: 'POST', body: body, headers: { 'X-CSRFToken': WA.csrf }, credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            if (!data.ok) { showError(data.error || 'Connexion impossible.'); return; }
+            if (data.state === 'open') { window.location.reload(); return; }
+            setStatus('connecting');
+            showQr(data.qr);
+            poll();
+        })
+        .catch(function() { btn.disabled = false; showError('Erreur réseau.'); });
+}
+
+/* Sonde le statut toutes les 3 s : le QR change régulièrement, la page se recharge une fois connecté */
+function poll() {
+    clearTimeout(pollTimer);
+    fetch(WA.status, { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.state === 'open') { window.location.reload(); return; }
+            setStatus(data.state || 'close');
+            if (data.qr) showQr(data.qr);
+            pollTimer = setTimeout(poll, 3000);
+        })
+        .catch(function() { pollTimer = setTimeout(poll, 5000); });
+}
+{% if instance.status == 'connecting' %}poll();{% endif %}
+</script>
+{% endblock %}

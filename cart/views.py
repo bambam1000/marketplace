@@ -231,6 +231,7 @@ def checkout(request):
                 product.adjust_stock(
                     -item['quantity'], 'sale', user=request.user,
                     reason='Vente en ligne', reference=order.order_number,
+                    warehouse=wh,
                 )
             except Product.DoesNotExist:
                 pass
@@ -238,11 +239,13 @@ def checkout(request):
             promo.apply_code()
             # Conversion des campagnes liées à ce code promo
             from marketing.models import Campaign
-            for camp in Campaign.objects.filter(promo_code=promo, status='active'):
-                Campaign.objects.filter(pk=camp.pk).update(
-                    conversions_count=camp.conversions_count + 1,
-                    revenue_generated=camp.revenue_generated + order.total_amount,
-                )
+            from django.db.models import F, Sum
+            store_amount = (order.items.filter(store_id=promo.store_id)
+                            .aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0) - discount
+            Campaign.objects.filter(promo_code=promo, status='active').update(
+                conversions_count=F('conversions_count') + 1,
+                revenue_generated=F('revenue_generated') + max(store_amount, 0),
+            )
         request.session.pop('promo_code', None)
 
         # Points de fidélité : 1 point par tranche de 1000 FCFA, par boutique
@@ -277,6 +280,8 @@ def checkout(request):
                 url=f'/dashboard/commandes/{order.order_number}/',
                 send_email=True,
             )
+        from whatsapp.services import notify_order_placed
+        notify_order_placed(order)
 
         messages.success(request, f'Commande {order.order_number} créée !')
         return redirect('orders:success', order_number=order.order_number)

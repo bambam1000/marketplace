@@ -1,13 +1,24 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}RFQ — {{ rfq.product_name }}{% endblock %}
 {% block dash %}
-<div style="max-width:800px;">
-<a href="{% url 'dashboard:rfqs' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour aux demandes</a>
+<div style="max-width:900px;">
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+    <a href="{% url 'dashboard:rfqs' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour aux demandes</a>
+    <span style="font-size:12px;color:var(--dash-text3);flex:1;">{% if current_view %}{{ current_view }}{% else %}Détail de la demande{% endif %}</span>
+</div>
 
-<!-- Infos de la demande -->
+<!-- ═══ Infos de la demande ═══ -->
 <div class="dash-card" style="padding:22px;margin-top:14px;margin-bottom:20px;">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px;">
-        <h2 style="margin:0;font-size:18px;">{{ rfq.product_name }}</h2>
+        <div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg, var(--dash-accent), var(--dash-accent-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;">{{ rfq.product_name|first|upper }}</div>
+                <div>
+                    <h2 style="margin:0;font-size:18px;">{{ rfq.product_name }}</h2>
+                    <div style="font-size:12px;color:var(--dash-text3);">RFQ #{{ rfq.id }}</div>
+                </div>
+            </div>
+        </div>
         <span class="status-badge {% if rfq.status == 'open' %}st-delivered{% elif rfq.status == 'quoted' %}st-pending{% else %}st-cancelled{% endif %}">{{ rfq.get_status_display }}</span>
     </div>
     <p style="font-size:13px;color:var(--dash-text2);line-height:1.7;margin-bottom:16px;">{{ rfq.description|linebreaksbr }}</p>
@@ -19,7 +30,7 @@
     </div>
 </div>
 
-<!-- Formulaire de devis -->
+<!-- ═══ Formulaire de devis ═══ -->
 {% if rfq.status == 'open' %}
 <div class="dash-card" style="padding:22px;">
     {% if user_quote %}

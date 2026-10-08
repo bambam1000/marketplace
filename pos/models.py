@@ -4,6 +4,8 @@ from django.utils import timezone
 from decimal import Decimal
 import uuid
 
+from config.numbering import save_with_reference
+
 
 class POSSession(models.Model):
     """Session de caisse - ouverture/fermeture"""
@@ -15,6 +17,9 @@ class POSSession(models.Model):
     session_number = models.CharField(max_length=50, unique=True, editable=False)
     store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='pos_sessions')
     cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='cashier_sessions')
+    # Entrepôt où se trouve la caisse : le stock vendu en sort
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='pos_sessions')
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
 
@@ -46,9 +51,8 @@ class POSSession(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.session_number:
-            date_str = timezone.now().strftime('%Y%m%d')
-            count = POSSession.objects.filter(opened_at__date=timezone.now().date()).count() + 1
-            self.session_number = f"SESS-{date_str}-{count:03d}"
+            prefix = f"SESS-{timezone.localdate():%Y%m%d}-"
+            return save_with_reference(self, 'session_number', prefix, 3, lambda: super(POSSession, self).save(*args, **kwargs))
         super().save(*args, **kwargs)
 
     def close_session(self, closing_cash):
@@ -89,6 +93,8 @@ class POSSale(models.Model):
     session = models.ForeignKey(POSSession, on_delete=models.CASCADE, related_name='sales')
     store = models.ForeignKey('store.Store', on_delete=models.CASCADE)
     cashier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='pos_sales')
+    warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.SET_NULL, null=True, blank=True,
+                                  related_name='pos_sales')
 
     # Client (optionnel)
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='pos_purchases')
@@ -128,10 +134,11 @@ class POSSale(models.Model):
         return f"{self.sale_number} - {self.total_amount} F"
 
     def save(self, *args, **kwargs):
+        if self.warehouse_id is None and self.session_id:
+            self.warehouse_id = self.session.warehouse_id
         if not self.sale_number:
-            date_str = timezone.now().strftime('%Y%m%d')
-            count = POSSale.objects.filter(created_at__date=timezone.now().date()).count() + 1
-            self.sale_number = f"SALE-{date_str}-{count:05d}"
+            prefix = f"SALE-{timezone.localdate():%Y%m%d}-"
+            return save_with_reference(self, 'sale_number', prefix, 5, lambda: super(POSSale, self).save(*args, **kwargs))
         super().save(*args, **kwargs)
 
     def calculate_totals(self):
@@ -174,7 +181,7 @@ class POSSale(models.Model):
                 item.product.save(update_fields=['orders_count'])
                 item.product.adjust_stock(
                     -item.quantity, 'pos', user=self.cashier,
-                    reason='Vente POS', reference=self.sale_number,
+                    reason='Vente POS', reference=self.sale_number, warehouse=self.warehouse,
                 )
 
         # Mettre à jour la session
@@ -193,7 +200,7 @@ class POSSale(models.Model):
             if item.product:
                 item.product.adjust_stock(
                     item.quantity, 'return', user=self.cashier,
-                    reason='Remboursement POS', reference=self.sale_number,
+                    reason='Remboursement POS', reference=self.sale_number, warehouse=self.warehouse,
                 )
 
         # Mettre à jour la session
@@ -212,6 +219,8 @@ class POSSaleItem(models.Model):
     product_sku = models.CharField(max_length=50, blank=True)
     quantity = models.DecimalField(max_digits=10, decimal_places=3, default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True,
+                                    help_text="Prix d'achat unitaire figé à la vente")
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # Options
@@ -225,6 +234,8 @@ class POSSaleItem(models.Model):
         return f"{self.product_name} x{self.quantity}"
 
     def save(self, *args, **kwargs):
+        if self.unit_cost is None and self.product_id:
+            self.unit_cost = self.product.cost_price
         # Calculer le total
         subtotal = float(self.quantity) * float(self.unit_price)
         discount = subtotal * (float(self.discount_percent) / 100)

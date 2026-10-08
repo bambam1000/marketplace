@@ -19,9 +19,19 @@
                     <input type="text" value="{{ request.user.display_name }}" disabled class="form-control">
                 </div>
 
+                {% if warehouses %}
+                <div class="form-group">
+                    <label for="posWarehouse">🏬 Entrepôt de la caisse</label>
+                    <select name="warehouse" id="posWarehouse" class="form-control">
+                        {% for w in warehouses %}<option value="{{ w.pk }}" {% if w.is_default %}selected{% endif %}>{{ w.name }} ({{ w.code }}){% if w.is_default %} — par défaut{% endif %}</option>{% endfor %}
+                    </select>
+                    <small class="form-text">Le stock des produits vendus sortira de cet entrepôt, et les ventes apparaîtront dans sa comptabilité.</small>
+                </div>
+                {% endif %}
+
                 <div class="form-group">
                     <label>💵 Fond de caisse (Espèces de départ)</label>
-                    <input type="number" name="opening_cash" step="100" value="0" class="form-control" required autofocus>
+                    <input type="number" name="opening_cash" step="100" min="0" value="0" class="form-control" required autofocus>
                     <small class="form-text">Montant en espèces dans la caisse au début de la session</small>
                 </div>
 

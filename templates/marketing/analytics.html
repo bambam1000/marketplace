@@ -122,21 +122,22 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{{ chart|json_script:"mkt-chart" }}
 <script>
+var CHART = JSON.parse(document.getElementById('mkt-chart').textContent);
 new Chart(document.getElementById('salesChart'), {
     data: {
-        labels: {{ chart_labels|safe }},
+        labels: CHART.labels,
         datasets: [
             {
                 type: 'line', label: 'Revenus (FCFA)',
-                data: {{ chart_revenue|safe }},
+                data: CHART.revenue,
                 borderColor: '#ff6a00', backgroundColor: 'rgba(255,106,0,.08)',
                 fill: true, tension: .35, yAxisID: 'y', pointRadius: 0,
             },
             {
                 type: 'bar', label: 'Commandes',
-                data: {{ chart_orders|safe }},
+                data: CHART.orders,
                 backgroundColor: 'rgba(46,144,250,.5)', yAxisID: 'y1', borderRadius: 3,
             }
         ]

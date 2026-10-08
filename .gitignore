@@ -16,3 +16,6 @@ db.sqlite3
 # OS / IDE
 Thumbs.db
 .vscode/
+
+# Secrets Evolution API
+deploy/evolution/.env

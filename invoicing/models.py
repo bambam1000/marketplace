@@ -50,10 +50,13 @@ class InvoiceSettings(models.Model):
         return f"Paramètres - {self.store.name}"
 
     def get_next_invoice_number(self):
-        """Génère le prochain numéro de facture"""
-        number = f"{self.invoice_prefix}-{self.next_invoice_number:06d}"
-        self.next_invoice_number += 1
-        self.save()
+        """Génère le prochain numéro de facture (réservation atomique du compteur)."""
+        from django.db import transaction
+        with transaction.atomic():
+            locked = type(self).objects.select_for_update().get(pk=self.pk)
+            number = f"{locked.invoice_prefix}-{locked.next_invoice_number:06d}"
+            type(self).objects.filter(pk=self.pk).update(next_invoice_number=models.F('next_invoice_number') + 1)
+        self.refresh_from_db(fields=['next_invoice_number'])
         return number
 
 

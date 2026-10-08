@@ -23,7 +23,7 @@
         <h1><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-accent);"></i> Dépenses — {{ warehouse.name }}</h1>
         <p style="font-size:13px;color:var(--dash-text3);">{{ expenses|length }} dépense{{ expenses|length|pluralize:"s" }} · Total : <strong style="color:var(--dash-red);">{{ total|intcomma }} F</strong></p>
     </div>
-    <button type="button" class="btn btn-orange" onclick="document.getElementById('expenseModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle dépense</button>
+    {% if can_add_expense %}<button type="button" class="btn btn-orange" onclick="document.getElementById('expenseModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle dépense</button>{% endif %}
 </div>
 
 <div class="dash-card">
@@ -43,18 +43,25 @@
     </div>
     <div class="dash-table-responsive">
     <table class="dash-table">
-        <thead><tr><th>Description</th><th>Catégorie</th><th>Date</th><th>Montant</th><th>Par</th></tr></thead>
+        <thead><tr><th>Description</th><th>Catégorie</th><th>Date</th><th>Montant</th><th>Par</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
             {% for e in expenses %}
             <tr>
-                <td style="font-weight:600;">{{ e.description }}</td>
+                <td style="font-weight:600;">{{ e.description }}{% if e.receipt %} <a href="{{ e.receipt.url }}" target="_blank" rel="noopener" title="Voir le justificatif" style="color:var(--dash-blue);"><i class="fa-solid fa-paperclip"></i></a>{% endif %}</td>
                 <td><span class="tag tag-orange">{{ e.get_category_display }}</span></td>
                 <td style="font-size:12px;color:var(--dash-text3);">{{ e.date|date:"d/m/Y" }}</td>
                 <td style="font-weight:700;color:var(--dash-red);">-{{ e.amount|intcomma }} F</td>
                 <td style="font-size:12px;">{% if e.created_by %}{{ e.created_by.display_name }}{% else %}—{% endif %}</td>
+                <td style="text-align:right;">
+                    {% if can_add_expense %}
+                    <form method="post" action="{% url 'dashboard:warehouse_expense_delete' warehouse.pk e.pk %}" style="margin:0;display:inline;" onsubmit="return confirm('Supprimer cette dépense ?');">{% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline" style="color:var(--dash-red);border-color:var(--dash-red);" title="Supprimer" aria-label="Supprimer la dépense"><i class="fa-solid fa-trash-can"></i></button>
+                    </form>
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" style="text-align:center;padding:3rem;">
+            <tr><td colspan="6" style="text-align:center;padding:3rem;">
                 <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-money-bill-wave"></i></div>
                 <div style="color:var(--dash-text3);">Aucune dépense enregistrée</div>
             </td></tr>
@@ -71,7 +78,7 @@
             <h3><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-accent);"></i> Nouvelle dépense</h3>
             <button type="button" class="dmodal-close" onclick="document.getElementById('expenseModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form method="post" action="{% url 'dashboard:warehouse_accounting' warehouse.pk %}">
+        <form method="post" action="{% url 'dashboard:warehouse_accounting' warehouse.pk %}" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="dmodal-body">
                 <div class="form-group">
@@ -84,6 +91,11 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                     <div class="form-group"><label>Montant (F) *</label><input type="number" name="amount" class="form-control" min="1" required></div>
                     <div class="form-group"><label>Date</label><input type="date" name="date" class="form-control" value="{{ today }}"></div>
+                </div>
+                <div class="form-group">
+                    <label>Justificatif (facultatif)</label>
+                    <input type="file" name="receipt" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                    <small style="font-size:11px;color:var(--dash-text3);">PDF ou image, 5 Mo maximum</small>
                 </div>
             </div>
             <div class="dmodal-foot">

@@ -10,10 +10,14 @@ from catalog.models import Product, Category, Review
 from accounts.models import User
 from store.models import Store
 import json
+import re
 from messaging.models import Conversation, Message
 from django.http import JsonResponse
 from django.utils.text import slugify
+from django.urls import reverse
 from functools import wraps
+from django.conf import settings
+from store import access
 
 
 def seller_or_admin_required(view_func):
@@ -48,126 +52,216 @@ def store_permission_required(permission):
     return decorator
 
 
+DASHBOARD_PERIODS = [('7', '7 jours'), ('30', '30 jours'), ('90', '90 jours'), ('365', '12 mois')]
+MONTHS_SHORT_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+DAYS_SHORT_FR = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
+
+
+def _period_figures(store, warehouse_id, start, end):
+    """Chiffres d'une période : ventes payées (hors annulées/remboursées) + caisse POS, de la boutique (ou de toutes : store=None)."""
+    from django.db.models import DecimalField, ExpressionWrapper
+    from django.db.models.functions import Coalesce
+    from pos.models import POSSale
+    money = DecimalField(max_digits=18, decimal_places=2)
+    line = ExpressionWrapper(F('price') * F('quantity'), output_field=money)
+    cost = ExpressionWrapper(F('quantity') * Coalesce('unit_cost', 'product__cost_price', output_field=money), output_field=money)
+    items = (OrderItem.objects.filter(order__is_paid=True, order__created_at__date__gte=start, order__created_at__date__lte=end)
+             .exclude(order__status__in=['cancelled', 'refunded']))
+    pos = POSSale.objects.filter(status='completed', created_at__date__gte=start, created_at__date__lte=end)
+    if store is not None:
+        items, pos = items.filter(store=store), pos.filter(store=store)
+    if warehouse_id:
+        items, pos = items.filter(warehouse_id=warehouse_id), pos.filter(warehouse_id=warehouse_id)
+    direct = Q(order__shipping_address=Order.DIRECT_SALE_ADDRESS)
+    agg = items.aggregate(online=Sum(line, filter=~direct), direct=Sum(line, filter=direct), cost=Sum(cost),
+                          costed=Sum(line, filter=Q(unit_cost__isnull=False) | Q(product__cost_price__isnull=False)),
+                          orders=Count('order', distinct=True), qty=Sum('quantity'))
+    pos_agg = pos.aggregate(total=Sum('total_amount'), tax=Sum('tax_amount'), n=Count('id'))
+    pos_rev = int((pos_agg['total'] or 0) - (pos_agg['tax'] or 0))
+    online, direct_rev = int(agg['online'] or 0), int(agg['direct'] or 0)
+    revenue = online + direct_rev + pos_rev
+    sales = (agg['orders'] or 0) + (pos_agg['n'] or 0)
+    costed = int(agg['costed'] or 0)
+    return {
+        'items': items, 'pos': pos, 'line': line,
+        'revenue': revenue, 'online': online, 'direct': direct_rev, 'pos_revenue': pos_rev,
+        'orders': agg['orders'] or 0, 'pos_count': pos_agg['n'] or 0, 'sales': sales, 'qty': agg['qty'] or 0,
+        'basket': round(revenue / sales) if sales else 0,
+        # Marge calculée seulement sur les lignes dont le prix d'achat est connu
+        'margin': costed - int(agg['cost'] or 0) if costed else None,
+        'margin_rate': round((costed - int(agg['cost'] or 0)) * 100 / costed) if costed else None,
+        'cost_coverage': round(costed * 100 / (online + direct_rev)) if (online + direct_rev) else 0,
+    }
+
+
+def _variation_pct(current, previous):
+    if previous in (None, 0) or current is None:
+        return None
+    return round((current - previous) * 100 / abs(previous))
+
+
 @login_required
 def index(request):
     user = request.user
-    is_admin = user.is_superuser or user.role == 'admin'
-    is_seller = user.is_seller and user.stores.exists()
-    is_member = user.store_memberships.filter(is_active=True).exists()
-    # Les acheteurs n'ont pas accès au dashboard (sauf employés de boutique)
-    if not (is_admin or is_seller or is_member):
+    is_admin = access.is_admin(user)
+    store = access.acting_store(user)
+    if not is_admin and store is None:
         django_messages.error(request, "Le tableau de bord est réservé aux vendeurs.")
         return redirect('home')
-    now = timezone.now()
-    today = now.date()
-    store = getattr(user, 'store', None) if is_seller else None
+    scope_store = None if is_admin and store is None else store
+    limit = access.member_warehouse_id(user, store) if store is not None else None
+    can = lambda perm: is_admin or (store is not None and access.has_perm(user, store, perm))  # noqa: E731
+    perms = {k: can(v) for k, v in {'sales': 'sales.view', 'orders': 'orders.view', 'stock': 'stock.view',
+                                     'invoices': 'invoicing.view', 'products': 'products.view',
+                                     'manage': 'orders.manage', 'sell': 'sales.create'}.items()}
+    perms['owner'] = can(None)
 
-    # Base querysets
-    if is_admin:
-        orders_qs = Order.objects.all()
-        items_qs = OrderItem.objects.filter(order__is_paid=True)
-        products_qs = Product.objects.all()
-    elif is_seller:
-        orders_qs = Order.objects.filter(items__store=store).distinct()
-        items_qs = OrderItem.objects.filter(store=store, order__is_paid=True)
-        products_qs = store.products.all()
-    else:
-        orders_qs = Order.objects.filter(buyer=user)
-        items_qs = OrderItem.objects.none()
-        products_qs = Product.objects.none()
+    # ── Période ──
+    today = timezone.localdate()
+    period = request.GET.get('period', '30')
+    if period not in dict(DASHBOARD_PERIODS):
+        period = '30'
+    days = int(period)
+    start, end = today - timedelta(days=days - 1), today
+    prev_start, prev_end = start - timedelta(days=days), start - timedelta(days=1)
 
-    # KPIs
-    total_revenue = items_qs.aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
-    total_orders = orders_qs.count()
-    pending = orders_qs.filter(status='pending').count()
-    today_orders = orders_qs.filter(created_at__date=today).count()
-    today_revenue = items_qs.filter(order__created_at__date=today).aggregate(
-        t=Sum(F('price') * F('quantity')))['t'] or 0
-    this_month_revenue = items_qs.filter(order__created_at__month=now.month, order__created_at__year=now.year).aggregate(
-        t=Sum(F('price') * F('quantity')))['t'] or 0
-    products_count = products_qs.count()
-    low_stock = products_qs.filter(stock__lte=5, is_active=True).count()
-    total_reviews = Review.objects.count() if is_admin else (Review.objects.filter(product__store=store).count() if is_seller else 0)
-    avg_rating = Review.objects.aggregate(a=Avg('rating'))['a'] if is_admin else (Review.objects.filter(product__store=store).aggregate(a=Avg('rating'))['a'] if is_seller else 0)
+    ctx = {
+        'is_admin': is_admin, 'store': store, 'perms': perms, 'period': period, 'periods': DASHBOARD_PERIODS,
+        'period_label': dict(DASHBOARD_PERIODS)[period], 'today': today, 'start': start,
+        'day_name': ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'][today.weekday()],
+    }
 
-    # Extra admin KPIs
-    total_users = User.objects.count() if is_admin else 0
-    total_sellers = User.objects.filter(role='seller').count() if is_admin else 0
-    total_buyers = User.objects.filter(role='buyer').count() if is_admin else 0
-    total_stores = Store.objects.count() if is_admin else 0
-    verified_stores = Store.objects.filter(is_verified=True).count() if is_admin else 0
-    new_users_30d = User.objects.filter(date_joined__gte=now - timedelta(days=30)).count() if is_admin else 0
-    open_rfqs = 0
-    unread_messages = 0
-    if is_admin:
+    # ── Ventes (si l'utilisateur a le droit de les voir) ──
+    if perms['sales']:
+        cur = _period_figures(scope_store, limit, start, end)
+        prev = _period_figures(scope_store, limit, prev_start, prev_end)
+        ctx.update({'cur': cur, 'prev': prev, 'var': {
+            'revenue': _variation_pct(cur['revenue'], prev['revenue']),
+            'sales': _variation_pct(cur['sales'], prev['sales']),
+            'basket': _variation_pct(cur['basket'], prev['basket']),
+            'margin': _variation_pct(cur['margin'], prev['margin']),
+        }})
+        # Courbe : par jour (≤ 90 jours) ou par mois (12 mois), comparée à la période précédente
+        def series(fig, s_start, s_end, monthly):
+            trunc = TruncMonth if monthly else TruncDay
+            points = {}
+            for row in fig['items'].annotate(p=trunc('order__created_at')).values('p').annotate(t=Sum(fig['line'])):
+                key = row['p'].date() if hasattr(row['p'], 'date') else row['p']
+                points[key.replace(day=1) if monthly else key] = points.get(key, 0) + int(row['t'] or 0)
+            for row in fig['pos'].annotate(p=trunc('created_at')).values('p').annotate(t=Sum('total_amount'), x=Sum('tax_amount')):
+                key = row['p'].date() if hasattr(row['p'], 'date') else row['p']
+                key = key.replace(day=1) if monthly else key
+                points[key] = points.get(key, 0) + int((row['t'] or 0) - (row['x'] or 0))
+            labels, values, d = [], [], (s_start.replace(day=1) if monthly else s_start)
+            while d <= s_end:
+                labels.append(f'{MONTHS_SHORT_FR[d.month - 1]} {str(d.year)[2:]}' if monthly else f'{DAYS_SHORT_FR[d.weekday()]} {d.day}')
+                values.append(points.get(d, 0))
+                d = (d.replace(year=d.year + (d.month == 12), month=d.month % 12 + 1) if monthly else d + timedelta(days=1))
+            return labels, values
+        monthly = days > 90
+        labels, values = series(cur, start, end, monthly)
+        _, prev_values = series(prev, prev_start, prev_end, monthly)
+        ctx['chart'] = {'labels': labels, 'current': values, 'previous': prev_values[-len(values):] if prev_values else [],
+                        'monthly': monthly}
+        ctx['spark'] = values[-14:]
+        ctx['channels'] = [(label, value, round(value * 100 / cur['revenue']) if cur['revenue'] else 0, color)
+                           for label, value, color in (('En ligne', cur['online'], 'var(--dash-blue)'),
+                                                       ('Ventes directes', cur['direct'], 'var(--dash-purple)'),
+                                                       ('Caisse POS', cur['pos_revenue'], 'var(--dash-green)'))]
+        top = (cur['items'].values('product__name').annotate(rev=Sum(cur['line']), qty=Sum('quantity')).order_by('-rev')[:5])
+        best = max([int(t['rev'] or 0) for t in top] + [1])
+        ctx['top_products'] = [{'name': t['product__name'], 'qty': t['qty'], 'rev': int(t['rev'] or 0),
+                                'pct': round(int(t['rev'] or 0) * 100 / best)} for t in top]
+        # Nouveaux clients : premier achat (payé) dans la boutique pendant la période
+        from django.db.models import Min
+        firsts = OrderItem.objects.filter(order__is_paid=True)
+        if scope_store is not None:
+            firsts = firsts.filter(store=scope_store)
+        ctx['new_customers'] = (firsts.values('order__buyer').annotate(first=Min('order__created_at'))
+                                .filter(first__date__gte=start, first__date__lte=end).count())
+
+    # ── Commandes ──
+    if perms['orders']:
+        mine = OrderItem.objects.all() if scope_store is None else OrderItem.objects.filter(store=scope_store)
+        if limit:
+            mine = mine.filter(warehouse_id=limit)
+        orders = Order.objects.filter(pk__in=mine.values('order'))
+        recent = list(orders.select_related('buyer').order_by('-created_at')[:7])
+        shares = dict(mine.filter(order__in=recent).values('order').annotate(t=Sum(F('price') * F('quantity'))).values_list('order', 't'))
+        for o in recent:
+            o.share = int(shares.get(o.pk) or 0)
+        status_rows = (orders.filter(created_at__date__gte=start).values('status').annotate(n=Count('id')).order_by('-n'))
+        ctx.update({
+            'recent_orders': recent,
+            'status_chart': {'labels': [dict(Order.STATUS_CHOICES).get(r['status'], r['status']) for r in status_rows],
+                             'values': [r['n'] for r in status_rows]},
+            'period_orders': sum(r['n'] for r in status_rows),
+        })
+
+    # ── À faire ──
+    todo = []
+    if perms['orders']:
+        pending = orders.filter(status='pending')
+        n = pending.count()
+        if n:
+            oldest = pending.order_by('created_at').first()
+            age = (timezone.now() - oldest.created_at).days
+            todo.append(('fa-box', 'var(--dash-yellow)', f'{n} commande{"s" if n > 1 else ""} en attente',
+                         f'La plus ancienne date de {age} jour{"s" if age > 1 else ""}' if age else "Reçue aujourd'hui",
+                         reverse('dashboard:orders') + '?status=pending'))
+        to_ship = orders.filter(status__in=['confirmed', 'processing']).count()
+        if to_ship:
+            todo.append(('fa-truck-fast', 'var(--dash-blue)', f'{to_ship} commande{"s" if to_ship > 1 else ""} à expédier',
+                         'Confirmées ou en préparation', reverse('dashboard:orders') + '?status=processing'))
+    if perms['stock'] and scope_store is not None:
+        from inventory.models import ProductStock
+        stocks = ProductStock.objects.filter(warehouse__store=scope_store, product__is_active=True)
+        if limit:
+            stocks = stocks.filter(warehouse_id=limit)
+        out = stocks.filter(quantity=0).count()
+        low = stocks.filter(quantity__gt=0, quantity__lte=F('product__low_stock_threshold')).count()
+        if out or low:
+            todo.append(('fa-boxes-stacked', 'var(--dash-red)' if out else 'var(--dash-yellow)',
+                         ' · '.join(x for x in (f'{out} en rupture' if out else '', f'{low} en stock faible' if low else '') if x),
+                         'Seuil d\'alerte de chaque produit, par entrepôt', reverse('dashboard:products') + '?stock=low'))
+    if perms['invoices'] and scope_store is not None:
+        from invoicing.models import Invoice
+        inv = Invoice.objects.filter(store=scope_store, status='sent', due_date__lt=today)
+        if limit:
+            inv = inv.filter(warehouse_id=limit)
+        agg = inv.aggregate(n=Count('id'), t=Sum('total_amount'))
+        if agg['n']:
+            todo.append(('fa-file-invoice-dollar', 'var(--dash-red)', f'{agg["n"]} facture{"s" if agg["n"] > 1 else ""} en retard',
+                         f'{int(agg["t"] or 0):,} F à relancer'.replace(',', ' '), reverse('invoicing:invoices') + '?status=overdue'))
+    if perms['orders'] and scope_store is not None:
         from orders.models import RFQ
-        from messaging.models import Message
-        try:
-            open_rfqs = RFQ.objects.filter(status='open').count()
-            unread_messages = Message.objects.filter(is_read=False).count()
-        except: pass
+        rfqs = RFQ.objects.filter(status='open').exclude(quotes__store=scope_store).exclude(buyer=scope_store.owner).count()
+        if rfqs:
+            todo.append(('fa-file-signature', 'var(--dash-purple)', f'{rfqs} demande{"s" if rfqs > 1 else ""} de devis sans réponse',
+                         'Répondez vite pour décrocher la vente', reverse('dashboard:rfqs')))
+    if perms['manage'] and scope_store is not None:
+        from django.db.models import Sum as _Sum
+        from whatsapp.models import WhatsAppChat
+        unread = WhatsAppChat.objects.filter(instance__store=scope_store).aggregate(t=_Sum('unread_count'))['t'] or 0
+        if unread:
+            todo.append(('fa-comments', '#128C7E', f'{unread} message{"s" if unread > 1 else ""} WhatsApp non lu{"s" if unread > 1 else ""}',
+                         'Vos clients attendent une réponse', reverse('whatsapp:inbox')))
+    if perms['products'] and scope_store is not None:
+        no_cost = scope_store.products.filter(is_active=True, cost_price__isnull=True).count()
+        if no_cost:
+            todo.append(('fa-tags', 'var(--dash-text3)', f'{no_cost} produit{"s" if no_cost > 1 else ""} sans prix d\'achat',
+                         'Renseignez-le pour suivre votre marge', reverse('dashboard:products')))
+    ctx['todo'] = todo
 
-    # Seller-specific
-    pending_payout = 0
-    commission_total = 0
-    if is_seller and store:
-        from accounting.models import SellerWallet
-        wallet = SellerWallet.objects.filter(user=user).first()
-        if wallet:
-            pending_payout = wallet.pending_balance
-            commission_total = wallet.total_commission_paid
-
-    # Charts
-    monthly = items_qs.filter(
-        order__created_at__gte=now - timedelta(days=180)
-    ).annotate(month=TruncMonth('order__created_at')).values('month').annotate(
-        rev=Sum(F('price') * F('quantity')), cnt=Count('order', distinct=True)
-    ).order_by('month')
-    months = [m['month'].strftime('%b') for m in monthly]
-    revenues = [int(m['rev'] or 0) for m in monthly]
-    order_counts = [m['cnt'] for m in monthly]
-
-    # Daily (last 7 days)
-    daily = items_qs.filter(
-        order__created_at__gte=now - timedelta(days=7)
-    ).annotate(day=TruncDay('order__created_at')).values('day').annotate(
-        rev=Sum(F('price') * F('quantity'))
-    ).order_by('day')
-    daily_labels = [d['day'].strftime('%a') for d in daily]
-    daily_data = [int(d['rev'] or 0) for d in daily]
-
-    # Status distribution
-    status_data = orders_qs.values('status').annotate(cnt=Count('id'))
-    st_labels = [dict(Order.STATUS_CHOICES).get(s['status'], s['status']) for s in status_data]
-    st_data = [s['cnt'] for s in status_data]
-
-    # Top products
-    top_products = items_qs.values('product__name').annotate(
-        rev=Sum(F('price') * F('quantity')), qty=Sum('quantity')
-    ).order_by('-rev')[:5]
-
-    # Recent activity
-    recent_orders = orders_qs.select_related('buyer').order_by('-created_at')[:8]
-
-    return render(request, 'dashboard/index.html', {
-        'is_admin': is_admin, 'is_seller': is_seller, 'store': store,
-        'total_revenue': total_revenue, 'total_orders': total_orders,
-        'pending_orders': pending, 'products_count': products_count,
-        'today_orders': today_orders, 'today_revenue': today_revenue,
-        'this_month_revenue': this_month_revenue,
-        'low_stock': low_stock, 'total_reviews': total_reviews,
-        'avg_rating': round(avg_rating or 0, 1),
-        'total_users': total_users, 'total_sellers': total_sellers,
-        'total_buyers': total_buyers, 'total_stores': total_stores,
-        'verified_stores': verified_stores, 'new_users_30d': new_users_30d,
-        'open_rfqs': open_rfqs, 'unread_messages': unread_messages,
-        'pending_payout': pending_payout, 'commission_total': commission_total,
-        'months_json': json.dumps(months), 'revenues_json': json.dumps(revenues),
-        'order_counts_json': json.dumps(order_counts),
-        'daily_labels_json': json.dumps(daily_labels), 'daily_data_json': json.dumps(daily_data),
-        'st_labels_json': json.dumps(st_labels), 'st_data_json': json.dumps(st_data),
-        'top_products': top_products, 'recent_orders': recent_orders,
-    })
+    # ── Plateforme (admin) ──
+    if is_admin:
+        month_ago = timezone.now() - timedelta(days=30)
+        ctx['platform'] = {
+            'users': User.objects.count(), 'new_users': User.objects.filter(date_joined__gte=month_ago).count(),
+            'sellers': User.objects.filter(role='seller').count(), 'buyers': User.objects.filter(role='buyer').count(),
+            'stores': Store.objects.count(), 'verified': Store.objects.filter(is_verified=True).count(),
+        }
+    return render(request, 'dashboard/index.html', ctx)
 
 
 @login_required
@@ -213,43 +307,62 @@ def dash_orders(request):
     })
 
 
+def _credit_sellers_for_order(order):
+    """Crédite une seule fois chaque vendeur de la commande (montant de SES lignes, moins la commission).
+    La transaction 'sale' par (commande, vendeur) sert de verrou : si elle existe déjà, rien n'est recrédité."""
+    from accounting.models import Transaction, SellerWallet
+    from django.conf import settings
+    per_owner = {}
+    for item in order.items.select_related('store__owner'):
+        per_owner.setdefault(item.store.owner, 0)
+        per_owner[item.store.owner] += int(item.price) * item.quantity
+    for owner, sale_amount in per_owner.items():
+        commission = int(sale_amount * settings.SALES_COMMISSION_RATE)
+        _, created = Transaction.objects.get_or_create(
+            order=order, user=owner, type='sale',
+            defaults={
+                'amount': sale_amount,
+                'commission_amount': commission,
+                'net_amount': sale_amount - commission,
+                'status': 'completed',
+                'reference': f'Vente #{order.order_number}',
+            }
+        )
+        if created:
+            wallet, _ = SellerWallet.objects.get_or_create(user=owner)
+            wallet.balance += (sale_amount - commission)
+            wallet.total_earned += sale_amount
+            wallet.total_commission_paid += commission
+            wallet.save()
+
+
 @login_required
 @seller_or_admin_required
 def dash_order_detail(request, order_number):
     order = get_object_or_404(Order, order_number=order_number)
-    # Un vendeur ne peut gérer que les commandes contenant ses produits
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin:
-        if not order.items.filter(store=request.user.store).exists():
-            django_messages.error(request, "Cette commande ne concerne pas votre boutique.")
-            return redirect('dashboard:orders')
+    # Un vendeur (ou un employé avec orders.view) ne voit que les commandes contenant ses produits
+    allowed, store, limit = access.page_scope(request.user, 'orders.view')
+    if store is not None:
+        mine = order.items.filter(store=store)
+        if limit:
+            mine = mine.filter(warehouse_id=limit)
+        allowed = allowed and mine.exists()
+    if not allowed:
+        django_messages.error(request, "Cette commande ne concerne pas votre boutique.")
+        return redirect('dashboard:orders')
     if request.method == 'POST':
+        if store is not None and not access.has_perm(request.user, store, 'orders.manage'):
+            django_messages.error(request, "Vous n'avez pas le droit de modifier cette commande.")
+            return redirect('dashboard:order_detail', order_number=order_number)
         new_status = request.POST.get('status')
-        if new_status:
-            order.status = new_status
-            if new_status in ['confirmed', 'delivered']:
-                order.is_paid = True
-                # Create accounting transactions
-                from accounting.models import Transaction, SellerWallet
-                for item in order.items.all():
-                    sale_amount = int(item.price) * item.quantity
-                    commission = int(sale_amount * 0.10)
-                    Transaction.objects.get_or_create(
-                        order=order, user=item.store.owner, type='sale',
-                        defaults={
-                            'amount': sale_amount,
-                            'commission_amount': commission,
-                            'net_amount': sale_amount - commission,
-                            'status': 'completed',
-                            'reference': f'Vente #{order.order_number}',
-                        }
-                    )
-                    wallet, _ = SellerWallet.objects.get_or_create(user=item.store.owner)
-                    wallet.balance += (sale_amount - commission)
-                    wallet.total_earned += sale_amount
-                    wallet.total_commission_paid += commission
-                    wallet.save()
-            order.save()
+        if new_status and new_status in dict(Order.STATUS_CHOICES):
+            from django.db import transaction as db_transaction
+            with db_transaction.atomic():
+                order.status = new_status
+                if new_status in ['confirmed', 'delivered']:
+                    order.is_paid = True
+                    _credit_sellers_for_order(order)
+                order.save()
             # Notifier le client du changement de statut
             from messaging.utils import notify
             status_labels = {
@@ -265,6 +378,8 @@ def dash_order_detail(request, order_number):
                     url=f'/commandes/{order.order_number}/',
                     send_email=True,
                 )
+            from whatsapp.services import notify_order_status
+            notify_order_status(order, new_status, store)
             django_messages.success(request, f'Statut mis à jour.')
         tracking = request.POST.get('tracking_number')
         if tracking:
@@ -280,50 +395,135 @@ def get_user_warehouse(request):
     return member.warehouse if member and member.warehouse else None
 
 
-@login_required
-@seller_or_admin_required
-def dash_products(request):
-    if request.user.is_seller and (request.user.store is not None):
-        products = request.user.store.products.all()
-    else:
-        products = Product.objects.all()
-
-    # Filtre par entrepôt (paramètre ou entrepôt de l'employé)
-    from inventory.models import Warehouse
-    warehouse_id = request.GET.get('warehouse')
-    member_warehouse = get_user_warehouse(request)
-    if member_warehouse:
-        warehouse_id = member_warehouse.id
-    current_warehouse = None
-    if warehouse_id:
-        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
-        if current_warehouse:
-            products = products.filter(warehouse_stocks__warehouse=current_warehouse).distinct()
+def _products_queryset(request):
+    """Produits visibles + filtres GET (page Produits et son export).
+    Retourne None si l'accès est refusé, sinon un dict (queryset filtré, base des stats, contexte)."""
+    from django.db.models import OuterRef, Subquery
+    from inventory.models import ProductStock
+    allowed, store, limit = access.page_scope(request.user, 'products.view')
+    if not allowed:
+        return None
+    products = Product.objects.all() if store is None else store.products.all()
+    warehouse, invalid = access.resolve_warehouse(request, store, limit)
+    if invalid:
+        products = products.none()
+    stock_field = 'stock'
+    if warehouse:
+        # Stock de l'entrepôt affiché, à côté du stock global
+        here = ProductStock.objects.filter(product=OuterRef('pk'), warehouse=warehouse).values('quantity')[:1]
+        products = products.filter(warehouse_stocks__warehouse=warehouse).annotate(stock_here=Subquery(here))
+        stock_field = 'stock_here'
 
     q = request.GET.get('q', '').strip()
     if q:
-        products = products.filter(name__icontains=q)
+        products = products.filter(Q(name__icontains=q) | Q(sku__icontains=q))
+    base = products
     stock_filter = request.GET.get('stock', '')
     if stock_filter == 'out':
-        products = products.filter(stock=0)
+        products = products.filter(**{stock_field: 0})
     elif stock_filter == 'low':
-        products = [p for p in products if p.is_low_stock]
+        products = products.filter(**{f'{stock_field}__gt': 0, f'{stock_field}__lte': F('low_stock_threshold')})
     elif stock_filter == 'archived':
-        products = products.filter(is_active=False).select_related('category', 'store')
-    else:
-        products = products.select_related('category', 'store')
-    return render(request, 'dashboard/products.html', {
-        'products': products,
-        'categories': Category.objects.filter(is_active=True),
+        products = products.filter(is_active=False)
+    return {
+        'products': products.select_related('category', 'store').order_by('-created_at', '-pk'),
+        'base': base,
+        'store': store,
+        'limit': limit,
+        'warehouse': warehouse,
+        'stock_field': stock_field,
         'search_query': q,
         'stock_filter': stock_filter,
-        'warehouse': current_warehouse,
-        'current_warehouse': current_warehouse,
-        'total': len(products),
-        'active': sum(1 for p in products if p.is_active),
-        'low': sum(1 for p in products if p.is_low_stock),
-        'featured': sum(1 for p in products if p.is_featured),
+    }
+
+
+@login_required
+@seller_or_admin_required
+def dash_products(request):
+    from django.core.paginator import Paginator
+    data = _products_queryset(request)
+    if data is None:
+        django_messages.error(request, "Vous n'avez pas accès aux produits.")
+        return redirect('dashboard:index')
+    sf, store, warehouse = data['stock_field'], data['store'], data['warehouse']
+    stats = data['base'].aggregate(
+        total=Count('id'),
+        active=Count('id', filter=Q(is_active=True)),
+        low=Count('id', filter=Q(**{f'{sf}__gt': 0, f'{sf}__lte': F('low_stock_threshold')})),
+        out=Count('id', filter=Q(**{sf: 0})),
+        featured=Count('id', filter=Q(is_featured=True)),
+    )
+    page_obj = Paginator(data['products'], 25).get_page(request.GET.get('page'))
+    params = request.GET.copy()
+    params.pop('page', None)
+    can_edit = store is None or access.has_perm(request.user, store, None)
+    can_adjust = store is None or access.stock_access(request.user, store, 'stock.adjust', warehouse)
+    return render(request, 'dashboard/products.html', {
+        'products': page_obj,
+        'page_obj': page_obj,
+        'categories': Category.objects.filter(is_active=True),
+        'search_query': data['search_query'],
+        'stock_filter': data['stock_filter'],
+        'warehouse': warehouse,
+        'current_warehouse': warehouse,
+        'warehouses': access.selectable_warehouses(store, data['limit']),
+        'wh_query': f'warehouse={warehouse.pk}&' if warehouse else '',
+        'base_query': params.urlencode(),
+        'stats': stats,
+        'total': stats['total'],
+        'active': stats['active'],
+        'low': stats['low'],
+        'featured': stats['featured'],
+        'can_edit': can_edit,
+        'can_adjust': can_adjust,
     })
+
+
+@login_required
+@seller_or_admin_required
+def dash_products_export(request):
+    """Export Excel des produits (mêmes filtres que la page)"""
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    data = _products_queryset(request)
+    if data is None:
+        django_messages.error(request, "Vous n'avez pas accès aux produits.")
+        return redirect('dashboard:index')
+    warehouse = data['warehouse']
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Produits'
+    headers = ['Produit', 'SKU', 'Catégorie', 'Prix (F)', "Prix d'achat (F)", 'Marge (%)', 'Stock global']
+    if warehouse:
+        headers.append(f'Stock {warehouse.code}')
+    headers += ['Seuil', 'Ventes', 'Statut']
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for p in data['products'][:5000]:
+        row = [p.name, p.sku, p.category.name if p.category else '', int(p.price),
+               int(p.cost_price) if p.cost_price is not None else '', p.margin_percent if p.margin_percent is not None else '', p.stock]
+        if warehouse:
+            row.append(p.stock_here or 0)
+        row += [p.low_stock_threshold, p.orders_count, 'Actif' if p.is_active else 'Archivé']
+        ws.append(row)
+    for col, width in zip('ABCDEFGHIJK', (38, 14, 20, 12, 14, 10, 12, 12, 8, 8, 10)):
+        ws.column_dimensions[col].width = width
+    suffix = f'_{warehouse.code}' if warehouse else ''
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="produits{suffix}_{timezone.localdate():%Y%m%d}.xlsx"'
+    wb.save(response)
+    return response
+
+
+def _non_negative_or_none(value):
+    """Entier >= 0 saisi dans un formulaire, ou None si vide / invalide."""
+    try:
+        number = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return number if number >= 0 else None
 
 
 @login_required
@@ -346,6 +546,7 @@ def dash_product_edit(request, pk=None):
             'description': request.POST.get('description'),
             'price': request.POST.get('price'),
             'old_price': request.POST.get('old_price') or None,
+            'cost_price': _non_negative_or_none(request.POST.get('cost_price')),
             'stock': request.POST.get('stock', 0),
             'min_order': request.POST.get('min_order', 1),
             'colors': request.POST.get('colors', ''),
@@ -416,90 +617,248 @@ def dash_product_unarchive(request, pk):
     return redirect('dashboard:products')
 
 
-@login_required
-@seller_or_admin_required
-def dash_sales(request):
-    """Page Ventes : commandes payées avec statistiques"""
-    if request.user.is_seller and (request.user.store is not None):
-        items = OrderItem.objects.filter(store=request.user.store, order__is_paid=True)
-    else:
-        items = OrderItem.objects.filter(order__is_paid=True)
+SALES_PERIODS = [('today', "Aujourd'hui"), ('7d', '7 jours'), ('30d', '30 jours'), ('month', 'Ce mois'), ('all', 'Tout')]
 
-    # Filtre par entrepôt
-    from inventory.models import Warehouse
-    warehouse_id = request.GET.get('warehouse')
-    member_warehouse = get_user_warehouse(request)
-    if member_warehouse:
-        warehouse_id = member_warehouse.id
-    current_warehouse = None
-    if warehouse_id:
-        items = items.filter(warehouse_id=warehouse_id)
-        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
+
+def _sales_queryset(request):
+    """Lignes de vente payées visibles + filtres GET (page Ventes et son export).
+    Retourne None si l'accès est refusé."""
+    from datetime import datetime
+    allowed, store, limit = access.page_scope(request.user, 'sales.view')
+    if not allowed:
+        return None
+    items = OrderItem.objects.filter(order__is_paid=True)
+    if store is not None:
+        items = items.filter(store=store)
+    warehouse, invalid = access.resolve_warehouse(request, store, limit)
+    if invalid:
+        items = items.none()
+    elif warehouse:
+        items = items.filter(warehouse=warehouse)
 
     q = request.GET.get('q', '').strip()
     if q:
-        items = items.filter(Q(product__name__icontains=q) | Q(order__order_number__icontains=q))
+        items = items.filter(Q(product__name__icontains=q) | Q(order__order_number__icontains=q)
+                             | Q(order__shipping_name__icontains=q))
 
-    now = timezone.now()
-    total_revenue = items.aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
+    # Période (dates locales, heure de Douala)
+    today = timezone.localdate()
+    period = request.GET.get('period', 'all')
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    start = end = None
+    if date_from or date_to:
+        period = 'custom'
+        try:
+            start = datetime.strptime(date_from, '%Y-%m-%d').date() if date_from else None
+            end = datetime.strptime(date_to, '%Y-%m-%d').date() if date_to else None
+        except ValueError:
+            start = end = None
+    elif period == 'today':
+        start = end = today
+    elif period == '7d':
+        start, end = today - timedelta(days=6), today
+    elif period == '30d':
+        start, end = today - timedelta(days=29), today
+    elif period == 'month':
+        start, end = today.replace(day=1), today
+    else:
+        period = 'all'
+    if start:
+        items = items.filter(order__created_at__date__gte=start)
+    if end:
+        items = items.filter(order__created_at__date__lte=end)
+    return {
+        'items': items, 'store': store, 'limit': limit, 'warehouse': warehouse,
+        'search_query': q, 'period': period, 'date_from': date_from, 'date_to': date_to,
+        'start': start, 'end': end, 'today': today,
+    }
+
+
+@login_required
+@seller_or_admin_required
+def dash_sales(request):
+    """Page Ventes : lignes de vente payées, statistiques, graphique et top produits"""
+    from django.core.paginator import Paginator
+    from inventory.models import ProductStock
+    data = _sales_queryset(request)
+    if data is None:
+        django_messages.error(request, "Vous n'avez pas accès aux ventes.")
+        return redirect('dashboard:index')
+    items, store, warehouse, today = data['items'], data['store'], data['warehouse'], data['today']
+    line_total = F('price') * F('quantity')
+
+    total_revenue = items.aggregate(t=Sum(line_total))['t'] or 0
     total_qty = items.aggregate(t=Sum('quantity'))['t'] or 0
-    month_revenue = items.filter(order__created_at__month=now.month, order__created_at__year=now.year).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
     orders_count = items.values('order').distinct().count()
     avg_basket = int(total_revenue / orders_count) if orders_count else 0
+    month_revenue = (items.filter(order__created_at__date__gte=today.replace(day=1))
+                     .aggregate(t=Sum(line_total))['t'] or 0)
 
-    store = getattr(request.user, 'store', None)
+    # Graphique : CA par jour sur la période (30 derniers jours si "Tout"), 31 jours max
+    chart_end = data['end'] or today
+    chart_start = data['start'] or (chart_end - timedelta(days=29))
+    if (chart_end - chart_start).days > 30:
+        chart_start = chart_end - timedelta(days=30)
+    per_day = dict(
+        items.filter(order__created_at__date__gte=chart_start, order__created_at__date__lte=chart_end)
+        .annotate(day=TruncDay('order__created_at')).values('day')
+        .annotate(t=Sum(line_total)).values_list('day', 't')
+    )
+    per_day = {(d.date() if hasattr(d, 'date') else d): int(v or 0) for d, v in per_day.items()}
+    chart, day = [], chart_start
+    while day <= chart_end:
+        chart.append({'day': day, 'value': per_day.get(day, 0)})
+        day += timedelta(days=1)
+    chart_max = max([c['value'] for c in chart] + [1])
+    for c in chart:
+        c['pct'] = round(c['value'] * 100 / chart_max) if c['value'] else 0
+
+    top_products = (items.values('product__name')
+                    .annotate(qty=Sum('quantity'), revenue=Sum(line_total))
+                    .order_by('-revenue')[:5])
+
+    page_obj = Paginator(items.select_related('order', 'order__buyer', 'product', 'warehouse')
+                         .order_by('-order__created_at', '-pk'), 25).get_page(request.GET.get('page'))
+    params = request.GET.copy()
+    params.pop('page', None)
+
+    # Vente directe : produits avec le stock de l'entrepôt affiché (ou global)
+    sale_store = store or (warehouse.store if warehouse else None)
+    can_sell = bool(sale_store) and access.stock_access(request.user, sale_store, 'sales.create', warehouse)
+    my_products = []
+    if can_sell:
+        my_products = list(sale_store.products.filter(is_active=True).order_by('name'))
+        if warehouse:
+            here = dict(ProductStock.objects.filter(warehouse=warehouse).values_list('product_id', 'quantity'))
+            for prod in my_products:
+                prod.sell_stock = here.get(prod.pk, 0)
+        else:
+            for prod in my_products:
+                prod.sell_stock = prod.stock
+        my_products = [prod for prod in my_products if prod.sell_stock > 0]
+
     return render(request, 'dashboard/sales.html', {
-        'items': items.select_related('order', 'order__buyer', 'product').order_by('-order__created_at')[:100],
+        'items': page_obj,
+        'page_obj': page_obj,
         'total_revenue': total_revenue,
         'total_qty': total_qty,
         'month_revenue': month_revenue,
         'orders_count': orders_count,
         'avg_basket': avg_basket,
-        'search_query': q,
-        'my_products': store.products.filter(is_active=True, stock__gt=0) if store else [],
-        'warehouse': current_warehouse,
+        'search_query': data['search_query'],
+        'period': data['period'],
+        'periods': SALES_PERIODS,
+        'date_from': data['date_from'],
+        'date_to': data['date_to'],
+        'chart': chart,
+        'top_products': top_products,
+        'now': timezone.localtime(),
+        'my_products': my_products,
+        'can_sell': can_sell,
+        'warehouse': warehouse,
+        'warehouses': access.selectable_warehouses(store, data['limit']),
+        'wh_query': f'warehouse={warehouse.pk}&' if warehouse else '',
+        'base_query': params.urlencode(),
         'payment_choices': Order.PAYMENT_CHOICES,
     })
 
 
 @login_required
 @seller_or_admin_required
+def dash_sales_export(request):
+    """Export Excel des ventes (mêmes filtres que la page)"""
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    data = _sales_queryset(request)
+    if data is None:
+        django_messages.error(request, "Vous n'avez pas accès aux ventes.")
+        return redirect('dashboard:index')
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Ventes'
+    ws.append(['Date', 'Commande', 'Canal', 'Client', 'Produit', 'Entrepôt', 'Qté', 'Prix unit. (F)', 'Total (F)'])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    rows = (data['items'].select_related('order', 'order__buyer', 'product', 'warehouse')
+            .order_by('-order__created_at', '-pk')[:10000])
+    for it in rows:
+        o = it.order
+        ws.append([
+            timezone.localtime(o.created_at).strftime('%d/%m/%Y %H:%M'), o.order_number,
+            'Vente directe' if o.is_direct_sale else 'En ligne',
+            o.shipping_name or o.buyer.display_name, it.product.name,
+            it.warehouse.code if it.warehouse else '', it.quantity, int(it.price), int(it.price * it.quantity),
+        ])
+    for col, width in zip('ABCDEFGHI', (17, 16, 14, 24, 34, 12, 6, 14, 14)):
+        ws.column_dimensions[col].width = width
+    wh = data['warehouse']
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="ventes{"_" + wh.code if wh else ""}_{timezone.localdate():%Y%m%d}.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+@seller_or_admin_required
 def dash_sale_create(request):
-    """Vente directe : vendre sans commande en ligne (comptoir, téléphone...)"""
-    if request.method == 'POST':
-        store = getattr(request.user, 'store', None)
-        if not store:
-            django_messages.error(request, "Vous devez avoir une boutique.")
-            return redirect('dashboard:sales')
+    """Vente directe : vendre sans commande en ligne (comptoir, téléphone...).
+    Le stock sort de l'entrepôt choisi (celui de la page), sinon de l'entrepôt par défaut."""
+    from django.db import transaction
+    from inventory.models import Warehouse, ProductStock
+    if request.method != 'POST':
+        return redirect('dashboard:sales')
+    store = _acting_store(request.user)
+    if not store:
+        django_messages.error(request, "Vous devez avoir une boutique.")
+        return redirect('dashboard:sales')
 
-        product_ids = request.POST.getlist('product[]')
-        quantities = request.POST.getlist('quantity[]')
-        customer_name = request.POST.get('customer_name', '').strip() or 'Client comptoir'
-        customer_phone = request.POST.get('customer_phone', '').strip()
-        payment_method = request.POST.get('payment_method', 'cash')
-
-        # Valider les lignes
-        lines = []
-        for i, pid in enumerate(product_ids):
-            if not pid:
-                continue
-            product = get_object_or_404(Product, pk=pid, store=store)
-            qty = int(quantities[i]) if i < len(quantities) else 1
-            if qty < 1:
-                continue
-            if qty > product.stock:
-                django_messages.error(request, f'Stock insuffisant pour "{product.name}" : {product.stock} disponible(s).')
-                return redirect('dashboard:sales')
-            lines.append((product, qty))
-
-        if not lines:
-            django_messages.error(request, 'Ajoutez au moins un produit.')
-            return redirect('dashboard:sales')
-
-        from inventory.models import Warehouse
+    limit = _member_warehouse_id(request.user, store)
+    warehouse_id = limit or request.POST.get('warehouse') or None
+    if warehouse_id:
+        warehouse = Warehouse.objects.filter(pk=warehouse_id, store=store).first()
+        if warehouse is None:
+            django_messages.error(request, "Entrepôt invalide.")
+            return _safe_back(request, 'dashboard:sales')
+    else:
         warehouse = Warehouse.objects.filter(store=store, is_default=True).first()
+    if not _stock_access(request.user, store, 'sales.create', warehouse):
+        django_messages.error(request, "Vous n'avez pas le droit d'enregistrer une vente.")
+        return _safe_back(request, 'dashboard:sales')
 
-        total = sum(p.price * q for p, q in lines)
+    customer_name = request.POST.get('customer_name', '').strip() or 'Client comptoir'
+    customer_phone = request.POST.get('customer_phone', '').strip()
+    payment_method = request.POST.get('payment_method', 'cash')
+    if payment_method not in dict(Order.PAYMENT_CHOICES):
+        payment_method = 'cash'
+
+    # Regrouper les lignes d'un même produit, puis vérifier le stock disponible
+    wanted = {}
+    for pid, qty in _parse_items(request):
+        wanted[pid] = wanted.get(pid, 0) + qty
+    products = {p.pk: p for p in store.products.filter(pk__in=wanted)}
+    here = {}
+    if warehouse:
+        here = dict(ProductStock.objects.filter(warehouse=warehouse, product__in=products.values())
+                    .values_list('product_id', 'quantity'))
+    lines = []
+    for pid, qty in wanted.items():
+        product = products.get(pid)
+        if not product:
+            continue
+        available = min(product.stock, here.get(pid, 0)) if warehouse else product.stock
+        if qty > available:
+            where = f' dans {warehouse.name}' if warehouse else ''
+            django_messages.error(request, f'Stock insuffisant pour "{product.name}"{where} : {available} disponible(s).')
+            return _safe_back(request, 'dashboard:sales')
+        lines.append((product, qty))
+    if not lines:
+        django_messages.error(request, 'Ajoutez au moins un produit.')
+        return _safe_back(request, 'dashboard:sales')
+
+    total = sum(p.price * q for p, q in lines)
+    with transaction.atomic():
         order = Order.objects.create(
             buyer=request.user,
             status='delivered',
@@ -510,7 +869,7 @@ def dash_sale_create(request):
             total_amount=total,
             shipping_name=customer_name,
             shipping_phone=customer_phone or '—',
-            shipping_address='Vente directe',
+            shipping_address=Order.DIRECT_SALE_ADDRESS,
             shipping_city=store.city,
             notes=f'Vente directe — {customer_name}',
         )
@@ -520,8 +879,8 @@ def dash_sale_create(request):
             product.save(update_fields=['orders_count'])
             product.adjust_stock(-qty, 'sale', user=request.user, reason='Vente directe', reference=order.order_number, warehouse=warehouse)
 
-        django_messages.success(request, f'Vente {order.order_number} enregistrée : {len(lines)} produit(s), {total:,} F.')
-    return redirect('dashboard:sales')
+    django_messages.success(request, f'Vente {order.order_number} enregistrée : {len(lines)} produit(s), {total:,.0f} F.')
+    return _safe_back(request, 'dashboard:sales')
 
 
 # ======== DEVIS RFQ (dashboard vendeur) ========
@@ -582,6 +941,7 @@ def dash_rfqs(request):
         'total_open': RFQ.objects.filter(status='open').exclude(buyer=request.user).count(),
         'my_quotes_count': len(my_quoted_ids),
         'my_rfqs_count': my_rfqs.count(),
+        'quotes_received_count': Quote.objects.filter(rfq__buyer=request.user).count(),
     })
 
 
@@ -626,6 +986,47 @@ def dash_rfq_detail(request, rfq_id):
 
 
 # ======== ENTREPÔTS ========
+# Règles d'accès partagées avec la facturation : voir store/access.py
+_has_perm = access.has_perm
+_stock_access = access.stock_access
+_acting_store = access.acting_store
+_member_warehouse_id = access.member_warehouse_id
+
+
+def _get_warehouse_or_deny(request, pk, permission):
+    """Retourne (entrepôt, None) si l'accès est autorisé, sinon (None, redirection)."""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse.objects.select_related('store', 'manager'), pk=pk)
+    if not _stock_access(request.user, warehouse.store, permission, warehouse):
+        django_messages.error(request, "Accès refusé.")
+        return None, redirect('dashboard:warehouses')
+    return warehouse, None
+
+
+def _safe_back(request, fallback):
+    """Redirige vers la page précédente si elle est sur ce site, sinon vers fallback."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    back = request.META.get('HTTP_REFERER', '')
+    if back and url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}):
+        return redirect(back)
+    return redirect(*fallback) if isinstance(fallback, tuple) else redirect(fallback)
+
+
+def _parse_items(request):
+    """Lit les lignes product[] / quantity[] d'un formulaire. Ignore les lignes vides ou invalides."""
+    items = []
+    quantities = request.POST.getlist('quantity[]')
+    for i, pid in enumerate(request.POST.getlist('product[]')):
+        try:
+            qty = int(quantities[i]) if i < len(quantities) else 0
+            pid = int(pid)
+        except (TypeError, ValueError):
+            continue
+        if qty > 0:
+            items.append((pid, qty))
+    return items
+
+
 @login_required
 @seller_or_admin_required
 def dash_warehouses(request):
@@ -652,11 +1053,22 @@ def dash_warehouses(request):
         django_messages.success(request, 'Entrepôt créé !')
         return redirect('dashboard:warehouses')
 
-    warehouses = Warehouse.objects.all() if is_admin else (store.warehouses.all() if store else Warehouse.objects.none())
+    if is_admin:
+        warehouses = Warehouse.objects.all()
+    elif store:
+        warehouses = store.warehouses.all()
+    else:
+        # Employé : entrepôts de sa boutique, ou seulement le sien s'il y est limité
+        member_store = _acting_store(request.user)
+        warehouses = member_store.warehouses.all() if member_store else Warehouse.objects.none()
+        limit = _member_warehouse_id(request.user, member_store) if member_store else None
+        if limit:
+            warehouses = warehouses.filter(pk=limit)
     other_stores = Store.objects.filter(owner=request.user).exclude(pk=store.pk) if store else []
     return render(request, 'dashboard/warehouses.html', {
         'warehouses': warehouses,
         'other_stores': other_stores,
+        'can_create': bool(store),
     })
 
 
@@ -664,12 +1076,9 @@ def dash_warehouses(request):
 @seller_or_admin_required
 def dash_warehouse_detail(request, pk):
     """Détail d'un entrepôt : stocks par produit"""
-    from inventory.models import Warehouse
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'stock.view')
+    if denied:
+        return denied
 
     stocks = warehouse.stocks.select_related('product').order_by('product__name')
     q = request.GET.get('q', '').strip()
@@ -699,6 +1108,15 @@ def dash_warehouse_detail(request, pk):
         'out_of_stock_count': out_of_stock_count,
         'unpaid_invoices': unpaid_invoices,
         'employees_count': employees_count,
+        'can': {
+            'transfer': _stock_access(request.user, warehouse.store, 'stock.transfer', warehouse),
+            'orders': _stock_access(request.user, warehouse.store, 'orders.view', warehouse),
+            'products': _stock_access(request.user, warehouse.store, 'products.view', warehouse),
+            'sales': _stock_access(request.user, warehouse.store, 'sales.view', warehouse),
+            'invoicing': _stock_access(request.user, warehouse.store, 'invoicing.view', warehouse),
+            'finances': _stock_access(request.user, warehouse.store, 'finances.view', warehouse),
+            'owner': _stock_access(request.user, warehouse.store, None),
+        },
     })
 
 
@@ -706,44 +1124,37 @@ def dash_warehouse_detail(request, pk):
 @seller_or_admin_required
 def dash_warehouse_reception(request, pk):
     """Réception de marchandises dans un entrepôt (entrée de stock)"""
-    from inventory.models import Warehouse
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
+    from django.db import transaction
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'stock.adjust')
+    if denied:
+        return denied
 
     if request.method == 'POST':
-        product_ids = request.POST.getlist('product[]')
-        quantities = request.POST.getlist('quantity[]')
         reason = request.POST.get('reason', '').strip() or 'Réception marchandises'
+        items = _parse_items(request)
+        products = {p.pk: p for p in Product.objects.filter(pk__in=[pid for pid, _ in items], store=warehouse.store)}
         count = 0
-        for i, pid in enumerate(product_ids):
-            if not pid:
-                continue
-            product = get_object_or_404(Product, pk=pid, store=warehouse.store)
-            qty = int(quantities[i]) if i < len(quantities) else 0
-            if qty > 0:
-                product.adjust_stock(qty, 'in', user=request.user, reason=reason,
-                                     reference=warehouse.code, warehouse=warehouse)
-                count += 1
+        with transaction.atomic():
+            for pid, qty in items:
+                product = products.get(pid)
+                if product:
+                    product.adjust_stock(qty, 'in', user=request.user, reason=reason,
+                                         reference=warehouse.code, warehouse=warehouse)
+                    count += 1
         if count:
             django_messages.success(request, f'Réception enregistrée : {count} produit(s) ajouté(s) à {warehouse.name}.')
         else:
             django_messages.error(request, 'Aucun produit valide.')
-    return redirect('dashboard:warehouse_detail', pk=pk)
+    return _safe_back(request, ('dashboard:warehouse_detail', pk))
 
 
 @login_required
 @seller_or_admin_required
 def dash_warehouse_employees(request, pk):
-    """Employés assignés à un entrepôt précis"""
-    from inventory.models import Warehouse
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
+    """Employés assignés à un entrepôt précis (réservé au propriétaire)"""
+    warehouse, denied = _get_warehouse_or_deny(request, pk, None)
+    if denied:
+        return denied
 
     members = warehouse.store.members.filter(warehouse=warehouse).select_related('user', 'role')
     return render(request, 'dashboard/warehouse_employees.html', {
@@ -752,157 +1163,491 @@ def dash_warehouse_employees(request, pk):
     })
 
 
+def _warehouse_orders_queryset(request, warehouse):
+    """Commandes ayant au moins une ligne dans cet entrepôt, avec le montant propre à l'entrepôt.
+    Retourne (commandes filtrées, base sans filtre de statut, contexte des filtres)."""
+    from datetime import datetime
+    from django.db.models import DecimalField, OuterRef, Prefetch, Subquery
+    wh_items = OrderItem.objects.filter(warehouse=warehouse)
+    # Une commande marketplace peut contenir d'autres vendeurs : on ne somme que les lignes de l'entrepôt
+    wh_total = (OrderItem.objects.filter(order=OuterRef('pk'), warehouse=warehouse)
+                .values('order').annotate(t=Sum(F('price') * F('quantity'))).values('t')[:1])
+    orders = (Order.objects.filter(pk__in=wh_items.values('order'))
+              .select_related('buyer')
+              .annotate(wh_total=Subquery(wh_total, output_field=DecimalField(max_digits=18, decimal_places=0)))
+              .prefetch_related(Prefetch('items', queryset=wh_items.select_related('product'), to_attr='wh_items')))
+    q = request.GET.get('q', '').strip()
+    if q:
+        orders = orders.filter(Q(order_number__icontains=q) | Q(buyer__username__icontains=q)
+                               | Q(shipping_name__icontains=q) | Q(shipping_phone__icontains=q))
+    date_from = request.GET.get('from', '')
+    date_to = request.GET.get('to', '')
+    for value, lookup in ((date_from, 'created_at__date__gte'), (date_to, 'created_at__date__lte')):
+        if value:
+            try:
+                orders = orders.filter(**{lookup: datetime.strptime(value, '%Y-%m-%d').date()})
+            except ValueError:
+                pass
+    base = orders
+    status = request.GET.get('status', '')
+    if status in dict(Order.STATUS_CHOICES):
+        orders = orders.filter(status=status)
+    else:
+        status = ''
+    return orders.order_by('-created_at'), base, {
+        'search_query': q, 'current_status': status, 'date_from': date_from, 'date_to': date_to,
+    }
+
+
 @login_required
 @seller_or_admin_required
 def dash_warehouse_orders(request, pk):
     """Commandes contenant des produits d'un entrepôt"""
-    from inventory.models import Warehouse
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
-
-    orders = Order.objects.filter(items__warehouse=warehouse).distinct().select_related('buyer').order_by('-created_at')
-    status = request.GET.get('status', '')
-    if status:
-        orders = orders.filter(status=status)
-    q = request.GET.get('q', '').strip()
-    if q:
-        orders = orders.filter(Q(order_number__icontains=q) | Q(buyer__username__icontains=q))
-
+    from django.core.paginator import Paginator
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'orders.view')
+    if denied:
+        return denied
+    orders, base, filters = _warehouse_orders_queryset(request, warehouse)
+    counts = dict(base.order_by().values_list('status').annotate(n=Count('id')))
+    active = base.exclude(status__in=['cancelled', 'refunded'])
+    stats = {
+        'total': sum(counts.values()),
+        'to_prepare': counts.get('pending', 0) + counts.get('confirmed', 0) + counts.get('processing', 0),
+        'shipped': counts.get('shipped', 0),
+        'delivered': counts.get('delivered', 0),
+        'amount': active.aggregate(t=Sum('wh_total'))['t'] or 0,
+    }
+    page_obj = Paginator(orders, 25).get_page(request.GET.get('page'))
+    params = request.GET.copy()
+    params.pop('page', None)
     return render(request, 'dashboard/warehouse_orders.html', {
         'warehouse': warehouse,
-        'orders': orders,
-        'status_choices': Order.STATUS_CHOICES,
-        'current_status': status,
-        'search_query': q,
+        'orders': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'status_chips': [(code, label, counts.get(code, 0)) for code, label in Order.STATUS_CHOICES],
+        'base_query': params.urlencode(),
+        'can_invoice': _has_perm(request.user, warehouse.store, 'invoicing.create'),
+        **filters,
     })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_orders_export(request, pk):
+    """Export Excel des commandes d'un entrepôt (mêmes filtres que la page)"""
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'orders.view')
+    if denied:
+        return denied
+    orders = _warehouse_orders_queryset(request, warehouse)[0]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Commandes'
+    ws.append(['N°', 'Date', 'Client', 'Téléphone', 'Ville', 'Produits (cet entrepôt)', 'Montant entrepôt (F)', 'Total commande (F)', 'Statut', 'Payée'])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for o in orders[:5000]:
+        ws.append([
+            o.order_number, timezone.localtime(o.created_at).strftime('%d/%m/%Y %H:%M'),
+            o.shipping_name or o.buyer.display_name, o.shipping_phone, o.shipping_city,
+            ', '.join(f'{i.product.name} ×{i.quantity}' for i in o.wh_items),
+            int(o.wh_total or 0), int(o.total_amount), o.get_status_display(), 'Oui' if o.is_paid else 'Non',
+        ])
+    for col, width in zip('ABCDEFGHIJ', (16, 17, 24, 15, 14, 44, 18, 16, 14, 7)):
+        ws.column_dimensions[col].width = width
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="commandes_{warehouse.code}_{timezone.localdate():%Y%m%d}.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required
 @seller_or_admin_required
 def dash_warehouse_stores(request, pk):
     """Boutiques alimentées par un entrepôt"""
-    from inventory.models import Warehouse
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'stock.view')
+    if denied:
+        return denied
     return render(request, 'dashboard/warehouse_stores.html', {'warehouse': warehouse})
+
+
+def _warehouse_stock_queryset(request, warehouse):
+    """Stocks d'un entrepôt filtrés et triés selon les paramètres GET."""
+    from django.db.models import DecimalField, ExpressionWrapper
+    stocks = warehouse.stocks.select_related('product').annotate(
+        value=ExpressionWrapper(F('quantity') * F('product__price'), output_field=DecimalField(max_digits=18, decimal_places=0)),
+    )
+    q = request.GET.get('q', '').strip()
+    if q:
+        stocks = stocks.filter(Q(product__name__icontains=q) | Q(product__sku__icontains=q))
+    status = request.GET.get('status', '')
+    if status == 'out':
+        stocks = stocks.filter(quantity=0)
+    elif status == 'low':
+        stocks = stocks.filter(quantity__gt=0, quantity__lte=F('product__low_stock_threshold'))
+    elif status == 'ok':
+        stocks = stocks.filter(quantity__gt=F('product__low_stock_threshold'))
+    sort = request.GET.get('sort', 'name')
+    order = {'qty': 'quantity', '-qty': '-quantity', '-value': '-value'}.get(sort, 'product__name')
+    return stocks.order_by(order, 'product__name'), q, status, sort
 
 
 @login_required
 @seller_or_admin_required
 def dash_warehouse_stock(request, pk):
-    """Stock détaillé d'un entrepôt"""
-    from inventory.models import Warehouse
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
+    """Stock détaillé d'un entrepôt : stats, filtres, tri, actions d'entrée/sortie"""
+    from django.core.paginator import Paginator
+    from django.db.models import DecimalField
+    from django.db.models.functions import Coalesce
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'stock.view')
+    if denied:
+        return denied
 
-    stocks = warehouse.stocks.select_related('product').order_by('product__name')
-    q = request.GET.get('q', '').strip()
-    if q:
-        stocks = stocks.filter(product__name__icontains=q)
+    stats = warehouse.stocks.aggregate(
+        products=Count('id'),
+        units=Coalesce(Sum('quantity'), 0),
+        value=Coalesce(Sum(F('quantity') * F('product__price'), output_field=DecimalField()), 0, output_field=DecimalField()),
+        low=Count('id', filter=Q(quantity__gt=0, quantity__lte=F('product__low_stock_threshold'))),
+        out=Count('id', filter=Q(quantity=0)),
+    )
+    stocks, q, status, sort = _warehouse_stock_queryset(request, warehouse)
+    page_obj = Paginator(stocks, 25).get_page(request.GET.get('page'))
+    params = request.GET.copy()
+    params.pop('page', None)
+
     return render(request, 'dashboard/warehouse_stock.html', {
         'warehouse': warehouse,
-        'stocks': stocks,
+        'stocks': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
         'search_query': q,
+        'status_filter': status,
+        'sort': sort,
+        'base_query': params.urlencode(),
+        'can_adjust': _stock_access(request.user, warehouse.store, 'stock.adjust', warehouse),
+        'can_transfer': _stock_access(request.user, warehouse.store, 'stock.transfer', warehouse),
+        'products': warehouse.store.products.filter(is_active=True).order_by('name'),
     })
 
 
 @login_required
 @seller_or_admin_required
+def dash_warehouse_stock_export(request, pk):
+    """Export Excel du stock d'un entrepôt (mêmes filtres que la page)"""
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'stock.view')
+    if denied:
+        return denied
+
+    stocks = _warehouse_stock_queryset(request, warehouse)[0]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Stock'
+    ws.append(['Produit', 'Quantité', "Seuil d'alerte", 'Prix unitaire (F)', 'Valeur (F)', 'Statut'])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    for s in stocks:
+        threshold = s.product.low_stock_threshold
+        status = 'Rupture' if s.quantity == 0 else ('Stock faible' if s.quantity <= threshold else 'En stock')
+        ws.append([s.product.name, s.quantity, threshold, int(s.product.price), int(s.value or 0), status])
+    for col, width in zip('ABCDEF', (40, 12, 14, 18, 16, 14)):
+        ws.column_dimensions[col].width = width
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="stock_{warehouse.code}_{timezone.now():%Y%m%d}.xlsx"'
+    wb.save(response)
+    return response
+
+
+MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet',
+             'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+RECEIPT_EXTENSIONS = ('.pdf', '.jpg', '.jpeg', '.png', '.webp')
+RECEIPT_MAX_SIZE = 5 * 1024 * 1024
+
+
+def _shift_month(year, month, delta):
+    """(année, mois) décalé de `delta` mois."""
+    y, m = divmod(year * 12 + month - 1 + delta, 12)
+    return y, m + 1
+
+
+def _warehouse_month_figures(warehouse, year, month):
+    """Chiffres d'un mois pour un entrepôt.
+
+    - revenus : lignes de commandes payées de l'entrepôt (hors annulées ou remboursées)
+      + ventes de caisse POS terminées dans cet entrepôt (hors TVA collectée) ;
+    - commission : prélevée uniquement sur les ventes en ligne (ventes directes et POS n'en paient pas,
+      comme dans le crédit du portefeuille vendeur) ;
+    - coût des marchandises vendues : quantité × prix d'achat figé à la vente (à défaut, prix d'achat actuel
+      du produit) ; les lignes sans aucun prix d'achat sont comptées à 0 et signalées dans `missing_cost` ;
+    - dépenses : dépenses saisies pour l'entrepôt sur le mois.
+    """
+    from decimal import Decimal
+    from django.conf import settings
+    from django.db.models import DecimalField, ExpressionWrapper
+    from django.db.models.functions import Coalesce
+    from pos.models import POSSale, POSSaleItem
+    money = DecimalField(max_digits=18, decimal_places=2)
+
+    def cost_of(prefix=''):
+        unit = Coalesce(f'{prefix}unit_cost', f'{prefix}product__cost_price', output_field=money)
+        return ExpressionWrapper(F(f'{prefix}quantity') * unit, output_field=money)
+
+    no_cost = Q(unit_cost__isnull=True) & (Q(product__isnull=True) | Q(product__cost_price__isnull=True))
+
+    items = OrderItem.objects.filter(
+        warehouse=warehouse, order__is_paid=True,
+        order__created_at__year=year, order__created_at__month=month,
+    ).exclude(order__status__in=['cancelled', 'refunded'])
+    line = F('price') * F('quantity')
+    direct = Q(order__shipping_address=Order.DIRECT_SALE_ADDRESS)
+    sums = items.aggregate(online=Sum(line, filter=~direct), direct=Sum(line, filter=direct),
+                           cogs=Sum(cost_of()), missing=Count('id', filter=no_cost))
+
+    pos_sales = POSSale.objects.filter(warehouse=warehouse, status='completed',
+                                       created_at__year=year, created_at__month=month)
+    pos_sums = pos_sales.aggregate(total=Sum('total_amount'), tax=Sum('tax_amount'), count=Count('id'))
+    pos_items = POSSaleItem.objects.filter(sale__in=pos_sales).aggregate(cogs=Sum(cost_of()), missing=Count('id', filter=no_cost))
+
+    online, direct_rev = int(sums['online'] or 0), int(sums['direct'] or 0)
+    pos_rev = int((pos_sums['total'] or 0) - (pos_sums['tax'] or 0))
+    commission = int(Decimal(online) * Decimal(str(settings.SALES_COMMISSION_RATE)))
+    cogs = int((sums['cogs'] or 0) + (pos_items['cogs'] or 0))
+    expenses = int(warehouse.expenses.filter(date__year=year, date__month=month).aggregate(t=Sum('amount'))['t'] or 0)
+    revenue = online + direct_rev + pos_rev
+    return {
+        'revenue': revenue, 'online': online, 'direct': direct_rev, 'pos': pos_rev, 'pos_count': pos_sums['count'],
+        'commission': commission, 'cogs': cogs, 'gross': revenue - cogs,
+        'missing_cost': (sums['missing'] or 0) + (pos_items['missing'] or 0),
+        'expenses': expenses, 'net': revenue - commission - cogs - expenses,
+    }
+
+
+def _variation(current, previous):
+    """Variation en % par rapport au mois précédent (None si pas de base de comparaison)."""
+    if not previous:
+        return None
+    return round((current - previous) * 100 / abs(previous))
+
+
+@login_required
+@seller_or_admin_required
 def dash_warehouse_accounting(request, pk):
-    """Comptabilité d'un entrepôt : revenus, dépenses, résultat"""
-    from inventory.models import Warehouse
+    """Comptabilité d'un entrepôt : revenus par canal, commissions, dépenses, résultat, évolution sur 6 mois"""
     from accounting.models import WarehouseExpense
     from datetime import datetime
+    from django.conf import settings
+    from store.models import Payslip
 
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'finances.view')
+    if denied:
+        return denied
+    can_add_expense = _stock_access(request.user, warehouse.store, None)
 
-    # Ajouter une dépense
+    # Ajouter une dépense (propriétaire uniquement), avec justificatif facultatif
     if request.method == 'POST':
-        WarehouseExpense.objects.create(
-            warehouse=warehouse,
-            category=request.POST.get('category', 'other'),
-            description=request.POST.get('description'),
-            amount=int(request.POST.get('amount', 0)),
-            date=request.POST.get('date') or timezone.now().date(),
-            created_by=request.user,
-        )
-        django_messages.success(request, 'Dépense enregistrée.')
-        return redirect('dashboard:warehouse_accounting', pk=pk)
+        if not can_add_expense:
+            django_messages.error(request, "Seul le propriétaire peut enregistrer une dépense.")
+            return _safe_back(request, ('dashboard:warehouse_accounting', pk))
+        description = request.POST.get('description', '').strip()[:300]
+        categories = dict(WarehouseExpense.CATEGORY_CHOICES)
+        category = request.POST.get('category', 'other')
+        try:
+            amount = int(request.POST.get('amount', 0))
+        except (TypeError, ValueError):
+            amount = 0
+        try:
+            date = datetime.strptime(request.POST.get('date', ''), '%Y-%m-%d').date()
+        except ValueError:
+            date = timezone.localdate()
+        receipt = request.FILES.get('receipt')
+        if not description or amount <= 0:
+            django_messages.error(request, 'Indiquez une description et un montant supérieur à 0.')
+        elif receipt and (not receipt.name.lower().endswith(RECEIPT_EXTENSIONS) or receipt.size > RECEIPT_MAX_SIZE):
+            django_messages.error(request, 'Justificatif refusé : PDF ou image (JPG, PNG, WEBP) de 5 Mo maximum.')
+        else:
+            WarehouseExpense.objects.create(
+                warehouse=warehouse,
+                category=category if category in categories else 'other',
+                description=description,
+                amount=amount,
+                date=date,
+                receipt=receipt,
+                created_by=request.user,
+            )
+            django_messages.success(request, 'Dépense enregistrée.')
+        return _safe_back(request, ('dashboard:warehouse_accounting', pk))
 
-    # Période (mois en cours par défaut)
-    now = timezone.now()
-    month = int(request.GET.get('month', now.month))
-    year = int(request.GET.get('year', now.year))
+    # Période (mois en cours, heure de Douala, par défaut) — valeurs invalides ignorées
+    today = timezone.localdate()
+    try:
+        month = min(12, max(1, int(request.GET.get('month', today.month))))
+        year = int(request.GET.get('year', today.year))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
 
-    # Revenus de l'entrepôt (ventes payées)
-    revenue = OrderItem.objects.filter(
-        warehouse=warehouse, order__is_paid=True,
-        order__created_at__month=month, order__created_at__year=year,
-    ).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
+    current = _warehouse_month_figures(warehouse, year, month)
+    prev_year, prev_month = _shift_month(year, month, -1)
+    previous = _warehouse_month_figures(warehouse, prev_year, prev_month)
+    variations = {k: _variation(current[k], previous[k]) for k in ('revenue', 'gross', 'expenses', 'net')}
 
-    # Commissions (10%)
-    from decimal import Decimal
-    commission = int(revenue * Decimal('0.10'))
+    # Dépenses du mois et répartition par catégorie
+    expenses = warehouse.expenses.filter(date__year=year, date__month=month).select_related('created_by')
+    labels = dict(WarehouseExpense.CATEGORY_CHOICES)
+    by_category = []
+    for row in expenses.order_by().values('category').annotate(t=Sum('amount')).order_by('-t'):
+        total = int(row['t'] or 0)
+        by_category.append({
+            'label': labels.get(row['category'], row['category']), 'total': total,
+            'pct': round(total * 100 / current['expenses']) if current['expenses'] else 0,
+        })
 
-    # Dépenses de l'entrepôt
-    expenses = warehouse.expenses.filter(date__month=month, date__year=year)
-    total_expenses = expenses.aggregate(t=Sum('amount'))['t'] or 0
+    # Fiches de paie des employés rattachés à cet entrepôt (information : à saisir en dépense "Salaires")
+    payslips = Payslip.objects.filter(member__warehouse=warehouse, year=year, month=month,
+                                      status__in=['validated', 'paid'])
+    payroll = int(payslips.aggregate(t=Sum('net_salary'))['t'] or 0)
+    salary_expenses = int(expenses.filter(category='salary').aggregate(t=Sum('amount'))['t'] or 0)
 
-    # Résultat net
-    net_profit = revenue - commission - total_expenses
-
-    # Revenus par mois (6 derniers mois) pour le graphique
+    # Évolution sur les 6 mois qui se terminent au mois choisi
     monthly = []
     for i in range(5, -1, -1):
-        d = now - timedelta(days=30 * i)
-        rev = OrderItem.objects.filter(
-            warehouse=warehouse, order__is_paid=True,
-            order__created_at__month=d.month, order__created_at__year=d.year,
-        ).aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0
-        monthly.append({'label': d.strftime('%b'), 'revenue': int(rev)})
+        y, m = _shift_month(year, month, -i)
+        f = _warehouse_month_figures(warehouse, y, m)
+        monthly.append({'label': f'{MONTHS_FR[m - 1][:3]}. {str(y)[2:]}', **f})
+
+    # Années proposées : depuis la première donnée de l'entrepôt
+    first_sale = OrderItem.objects.filter(warehouse=warehouse).order_by('order__created_at').values_list('order__created_at', flat=True).first()
+    first_expense = warehouse.expenses.order_by('date').values_list('date', flat=True).first()
+    first_year = min([d.year for d in (first_sale, first_expense) if d] + [warehouse.created_at.year, today.year, year])
 
     return render(request, 'dashboard/warehouse_accounting.html', {
         'warehouse': warehouse,
-        'revenue': revenue,
-        'commission': commission,
-        'total_expenses': total_expenses,
-        'net_profit': net_profit,
+        'f': current,
+        'previous': previous,
+        'variations': variations,
+        'revenue': current['revenue'],
+        'commission': current['commission'],
+        'total_expenses': current['expenses'],
+        'net_profit': current['net'],
+        'commission_pct': round(settings.SALES_COMMISSION_RATE * 100),
         'expenses': expenses,
+        'by_category': by_category,
+        'payroll': payroll,
+        'payslips_count': payslips.count(),
+        'salary_expenses': salary_expenses,
         'monthly': monthly,
         'current_month': month,
         'current_year': year,
-        'months': [(i, timezone.datetime(2000, i, 1).strftime('%B')) for i in range(1, 13)],
-        'years': range(now.year - 2, now.year + 1),
+        'month_label': f'{MONTHS_FR[month - 1]} {year}',
+        'prev_label': MONTHS_FR[prev_month - 1],
+        'prev_period': {'month': prev_month, 'year': prev_year},
+        'next_period': dict(zip(('year', 'month'), _shift_month(year, month, 1))),
+        'is_current_month': (year, month) == (today.year, today.month),
+        'months': list(enumerate(MONTHS_FR, start=1)),
+        'years': range(first_year, max(today.year, year) + 1),
         'expense_categories': WarehouseExpense.CATEGORY_CHOICES,
+        'can_add_expense': can_add_expense,
+        'today': today.isoformat(),
     })
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_expense_delete(request, pk, expense_id):
+    """Supprimer une dépense (propriétaire uniquement, formulaire POST)"""
+    warehouse, denied = _get_warehouse_or_deny(request, pk, None)
+    if denied:
+        return denied
+    expense = get_object_or_404(warehouse.expenses, pk=expense_id)
+    if request.method == 'POST':
+        label = expense.description
+        if expense.receipt:
+            expense.receipt.delete(save=False)
+        expense.delete()
+        django_messages.success(request, f'Dépense « {label} » supprimée.')
+    return _safe_back(request, ('dashboard:warehouse_accounting', pk))
+
+
+@login_required
+@seller_or_admin_required
+def dash_warehouse_accounting_export(request, pk):
+    """Export Excel : synthèse du mois, évolution sur 6 mois et détail des dépenses"""
+    from django.http import HttpResponse
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'finances.view')
+    if denied:
+        return denied
+    today = timezone.localdate()
+    try:
+        month = min(12, max(1, int(request.GET.get('month', today.month))))
+        year = int(request.GET.get('year', today.year))
+    except (TypeError, ValueError):
+        month, year = today.month, today.year
+    bold = Font(bold=True)
+    f = _warehouse_month_figures(warehouse, year, month)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Synthèse'
+    ws.append([f'{warehouse.name} ({warehouse.code}) — {MONTHS_FR[month - 1]} {year}'])
+    ws['A1'].font = Font(bold=True, size=13)
+    ws.append([])
+    rows = (('Ventes en ligne', 'online'), ('Ventes directes', 'direct'), ('Ventes caisse (POS)', 'pos'),
+            ('Revenus', 'revenue'), ('Coût des marchandises vendues', 'cogs'), ('Marge brute', 'gross'),
+            ('Commissions plateforme', 'commission'), ('Dépenses', 'expenses'), ('Résultat net', 'net'))
+    for label, key in rows:
+        ws.append([label, f[key]])
+        if key in ('revenue', 'gross', 'net'):
+            ws.cell(row=ws.max_row, column=1).font = bold
+            ws.cell(row=ws.max_row, column=2).font = bold
+    if f['missing_cost']:
+        ws.append([])
+        ws.append([f"{f['missing_cost']} ligne(s) vendue(s) sans prix d'achat : coût compté à 0"])
+    ws.column_dimensions['A'].width = 32
+    ws.column_dimensions['B'].width = 16
+
+    ws2 = wb.create_sheet('6 mois')
+    ws2.append(['Mois', 'Revenus', 'Coût marchandises', 'Commissions', 'Dépenses', 'Résultat'])
+    for cell in ws2[1]:
+        cell.font = bold
+    for i in range(5, -1, -1):
+        y, m = _shift_month(year, month, -i)
+        fm = _warehouse_month_figures(warehouse, y, m)
+        ws2.append([f'{MONTHS_FR[m - 1]} {y}', fm['revenue'], fm['cogs'], fm['commission'], fm['expenses'], fm['net']])
+    ws2.column_dimensions['A'].width = 18
+
+    ws3 = wb.create_sheet('Dépenses')
+    ws3.append(['Date', 'Catégorie', 'Description', 'Montant (F)', 'Saisie par', 'Justificatif'])
+    for cell in ws3[1]:
+        cell.font = bold
+    for e in warehouse.expenses.filter(date__year=year, date__month=month).select_related('created_by'):
+        ws3.append([e.date.strftime('%d/%m/%Y'), e.get_category_display(), e.description, int(e.amount),
+                    e.created_by.display_name if e.created_by else '', 'Oui' if e.receipt else 'Non'])
+    for col, width in zip('ABCDEF', (12, 16, 40, 14, 20, 12)):
+        ws3.column_dimensions[col].width = width
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="comptabilite_{warehouse.code}_{year}-{month:02d}.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required
 @seller_or_admin_required
 def dash_warehouse_expenses(request, pk):
     """Liste des dépenses d'un entrepôt avec filtres"""
-    from inventory.models import Warehouse
     from accounting.models import WarehouseExpense
     from datetime import datetime
 
-    warehouse = get_object_or_404(Warehouse, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and warehouse.store != request.user.store:
-        django_messages.error(request, "Accès refusé.")
-        return redirect('dashboard:warehouses')
+    warehouse, denied = _get_warehouse_or_deny(request, pk, 'finances.view')
+    if denied:
+        return denied
 
     expenses = warehouse.expenses.all()
 
@@ -934,6 +1679,7 @@ def dash_warehouse_expenses(request, pk):
         'date_to': date_to,
         'categories': WarehouseExpense.CATEGORY_CHOICES,
         'today': timezone.now().date().isoformat(),
+        'can_add_expense': _stock_access(request.user, warehouse.store, None),
     })
 
 
@@ -943,35 +1689,43 @@ def dash_warehouse_expenses(request, pk):
 def dash_transfers(request):
     """Liste des transferts + création"""
     from inventory.models import StockTransfer, TransferItem, Warehouse
-    store = getattr(request.user, 'store', None)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
+    from django.db import transaction
+    store = _acting_store(request.user)
 
     if request.method == 'POST':
         if not store:
             django_messages.error(request, "Vous devez avoir une boutique.")
             return redirect('dashboard:transfers')
-        from_wh = get_object_or_404(Warehouse, pk=request.POST.get('from_warehouse'), store=store)
-        to_wh = get_object_or_404(Warehouse, pk=request.POST.get('to_warehouse'), store=store)
+        from_wh = get_object_or_404(Warehouse, pk=request.POST.get('from_warehouse') or 0, store=store)
+        to_wh = get_object_or_404(Warehouse, pk=request.POST.get('to_warehouse') or 0, store=store)
         if from_wh == to_wh:
             django_messages.error(request, "Les deux entrepôts doivent être différents.")
-            return redirect('dashboard:transfers')
-
-        transfer = StockTransfer.objects.create(
-            store=store, from_warehouse=from_wh, to_warehouse=to_wh,
-            transfer_type=request.POST.get('transfer_type', 'transfer'),
-            notes=request.POST.get('notes', ''), created_by=request.user,
-        )
-        product_ids = request.POST.getlist('product[]')
-        quantities = request.POST.getlist('quantity[]')
-        for i, pid in enumerate(product_ids):
-            if pid:
-                qty = int(quantities[i]) if i < len(quantities) else 1
-                if qty > 0:
-                    TransferItem.objects.create(transfer=transfer, product_id=pid, quantity=qty)
+            return _safe_back(request, 'dashboard:transfers')
+        # Un employé limité à un entrepôt ne peut transférer que depuis ou vers le sien
+        if not (_stock_access(request.user, store, 'stock.transfer', from_wh)
+                or _stock_access(request.user, store, 'stock.transfer', to_wh)):
+            django_messages.error(request, "Vous n'avez pas le droit de créer ce transfert.")
+            return _safe_back(request, 'dashboard:transfers')
+        # Seuls les produits de la boutique sont acceptés
+        items = _parse_items(request)
+        valid_ids = set(store.products.filter(pk__in=[pid for pid, _ in items]).values_list('pk', flat=True))
+        items = [(pid, qty) for pid, qty in items if pid in valid_ids]
+        if not items:
+            django_messages.error(request, "Ajoutez au moins un produit valide avec une quantité supérieure à 0.")
+            return _safe_back(request, 'dashboard:transfers')
+        ttype = request.POST.get('transfer_type', 'transfer')
+        with transaction.atomic():
+            transfer = StockTransfer.objects.create(
+                store=store, from_warehouse=from_wh, to_warehouse=to_wh,
+                transfer_type=ttype if ttype in dict(StockTransfer.TYPE_CHOICES) else 'transfer',
+                notes=request.POST.get('notes', ''), created_by=request.user,
+            )
+            for pid, qty in items:
+                TransferItem.objects.create(transfer=transfer, product_id=pid, quantity=qty)
         django_messages.success(request, f'Transfert {transfer.reference} créé en brouillon.')
         return redirect('dashboard:transfers')
 
-    transfers = StockTransfer.objects.all() if is_admin else (store.transfers.all() if store else StockTransfer.objects.none())
+    transfers = _scoped_transfers(request.user)
     status = request.GET.get('status', '')
     if status:
         transfers = transfers.filter(status=status)
@@ -1003,6 +1757,7 @@ def dash_transfers(request):
         'transfers': transfers.select_related('from_warehouse', 'to_warehouse'),
         'warehouses': store.warehouses.filter(is_active=True) if store else [],
         'products': store.products.filter(is_active=True) if store else [],
+        'can_transfer': bool(store) and _has_perm(request.user, store, 'stock.transfer'),
         'status_filter': status,
         'status_choices': StockTransfer.STATUS_CHOICES,
         'type_filter': ttype,
@@ -1012,13 +1767,25 @@ def dash_transfers(request):
     })
 
 
+def _scoped_transfers(user):
+    """Transferts visibles : tous (admin), ceux de la boutique, ou ceux de l'entrepôt d'un employé limité."""
+    from inventory.models import StockTransfer
+    if user.is_superuser or user.role == 'admin':
+        return StockTransfer.objects.all()
+    store = _acting_store(user)
+    if not store or not _has_perm(user, store, 'stock.view'):
+        return StockTransfer.objects.none()
+    transfers = store.transfers.all()
+    limit = _member_warehouse_id(user, store)
+    if limit:
+        transfers = transfers.filter(Q(from_warehouse_id=limit) | Q(to_warehouse_id=limit))
+    return transfers
+
+
 def _filtered_transfers(request):
     """Transferts filtrés selon les paramètres GET."""
-    from inventory.models import StockTransfer
     from datetime import datetime
-    store = getattr(request.user, 'store', None)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    transfers = StockTransfer.objects.all() if is_admin else (store.transfers.all() if store else StockTransfer.objects.none())
+    transfers = _scoped_transfers(request.user)
     status = request.GET.get('status', '')
     if status:
         transfers = transfers.filter(status=status)
@@ -1134,18 +1901,29 @@ def dash_transfers_export_excel(request):
 def dash_transfer_action(request, pk, action):
     """Confirmer / recevoir / annuler un transfert"""
     from inventory.models import StockTransfer
-    transfer = get_object_or_404(StockTransfer, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and transfer.store != request.user.store:
+    from django.db import transaction
+    transfer = get_object_or_404(StockTransfer.objects.select_related('store', 'from_warehouse', 'to_warehouse'), pk=pk)
+    # Confirmer/annuler concerne l'entrepôt source, réceptionner l'entrepôt destination
+    concerned = transfer.to_warehouse if action == 'receive' else transfer.from_warehouse
+    if not _stock_access(request.user, transfer.store, 'stock.transfer', concerned):
         django_messages.error(request, "Accès refusé.")
         return redirect('dashboard:transfers')
 
     if request.method == 'POST':
-        if action == 'confirm' and transfer.confirm():
+        missing = transfer.missing_stock() if action == 'confirm' and transfer.status == 'draft' else []
+        if missing:
+            django_messages.error(request, 'Stock insuffisant dans ' + transfer.from_warehouse.name + ' : ' + ', '.join(
+                f'{name} ({available} dispo / {needed} demandé)' for name, available, needed in missing))
+            return redirect('dashboard:transfers')
+        with transaction.atomic():
+            done = (action == 'confirm' and transfer.confirm(user=request.user)) \
+                or (action == 'receive' and transfer.receive(user=request.user)) \
+                or (action == 'cancel' and transfer.cancel(user=request.user))
+        if done and action == 'confirm':
             django_messages.success(request, f'{transfer.reference} confirmé — stock sorti de {transfer.from_warehouse.name}.')
-        elif action == 'receive' and transfer.receive():
+        elif done and action == 'receive':
             django_messages.success(request, f'{transfer.reference} reçu dans {transfer.to_warehouse.name}.')
-        elif action == 'cancel' and transfer.cancel():
+        elif done and action == 'cancel':
             django_messages.success(request, f'{transfer.reference} annulé.')
         else:
             django_messages.error(request, 'Action impossible dans cet état.')
@@ -1417,74 +2195,115 @@ def dash_payslip_action(request, pk, action):
 
 
 # ======== GESTION DE STOCK ========
-@login_required
-@seller_or_admin_required
-def dash_inventory(request):
-    """Page inventaire : historique des mouvements de stock avec filtres"""
+def _inventory_store_ids(request):
+    """Boutiques dont l'utilisateur peut voir le stock (None = admin, tout voir)."""
+    user = request.user
+    if user.is_superuser or user.role == 'admin':
+        return None
+    ids = set(user.stores.values_list('pk', flat=True))
+    ids |= set(user.store_memberships.filter(is_active=True).values_list('store_id', flat=True))
+    return ids
+
+
+def _filtered_movements(request):
+    """Mouvements filtrés selon les paramètres GET (page inventaire + exports).
+    Retourne (queryset, entrepôt courant, store_ids)."""
     from catalog.models import StockMovement
+    from inventory.models import Warehouse
     from datetime import datetime
-    if request.user.is_seller and (request.user.store is not None):
-        movements = StockMovement.objects.filter(store=request.user.store)
-    else:
-        movements = StockMovement.objects.all()
+    store_ids = _inventory_store_ids(request)
+    movements = StockMovement.objects.all()
+    if store_ids is not None:
+        movements = movements.filter(store_id__in=store_ids)
+
+    current_warehouse = None
+    warehouse_id = request.GET.get('warehouse', '')
+    if warehouse_id.isdigit():
+        warehouses = Warehouse.objects.all()
+        if store_ids is not None:
+            warehouses = warehouses.filter(store_id__in=store_ids)
+        current_warehouse = warehouses.filter(pk=warehouse_id).first()
+        # Entrepôt inconnu ou d'une autre boutique : aucun résultat plutôt que tout afficher
+        movements = movements.filter(warehouse=current_warehouse) if current_warehouse else movements.none()
 
     q = request.GET.get('q', '').strip()
     if q:
-        movements = movements.filter(product__name__icontains=q)
-    warehouse_id = request.GET.get('warehouse')
-    current_warehouse = None
-    if warehouse_id:
-        from inventory.models import Warehouse
-        movements = movements.filter(warehouse_id=warehouse_id)
-        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
+        movements = movements.filter(Q(product__name__icontains=q) | Q(reference__icontains=q) | Q(reason__icontains=q))
     mtype = request.GET.get('type', '')
     if mtype:
         movements = movements.filter(movement_type=mtype)
-    date_from = request.GET.get('from', '')
-    date_to = request.GET.get('to', '')
-    if date_from:
-        try:
-            movements = movements.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            movements = movements.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
-        except ValueError:
-            pass
+    for param, lookup in (('from', 'created_at__date__gte'), ('to', 'created_at__date__lte')):
+        value = request.GET.get(param, '')
+        if value:
+            try:
+                movements = movements.filter(**{lookup: datetime.strptime(value, '%Y-%m-%d').date()})
+            except ValueError:
+                pass
+    return movements.select_related('product', 'created_by', 'warehouse'), current_warehouse, store_ids
 
-    # Résumé par produit : ventes, entrées, sorties, stock actuel
-    from catalog.models import Product
-    product_stats = []
+
+@login_required
+@seller_or_admin_required
+def dash_inventory(request):
+    """Page inventaire : mouvements de stock filtrés + stock actuel d'un entrepôt"""
+    from catalog.models import StockMovement
+    from inventory.models import Warehouse
+    from django.core.paginator import Paginator
+    from django.db.models.functions import Coalesce
+
+    movements, current_warehouse, store_ids = _filtered_movements(request)
+    stats = movements.aggregate(
+        entries=Coalesce(Sum('quantity', filter=Q(quantity__gt=0)), 0),
+        exits=Coalesce(Sum('quantity', filter=Q(quantity__lt=0)), 0),
+        count=Count('id'),
+    )
+    stats['exits'] = -stats['exits']
+    stats['net'] = stats['entries'] - stats['exits']
+
+    page_obj = Paginator(movements, 25).get_page(request.GET.get('page'))
+
+    warehouses = Warehouse.objects.filter(is_active=True).select_related('store')
+    if store_ids is not None:
+        warehouses = warehouses.filter(store_id__in=store_ids)
+
+    tab = request.GET.get('tab', 'movements')
+    stocks, stock_stats, products = None, None, None
     if current_warehouse:
-        product_ids = movements.values_list('product_id', flat=True).distinct()
-        for pid in product_ids:
-            product = Product.objects.filter(pk=pid).first()
-            if not product:
-                continue
-            mvts = movements.filter(product_id=pid)
-            sales = mvts.filter(movement_type='sale').aggregate(t=Sum('quantity'))['t'] or 0
-            entries = mvts.filter(movement_type='in').aggregate(t=Sum('quantity'))['t'] or 0
-            exits = mvts.filter(movement_type='out').aggregate(t=Sum('quantity'))['t'] or 0
-            stock = product.warehouse_stocks.filter(warehouse=current_warehouse).first()
-            product_stats.append({
-                'product': product,
-                'sales': abs(sales),
-                'entries': entries,
-                'exits': abs(exits),
-                'current_stock': stock.quantity if stock else 0,
-            })
+        stocks = current_warehouse.stocks.select_related('product').order_by('product__name')
+        stock_stats = {
+            'products': stocks.count(),
+            'units': stocks.aggregate(t=Coalesce(Sum('quantity'), 0))['t'],
+            'low': stocks.filter(quantity__gt=0, quantity__lte=F('product__low_stock_threshold')).count(),
+            'out': stocks.filter(quantity=0).count(),
+        }
+        q = request.GET.get('q', '').strip()
+        if q and tab == 'stock':
+            stocks = stocks.filter(product__name__icontains=q)
+        products = current_warehouse.store.products.filter(is_active=True).order_by('name')
+    else:
+        tab = 'movements'
+
+    # Paramètres GET sans la page, pour garder les filtres dans la pagination
+    params = request.GET.copy()
+    params.pop('page', None)
 
     return render(request, 'dashboard/inventory.html', {
-        'movements': movements.select_related('product', 'created_by')[:100],
-        'search_query': q,
+        'movements': page_obj,
+        'page_obj': page_obj,
+        'stats': stats,
+        'search_query': request.GET.get('q', '').strip(),
         'warehouse': current_warehouse,
-        'type_filter': mtype,
-        'date_from': date_from,
-        'date_to': date_to,
+        'warehouse_param': request.GET.get('warehouse', ''),
+        'warehouses': warehouses,
+        'type_filter': request.GET.get('type', ''),
+        'date_from': request.GET.get('from', ''),
+        'date_to': request.GET.get('to', ''),
         'type_choices': StockMovement.TYPE_CHOICES,
-        'total_movements': movements.count(),
-        'product_stats': product_stats,
+        'tab': tab,
+        'stocks': stocks,
+        'stock_stats': stock_stats,
+        'products': products,
+        'base_query': params.urlencode(),
     })
 
 
@@ -1492,10 +2311,14 @@ def dash_inventory(request):
 @seller_or_admin_required
 def dash_stock_adjust(request, pk):
     """Ajustement / entrée / sortie de stock via modale"""
+    from inventory.models import Warehouse
     product = get_object_or_404(Product, pk=pk)
-    is_admin = request.user.is_superuser or request.user.role == 'admin'
-    if not is_admin and product.store != request.user.store:
-        django_messages.error(request, "Ce produit ne vous appartient pas.")
+    warehouse = None
+    warehouse_id = request.POST.get('warehouse')
+    if warehouse_id:
+        warehouse = get_object_or_404(Warehouse, pk=warehouse_id, store=product.store)
+    if not _stock_access(request.user, product.store, 'stock.adjust', warehouse):
+        django_messages.error(request, "Vous n'avez pas le droit d'ajuster ce stock.")
         return redirect('dashboard:products')
 
     if request.method == 'POST':
@@ -1511,41 +2334,12 @@ def dash_stock_adjust(request, pk):
         if qty > 0:
             if movement_type == 'out':
                 qty = -qty
-            product.adjust_stock(qty, movement_type, user=request.user, reason=reason)
+            product.adjust_stock(qty, movement_type, user=request.user, reason=reason, warehouse=warehouse)
             django_messages.success(request, f'Stock de "{product.name}" mis à jour : {product.stock} unités.')
         else:
             django_messages.error(request, 'La quantité doit être supérieure à 0.')
 
-    return redirect(request.META.get('HTTP_REFERER', 'dashboard:products'))
-
-
-def _filtered_movements(request):
-    """Retourne les mouvements filtrés selon les paramètres GET."""
-    from catalog.models import StockMovement
-    from datetime import datetime
-    if request.user.is_seller and (request.user.store is not None):
-        movements = StockMovement.objects.filter(store=request.user.store)
-    else:
-        movements = StockMovement.objects.all()
-    q = request.GET.get('q', '').strip()
-    if q:
-        movements = movements.filter(product__name__icontains=q)
-    mtype = request.GET.get('type', '')
-    if mtype:
-        movements = movements.filter(movement_type=mtype)
-    date_from = request.GET.get('from', '')
-    date_to = request.GET.get('to', '')
-    if date_from:
-        try:
-            movements = movements.filter(created_at__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            movements = movements.filter(created_at__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
-        except ValueError:
-            pass
-    return movements.select_related('product', 'created_by')
+    return _safe_back(request, 'dashboard:products')
 
 
 @login_required
@@ -1558,7 +2352,7 @@ def dash_movements_export_pdf(request):
     from reportlab.pdfgen import canvas
     import io
 
-    movements = _filtered_movements(request)[:500]
+    movements = _filtered_movements(request)[0][:500]
 
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=landscape(A4))
@@ -1616,7 +2410,7 @@ def dash_movements_export_excel(request):
     from openpyxl import Workbook
     from openpyxl.styles import Font
 
-    movements = _filtered_movements(request)[:1000]
+    movements = _filtered_movements(request)[0][:1000]
 
     wb = Workbook()
     ws = wb.active
@@ -1893,23 +2687,124 @@ def dash_store(request):
 
 @login_required
 @seller_or_admin_required
-def dash_assistant(request):
-    """Assistant IA du dashboard — briefing + réponses intelligentes"""
-    from .assistant import ask, get_suggestions, get_briefing
-    store = getattr(request.user, 'store', None)
-    answer = None
-    question = ''
-    if request.method == 'POST':
-        question = request.POST.get('question', '').strip()
-        if question and store:
-            answer = ask(question, store, user=request.user)
-    briefing = get_briefing(store) if store else None
-    return render(request, 'dashboard/assistant.html', {
-        'answer': answer,
-        'question': question,
-        'suggestions': get_suggestions(),
-        'briefing': briefing,
+def dash_search(request):
+    """Recherche globale du dashboard : commandes, produits, clients, factures (selon les droits)."""
+    from invoicing.models import Invoice
+    q = request.GET.get('q', '').strip()[:100]
+    store = access.acting_store(request.user)
+    admin = access.is_admin(request.user)
+    can = lambda perm: admin or (store is not None and access.has_perm(request.user, store, perm))  # noqa: E731
+    results = {'orders': [], 'products': [], 'customers': [], 'invoices': []}
+    if len(q) >= 2:
+        limit = access.member_warehouse_id(request.user, store) if store is not None else None
+        if can('orders.view'):
+            mine = OrderItem.objects.all() if store is None else OrderItem.objects.filter(store=store)
+            if limit:
+                mine = mine.filter(warehouse_id=limit)
+            orders = Order.objects.filter(pk__in=mine.values('order')).filter(
+                Q(order_number__icontains=q) | Q(shipping_name__icontains=q) | Q(shipping_phone__icontains=q)
+                | Q(buyer__username__icontains=q) | Q(buyer__email__icontains=q))
+            exact = orders.filter(order_number__iexact=q.lstrip('#')).first()
+            if exact:
+                return redirect('dashboard:order_detail', order_number=exact.order_number)
+            results['orders'] = list(orders.select_related('buyer').order_by('-created_at')[:8])
+        if can('products.view'):
+            products = Product.objects.all() if store is None else store.products.all()
+            results['products'] = list(products.filter(Q(name__icontains=q) | Q(sku__icontains=q)).order_by('name')[:8])
+        if can('customers.view'):
+            buyers = User.objects.filter(orders__items__store=store) if store is not None else User.objects.filter(role='buyer')
+            results['customers'] = list(buyers.filter(
+                Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(username__icontains=q)
+                | Q(email__icontains=q) | Q(phone__icontains=q)).distinct()[:8])
+        if can('invoicing.view') and store is not None:
+            invoices = Invoice.objects.filter(store=store)
+            if limit:
+                invoices = invoices.filter(warehouse_id=limit)
+            results['invoices'] = list(invoices.filter(Q(invoice_number__icontains=q) | Q(customer_name__icontains=q))
+                                       .order_by('-created_at')[:8])
+    return render(request, 'dashboard/search.html', {
+        'q': q, 'results': results, 'total': sum(len(v) for v in results.values()),
     })
+
+
+ASSISTANT_SUGGESTIONS = [
+    'Résume mes ventes des 30 derniers jours et compare au mois précédent',
+    'Quels produits me rapportent le plus de marge ?',
+    'Quels produits dois-je réapprovisionner en priorité ?',
+    'Quelles commandes sont en attente depuis plus de 2 jours ?',
+    'Qui sont mes meilleurs clients cette année ?',
+    'Quelles factures sont en retard de paiement ?',
+]
+
+
+@login_required
+@seller_or_admin_required
+def dash_assistant(request):
+    """Assistant IA : briefing du jour + conversation avec Claude (outils sur les vraies données)."""
+    from .ai_assistant import is_configured, render_markdown
+    from .assistant import get_briefing
+    from .models import AssistantConversation
+    store = access.acting_store(request.user)
+    conversations = AssistantConversation.objects.filter(user=request.user, store=store)
+    current = None
+    if request.GET.get('c', '').isdigit():
+        current = conversations.filter(pk=request.GET['c']).first()
+    elif not request.GET.get('new'):
+        current = conversations.first()
+    transcript = []
+    if current:
+        for entry in current.transcript:
+            transcript.append({**entry, 'html': render_markdown(entry['text']) if entry['role'] == 'assistant' else ''})
+    return render(request, 'dashboard/assistant.html', {
+        'ai_enabled': is_configured(),
+        'model_name': settings.ASSISTANT_MODEL,
+        'conversations': conversations[:30],
+        'current': current,
+        'transcript': transcript,
+        'suggestions': ASSISTANT_SUGGESTIONS,
+        'briefing': get_briefing(store) if store else None,
+    })
+
+
+@login_required
+@seller_or_admin_required
+def dash_assistant_ask(request):
+    """Pose une question (JSON). Avec une clé API : Claude + outils ; sinon l'assistant par mots-clés."""
+    from .ai_assistant import ask as ai_ask, is_configured, render_markdown
+    from .models import AssistantConversation
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'error': 'POST attendu'}, status=405)
+    question = request.POST.get('question', '').strip()
+    if not question:
+        return JsonResponse({'ok': False, 'error': 'Posez une question.'}, status=400)
+    store = access.acting_store(request.user)
+
+    if not is_configured():
+        from .assistant import ask as keyword_ask
+        text = keyword_ask(question, store, user=request.user) if store else "Aucune boutique associée à ce compte."
+        text = re.sub('[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B50\u2705\u274C]\ufe0f?', '', text)
+        return JsonResponse({'ok': True, 'html': str(render_markdown(text)), 'tools': [], 'conversation': None, 'mode': 'simple'})
+
+    conv_id = request.POST.get('conversation', '')
+    conversation = None
+    if conv_id.isdigit():
+        conversation = AssistantConversation.objects.filter(pk=conv_id, user=request.user, store=store).first()
+    if conversation is None:
+        conversation = AssistantConversation.objects.create(user=request.user, store=store)
+    result = ai_ask(conversation, question, request.user)
+    if result['error']:
+        return JsonResponse({'ok': False, 'error': result['error'], 'conversation': conversation.pk}, status=502)
+    return JsonResponse({'ok': True, 'html': str(render_markdown(result['text'])), 'tools': result['tools'],
+                         'conversation': conversation.pk, 'title': conversation.title, 'mode': 'ai'})
+
+
+@login_required
+@seller_or_admin_required
+def dash_assistant_delete(request, pk):
+    from .models import AssistantConversation
+    if request.method == 'POST':
+        AssistantConversation.objects.filter(pk=pk, user=request.user).delete()
+    return redirect(f"{reverse('dashboard:assistant')}?new=1")
 
 
 @login_required
@@ -1983,6 +2878,8 @@ def dash_settings(request):
             prefs.email_payment = 'email_payment' in request.POST
             prefs.email_stock = 'email_stock' in request.POST
             prefs.email_account = 'email_account' in request.POST
+            prefs.email_marketing = 'email_marketing' in request.POST
+            prefs.whatsapp_orders = 'whatsapp_orders' in request.POST
             prefs.save()
             django_messages.success(request, 'Préférences de notification enregistrées.')
 

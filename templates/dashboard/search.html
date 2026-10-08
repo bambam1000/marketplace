@@ -1,0 +1,77 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Recherche{% endblock %}
+{% block dash %}
+<style>
+.sr-head h1 { margin: 0; font-size: 20px; }
+.sr-head p { margin: 6px 0 18px; font-size: 13px; color: var(--dash-text3); }
+.sr-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+.sr-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); }
+.sr-card-head { padding: 12px 16px; border-bottom: 1px solid var(--dash-border); display: flex; justify-content: space-between; align-items: center; }
+.sr-card-head h3 { margin: 0; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.sr-card-head h3 i { color: var(--dash-accent); }
+.sr-card-head a { font-size: 12px; color: var(--dash-accent); font-weight: 600; }
+.sr-row { display: flex; justify-content: space-between; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--dash-border); text-decoration: none; color: inherit; }
+.sr-row:last-child { border-bottom: none; }
+.sr-row:hover { background: var(--dash-bg); }
+.sr-row .t { font-size: 13px; font-weight: 600; color: var(--dash-text); }
+.sr-row .d { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.sr-row .r { text-align: right; font-size: 12px; font-weight: 700; color: var(--dash-text); white-space: nowrap; }
+.sr-empty { text-align: center; padding: 3rem 1rem; color: var(--dash-text3); font-size: 13px; }
+@media (max-width: 900px) { .sr-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="sr-head">
+    <h1><i class="fa-solid fa-magnifying-glass" style="color:var(--dash-accent);"></i> Recherche{% if q %} : « {{ q }} »{% endif %}</h1>
+    <p>{% if q|length < 2 %}Tapez au moins 2 caractères dans la barre de recherche.{% else %}{{ total }} résultat{{ total|pluralize:"s" }} dans les commandes, produits, clients et factures.{% endif %}</p>
+</div>
+
+{% if q|length >= 2 and total %}
+<div class="sr-grid">
+    {% if results.orders %}
+    <div class="sr-card">
+        <div class="sr-card-head"><h3><i class="fa-solid fa-receipt"></i> Commandes</h3><a href="{% url 'dashboard:orders' %}?q={{ q|urlencode }}">Voir dans Commandes</a></div>
+        {% for o in results.orders %}
+        <a class="sr-row" href="{% url 'dashboard:order_detail' o.order_number %}">
+            <span><span class="t" style="display:block;">#{{ o.order_number }}</span><span class="d" style="display:block;">{{ o.shipping_name|default:o.buyer.display_name }} · {{ o.created_at|date:"d/m/Y" }}</span></span>
+            <span class="status-badge st-{{ o.status }}" style="align-self:center;">{{ o.get_status_display }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if results.products %}
+    <div class="sr-card">
+        <div class="sr-card-head"><h3><i class="fa-solid fa-tag"></i> Produits</h3><a href="{% url 'dashboard:products' %}?q={{ q|urlencode }}">Voir dans Produits</a></div>
+        {% for p in results.products %}
+        <a class="sr-row" href="{% url 'dashboard:products' %}?q={{ p.name|urlencode }}">
+            <span><span class="t" style="display:block;">{{ p.name }}</span><span class="d" style="display:block;">{% if p.sku %}SKU {{ p.sku }} · {% endif %}Stock {{ p.stock }}{% if not p.is_active %} · Archivé{% endif %}</span></span>
+            <span class="r">{{ p.price|intcomma }} F</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if results.customers %}
+    <div class="sr-card">
+        <div class="sr-card-head"><h3><i class="fa-solid fa-users"></i> Clients</h3><a href="{% url 'dashboard:customers' %}?q={{ q|urlencode }}">Voir dans Clients</a></div>
+        {% for u in results.customers %}
+        <a class="sr-row" href="{% url 'dashboard:customers' %}?q={{ u.username|urlencode }}">
+            <span><span class="t" style="display:block;">{{ u.display_name }}</span><span class="d" style="display:block;">{{ u.email|default:"—" }}{% if u.phone %} · {{ u.phone }}{% endif %}</span></span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if results.invoices %}
+    <div class="sr-card">
+        <div class="sr-card-head"><h3><i class="fa-solid fa-file-invoice"></i> Factures</h3><a href="{% url 'invoicing:invoices' %}?q={{ q|urlencode }}">Voir dans Facturation</a></div>
+        {% for i in results.invoices %}
+        <a class="sr-row" href="{% url 'invoicing:invoice_detail' i.pk %}">
+            <span><span class="t" style="display:block;">{{ i.invoice_number }}</span><span class="d" style="display:block;">{{ i.customer_name }} · {{ i.get_status_display }}</span></span>
+            <span class="r">{{ i.total_amount|floatformat:0|intcomma }} F</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% elif q|length >= 2 %}
+<div class="sr-card"><div class="sr-empty"><i class="fa-solid fa-magnifying-glass" style="font-size:28px;opacity:.3;display:block;margin-bottom:10px;"></i>Aucun résultat pour « {{ q }} ». Essayez un numéro de commande, un nom de produit, un client ou un numéro de facture.</div></div>
+{% endif %}
+{% endblock %}

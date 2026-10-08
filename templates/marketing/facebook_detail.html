@@ -58,10 +58,9 @@
             {% endif %}
             <button type="button" class="btn btn-outline" style="width:100%;margin-bottom:10px;" onclick="copyPost()"><i class="fa-solid fa-copy"></i> Copier le texte</button>
             {% if fb_page_url %}
-            <a href="{{ fb_page_url }}" target="blank" class="btn" style="width:100%;background:#1877F2;color:#fff;margin-bottom:10px;justify-content:center;" onclick="copyPost()"><i class="fa-brands fa-facebook"></i> Publier sur ma page</a>
-            {% else %}
-            <a href="{{ share_url }}" target="_blank" class="btn" style="width:100%;background:#1877F2;color:#fff;margin-bottom:10px;justify-content:center;"><i class="fa-brands fa-facebook"></i> Partager sur Facebook</a>
+            <a href="{{ fb_page_url }}" target="_blank" rel="noopener" class="btn" style="width:100%;background:#1877F2;color:#fff;margin-bottom:10px;justify-content:center;" onclick="copyPost()"><i class="fa-brands fa-facebook"></i> Publier sur ma page</a>
             {% endif %}
+            <a href="{{ share_url }}" target="_blank" rel="noopener" class="btn {% if fb_page_url %}btn-outline{% endif %}" style="width:100%;{% if not fb_page_url %}background:#1877F2;color:#fff;{% else %}color:#1877F2;border-color:#1877F2;{% endif %}margin-bottom:10px;justify-content:center;"><i class="fa-brands fa-facebook"></i> Partager le lien sur Facebook</a>
             {% if post.status != 'published' %}
             <form method="post">
                 {% csrf_token %}
@@ -84,7 +83,7 @@
 
 <script>
 function copyPost() {
-    navigator.clipboard.writeText({{ post_text|escapejs|safe }}).then(function() {
+    navigator.clipboard.writeText("{{ post_text|escapejs }}").then(function() {
         alert('Texte du post copié !');
     });
 }

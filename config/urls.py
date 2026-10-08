@@ -4,8 +4,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 
+from whatsapp import views as whatsapp_views
+
 urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
+    # Appelé par Evolution API (serveur à serveur) : hors préfixe de langue
+    path('whatsapp/webhook/', whatsapp_views.webhook, name='whatsapp_webhook'),
 ]
 
 urlpatterns += i18n_patterns(
@@ -23,6 +27,7 @@ urlpatterns += i18n_patterns(
     path('marketing/', include('marketing.urls')),
     path('facturation/', include('invoicing.urls')),
     path('pos/', include('pos.urls')),
+    path('dashboard/whatsapp/', include('whatsapp.urls')),
     path('', include('catalog.home_urls')),
 )
 if settings.DEBUG:

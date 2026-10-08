@@ -1,15 +1,7 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Ventes{% endblock %}
 {% block dash %}
-{% if warehouse %}
-<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
-<div class="dash-header" style="margin-top:12px;">
-    <div>
-        <h1><i class="fa-solid fa-chart-line" style="color:var(--dash-accent);"></i> Ventes — {{ warehouse.name }}</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">Ventes de cet entrepôt</p>
-    </div>
-</div>
-{% endif %}
+{% include 'dashboard/_warehouse_header.html' with title='Ventes' icon='fa-chart-line' subtitle='Ventes payées de tous les entrepôts' %}
 <style>
 .sales-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
 .sales-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
@@ -17,26 +9,63 @@
 .sales-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
 .sales-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
 .sales-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.sales-periods { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.sales-chip { padding: 6px 12px; border: 1.5px solid var(--dash-border); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--dash-text2); text-decoration: none; background: #fff; transition: var(--dash-transition); }
+.sales-chip:hover { border-color: var(--dash-accent); color: var(--dash-accent); }
+.sales-chip.active { background: var(--dash-accent); border-color: var(--dash-accent); color: #fff; }
+.sales-dates { display: flex; gap: 6px; align-items: center; margin: 0 0 0 auto; flex-wrap: wrap; }
+.sales-dates input { padding: 6px 10px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 12px; font-family: inherit; }
+.sales-dates label { font-size: 11px; color: var(--dash-text3); font-weight: 600; }
+.sales-grid { display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr); gap: 14px; margin-bottom: 20px; }
+.sales-panel { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); padding: 16px 18px; }
+.sales-panel h3 { margin: 0 0 14px; font-size: 14px; }
+.chart { display: flex; align-items: flex-end; gap: 3px; height: 150px; border-bottom: 1px solid var(--dash-border); }
+.chart .bar { flex: 1; min-width: 4px; background: var(--dash-accent); border-radius: 3px 3px 0 0; opacity: .85; position: relative; }
+.chart .bar:hover { opacity: 1; }
+.chart .bar.zero { background: var(--dash-border); height: 2px !important; }
+.chart-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--dash-text3); margin-top: 6px; }
+.top-row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--dash-border); font-size: 13px; }
+.top-row:last-child { border-bottom: none; }
+.top-row .n { color: var(--dash-text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-row .r { font-weight: 700; color: var(--dash-accent); white-space: nowrap; }
 .sales-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
 .sales-search { position: relative; }
-.sales-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 280px; font-family: inherit; }
-.sales-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.sales-search input { padding: 9px 14px 9px 36px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 260px; font-family: inherit; }
+.sales-search input:focus, .sales-dates input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
 .sales-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
-@media (max-width: 900px) { .sales-stats { grid-template-columns: repeat(2, 1fr); } }
+.canal { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 50px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.canal-online { background: rgba(46,144,250,.1); color: var(--dash-blue); }
+.canal-direct { background: rgba(122,90,248,.1); color: var(--dash-purple); }
+.sales-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--dash-border); font-size: 12px; color: var(--dash-text3); flex-wrap: wrap; }
+.sales-pager .pages { display: flex; gap: 6px; }
+@media (max-width: 900px) { .sales-stats { grid-template-columns: repeat(2, 1fr); } .sales-grid { grid-template-columns: 1fr; } .sales-dates { margin-left: 0; } .sales-search input { width: 100%; } }
 </style>
+
+<!-- ═══ Période ═══ -->
+<div class="sales-periods">
+    {% for code, label in periods %}
+    <a href="?{{ wh_query }}period={{ code }}" class="sales-chip {% if period == code %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+    <form method="get" class="sales-dates">
+        {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
+        <label for="sFrom">Du</label><input type="date" id="sFrom" name="from" value="{{ date_from }}" onchange="this.form.submit()">
+        <label for="sTo">Au</label><input type="date" id="sTo" name="to" value="{{ date_to }}" onchange="this.form.submit()">
+        {% if period == 'custom' %}<a href="?{{ wh_query }}" class="btn btn-sm btn-outline" title="Effacer les dates"><i class="fa-solid fa-xmark"></i></a>{% endif %}
+    </form>
+</div>
 
 <!-- ═══ Stats ═══ -->
 <div class="sales-stats">
     <div class="sales-stat">
-        <div><div class="lbl">Chiffre d'affaires</div><div class="val">{{ total_revenue|intcomma }} F</div><div class="sub">Ventes payées</div></div>
+        <div><div class="lbl">Chiffre d'affaires</div><div class="val">{{ total_revenue|floatformat:0|intcomma }} F</div><div class="sub">{% if period == 'all' %}Toutes les ventes payées{% else %}Sur la période{% endif %}</div></div>
         <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-sack-dollar"></i></div>
     </div>
     <div class="sales-stat">
-        <div><div class="lbl">Ce mois</div><div class="val">{{ month_revenue|intcomma }} F</div><div class="sub">{{ now|date:'F Y' }}</div></div>
+        <div><div class="lbl">Ce mois</div><div class="val">{{ month_revenue|floatformat:0|intcomma }} F</div><div class="sub">{{ now|date:'F Y' }}</div></div>
         <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-calendar-check"></i></div>
     </div>
     <div class="sales-stat">
-        <div><div class="lbl">Articles vendus</div><div class="val">{{ total_qty }}</div><div class="sub">{{ orders_count }} commande{{ orders_count|pluralize:"s" }}</div></div>
+        <div><div class="lbl">Articles vendus</div><div class="val">{{ total_qty|intcomma }}</div><div class="sub">{{ orders_count }} commande{{ orders_count|pluralize:"s" }}</div></div>
         <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-bag-shopping"></i></div>
     </div>
     <div class="sales-stat">
@@ -45,65 +74,109 @@
     </div>
 </div>
 
+<!-- ═══ Graphique + top produits ═══ -->
+<div class="sales-grid">
+    <div class="sales-panel">
+        <h3><i class="fa-solid fa-chart-column" style="color:var(--dash-accent);"></i> Chiffre d'affaires par jour</h3>
+        <div class="chart" role="img" aria-label="Chiffre d'affaires par jour">
+            {% for c in chart %}
+            <div class="bar {% if not c.value %}zero{% endif %}" style="height:{{ c.pct }}%;" title="{{ c.day|date:'d/m/Y' }} : {{ c.value|intcomma }} F"></div>
+            {% endfor %}
+        </div>
+        <div class="chart-axis">
+            <span>{{ chart.0.day|date:'d/m' }}</span>
+            <span>{% with last=chart|last %}{{ last.day|date:'d/m' }}{% endwith %}</span>
+        </div>
+    </div>
+    <div class="sales-panel">
+        <h3><i class="fa-solid fa-trophy" style="color:var(--dash-yellow);"></i> Top produits</h3>
+        {% for t in top_products %}
+        <div class="top-row">
+            <span class="n">{{ forloop.counter }}. {{ t.product__name }} <span style="color:var(--dash-text3);font-weight:500;">×{{ t.qty }}</span></span>
+            <span class="r">{{ t.revenue|floatformat:0|intcomma }} F</span>
+        </div>
+        {% empty %}
+        <div style="font-size:13px;color:var(--dash-text3);padding:20px 0;text-align:center;">Aucune vente sur la période</div>
+        {% endfor %}
+    </div>
+</div>
+
 <!-- ═══ Tableau des ventes ═══ -->
 <div class="dash-card">
     <div class="sales-toolbar">
         <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-chart-line" style="color:var(--dash-accent);"></i> Ventes réalisées</h3>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <form method="get" class="sales-search">
+                {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
+                {% if period != 'all' and period != 'custom' %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
+                {% if date_from %}<input type="hidden" name="from" value="{{ date_from }}">{% endif %}
+                {% if date_to %}<input type="hidden" name="to" value="{{ date_to }}">{% endif %}
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" name="q" value="{{ search_query }}" placeholder="Produit ou n° de commande...">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Produit, n° de commande, client...">
             </form>
-            <button type="button" class="btn btn-orange" onclick="document.getElementById('saleModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle vente</button>
+            <a href="{% url 'dashboard:sales_export' %}?{{ base_query }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+            {% if can_sell %}<button type="button" class="btn btn-orange" onclick="document.getElementById('saleModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvelle vente</button>{% endif %}
         </div>
     </div>
     <div class="dash-table-responsive">
     <table class="dash-table">
         <thead>
-            <tr><th>Commande</th><th>Produit</th><th>Client</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Date</th></tr>
+            <tr><th>Commande</th><th>Canal</th><th>Produit</th><th>Client</th>{% if not warehouse %}<th>Entrepôt</th>{% endif %}<th>Qté</th><th>Prix unit.</th><th>Total</th><th>Date</th></tr>
         </thead>
         <tbody>
             {% for item in items %}
             <tr>
                 <td><a href="{% url 'dashboard:order_detail' item.order.order_number %}" style="font-weight:600;color:var(--dash-accent);text-decoration:none;">#{{ item.order.order_number }}</a></td>
+                <td>{% if item.order.is_direct_sale %}<span class="canal canal-direct"><i class="fa-solid fa-cash-register"></i> Vente directe</span>{% else %}<span class="canal canal-online"><i class="fa-solid fa-globe"></i> En ligne</span>{% endif %}</td>
                 <td>
                     <div style="display:flex;align-items:center;gap:10px;">
                         <div style="width:34px;height:34px;border-radius:6px;background:var(--dash-bg);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            {% if item.product.image %}<img src="{{ item.product.image.url }}" style="width:100%;height:100%;object-fit:cover;">{% else %}<i class="fa-solid fa-bag-shopping" style="color:var(--dash-text3);font-size:12px;"></i>{% endif %}
+                            {% if item.product.image %}<img src="{{ item.product.image.url }}" alt="" style="width:100%;height:100%;object-fit:cover;">{% else %}<i class="fa-solid fa-bag-shopping" style="color:var(--dash-text3);font-size:12px;"></i>{% endif %}
                         </div>
                         <span style="font-weight:600;color:var(--dash-text);">{{ item.product.name|truncatechars:30 }}</span>
                     </div>
                 </td>
-                <td>{{ item.order.buyer.display_name }}</td>
+                <td>{% if item.order.is_direct_sale %}{{ item.order.shipping_name }}{% else %}{{ item.order.buyer.display_name }}{% endif %}</td>
+                {% if not warehouse %}<td style="font-size:12px;">{% if item.warehouse %}<a href="?warehouse={{ item.warehouse.pk }}" style="color:var(--dash-text2);">{{ item.warehouse.code }}</a>{% else %}—{% endif %}</td>{% endif %}
                 <td style="font-weight:600;">{{ item.quantity }}</td>
-                <td>{{ item.price|intcomma }} F</td>
-                <td style="font-weight:700;color:var(--dash-text);">{{ item.subtotal|intcomma }} F</td>
-                <td style="font-size:12px;color:var(--dash-text3);">{{ item.order.created_at|date:"d/m/Y" }}</td>
+                <td>{{ item.price|floatformat:0|intcomma }} F</td>
+                <td style="font-weight:700;color:var(--dash-text);">{{ item.subtotal|floatformat:0|intcomma }} F</td>
+                <td style="font-size:12px;color:var(--dash-text3);white-space:nowrap;">{{ item.order.created_at|date:"d/m/Y H:i" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+            <tr><td colspan="9" style="text-align:center;padding:3rem;">
                 <div style="font-size:40px;margin-bottom:12px;opacity:.25;"><i class="fa-solid fa-chart-line"></i></div>
-                <div style="color:var(--dash-text3);font-size:14px;">Aucune vente{% if search_query %} trouvée pour « {{ search_query }} »{% endif %}</div>
+                <div style="color:var(--dash-text3);font-size:14px;">Aucune vente{% if search_query %} trouvée pour « {{ search_query }} »{% elif period != 'all' %} sur cette période{% endif %}</div>
             </td></tr>
             {% endfor %}
         </tbody>
     </table>
     </div>
-    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
-        Affichage des {{ items|length }} dernières lignes de vente
+    <div class="sales-pager">
+        <span>{% if page_obj.paginator.count %}{{ page_obj.start_index }}–{{ page_obj.end_index }} sur {{ page_obj.paginator.count }} ligne{{ page_obj.paginator.count|pluralize:"s" }} de vente{% else %}0 ligne de vente{% endif %}</span>
+        {% if page_obj.has_other_pages %}
+        <div class="pages">
+            {% if page_obj.has_previous %}<a href="?{{ base_query }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-left"></i></a>{% endif %}
+            <span class="btn btn-sm btn-outline" style="pointer-events:none;">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?{{ base_query }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 
+{% if can_sell %}
 <!-- ═══ Modale Nouvelle vente ═══ -->
 <div class="dmodal" id="saleModal" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.5);z-index:2000;align-items:center;justify-content:center;padding:20px;">
     <div style="background:#fff;border-radius:8px;width:100%;max-width:480px;box-shadow:0 24px 60px rgba(0,0,0,.25);">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--dash-border);">
-            <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-cash-register" style="color:var(--dash-accent);"></i> Nouvelle vente directe</h3>
+            <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-cash-register" style="color:var(--dash-accent);"></i> Nouvelle vente directe{% if warehouse %} — {{ warehouse.code }}{% endif %}</h3>
             <button type="button" onclick="document.getElementById('saleModal').classList.remove('open')" style="background:none;border:none;font-size:18px;color:var(--dash-text3);cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form method="post" action="{% url 'dashboard:sale_create' %}">
             {% csrf_token %}
+            {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
             <div style="padding:20px;">
+                <p style="font-size:12px;color:var(--dash-text3);margin:0 0 12px;"><i class="fa-solid fa-circle-info"></i> Le stock sortira de {% if warehouse %}<strong>{{ warehouse.name }}</strong>{% else %}l'entrepôt par défaut{% endif %}.</p>
                 <div class="form-group">
                     <label>Produits *</label>
                     <div id="saleItems">
@@ -114,7 +187,7 @@
                                 <div class="sale-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--dash-border);border-radius:6px;box-shadow:var(--dash-shadow-lg);max-height:200px;overflow-y:auto;z-index:100;"></div>
                             </div>
                             <input type="number" name="quantity[]" class="form-control sale-qty" min="1" value="1" required onchange="updateSaleTotal()" oninput="updateSaleTotal()">
-                            <button type="button" onclick="removeSaleItem(this)" style="background:none;border:none;color:var(--dash-red);cursor:pointer;font-size:14px;"><i class="fa-solid fa-trash-can"></i></button>
+                            <button type="button" onclick="removeSaleItem(this)" style="background:none;border:none;color:var(--dash-red);cursor:pointer;font-size:14px;" title="Retirer"><i class="fa-solid fa-trash-can"></i></button>
                         </div>
                     </div>
                     <button type="button" class="btn btn-outline btn-sm" onclick="addSaleItem()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>
@@ -149,36 +222,47 @@
 </div>
 <style>.dmodal.open { display: flex !important; }</style>
 <script>
-/* Catalogue produits pour la recherche */
+/* Catalogue produits pour la recherche (stock de l'entrepôt affiché) */
 var PRODUCTS = [
 {% for p in my_products %}
-    { id: {{ p.id }}, name: "{{ p.name|escapejs }}", price: {{ p.price }}, stock: {{ p.stock }} }{% if not forloop.last %},{% endif %}
+    { id: {{ p.id }}, name: "{{ p.name|escapejs }}", price: {{ p.price|floatformat:0 }}, stock: {{ p.sell_stock }} }{% if not forloop.last %},{% endif %}
 {% endfor %}
 ];
 
+/* Les noms viennent de la base : on les insère comme texte, jamais comme HTML */
 function renderSaleList(input, filter) {
     var box = input.closest('.prod-search-box');
     var list = box.querySelector('.sale-list');
     var q = (filter || '').toLowerCase();
-    var html = '';
+    list.textContent = '';
     PRODUCTS.forEach(function(p) {
-        if (p.name.toLowerCase().indexOf(q) !== -1) {
-            html += '<div class="sale-opt" data-id="' + p.id + '" data-price="' + p.price + '" data-name="' + p.name.replace(/"/g, '&quot;') + '" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--dash-border);">'
-                + '<strong>' + p.name + '</strong> <span style="color:var(--dash-text3);font-size:11px;">— ' + p.price.toLocaleString('fr') + ' F · stock: ' + p.stock + '</span></div>';
-        }
-    });
-    list.innerHTML = html || '<div style="padding:10px;font-size:12px;color:var(--dash-text3);">Aucun produit trouvé</div>';
-    list.style.display = 'block';
-    list.querySelectorAll('.sale-opt').forEach(function(opt) {
+        if (p.name.toLowerCase().indexOf(q) === -1) return;
+        var opt = document.createElement('div');
+        opt.className = 'sale-opt';
+        opt.style.cssText = 'padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--dash-border);';
+        var name = document.createElement('strong'); name.textContent = p.name;
+        var meta = document.createElement('span');
+        meta.style.cssText = 'color:var(--dash-text3);font-size:11px;';
+        meta.textContent = ' — ' + p.price.toLocaleString('fr') + ' F · stock : ' + p.stock;
+        opt.appendChild(name); opt.appendChild(meta);
         opt.addEventListener('mousedown', function() {
-            box.querySelector('.sale-search').value = opt.dataset.name;
-            box.querySelector('.sale-product-id').value = opt.dataset.id;
+            box.querySelector('.sale-search').value = p.name;
+            box.querySelector('.sale-product-id').value = p.id;
+            box.closest('.sale-item').querySelector('.sale-qty').max = p.stock;
             list.style.display = 'none';
             updateSaleTotal();
         });
         opt.addEventListener('mouseover', function() { opt.style.background = 'var(--dash-bg)'; });
         opt.addEventListener('mouseout', function() { opt.style.background = ''; });
+        list.appendChild(opt);
     });
+    if (!list.children.length) {
+        var empty = document.createElement('div');
+        empty.style.cssText = 'padding:10px;font-size:12px;color:var(--dash-text3);';
+        empty.textContent = 'Aucun produit en stock trouvé';
+        list.appendChild(empty);
+    }
+    list.style.display = 'block';
 }
 
 function showSaleList(input) { renderSaleList(input, input.value); }
@@ -210,6 +294,7 @@ function addSaleItem() {
     row.querySelector('.sale-search').value = '';
     row.querySelector('.sale-product-id').value = '';
     row.querySelector('.sale-qty').value = 1;
+    row.querySelector('.sale-qty').removeAttribute('max');
     container.appendChild(row);
 }
 
@@ -223,4 +308,5 @@ function removeSaleItem(btn) {
 document.getElementById('saleModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('saleModal').classList.remove('open'); });
 </script>
+{% endif %}
 {% endblock %}

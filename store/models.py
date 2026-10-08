@@ -3,6 +3,8 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.text import slugify
 
+from config.numbering import save_with_reference
+
 
 class Store(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='stores')
@@ -144,10 +146,9 @@ class Payslip(models.Model):
         return f"{self.reference} — {self.member.user.display_name}"
 
     def save(self, *args, **kwargs):
-        if not self.reference:
-            count = Payslip.objects.count() + 1
-            self.reference = f"PAY-{count:05d}"
         self.net_salary = self.base_salary + self.bonuses - self.deductions
+        if not self.reference:
+            return save_with_reference(self, 'reference', 'PAY-', 5, lambda: super(Payslip, self).save(*args, **kwargs))
         super().save(*args, **kwargs)
 
     def mark_paid(self):

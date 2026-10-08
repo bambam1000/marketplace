@@ -168,7 +168,7 @@ check('Catégorie supprimée', not Category.objects.filter(pk=cat2.id).exists())
 
 # ===== 7. EMPLOYÉ (permissions granulaires) =====
 role = StoreRole.objects.create(store=store, name='Magasinier Atest',
-                                permissions=['stock.view', 'stock.adjust'])
+                                permissions=['stock.view', 'stock.adjust', 'products.view'])
 emp_user = User.objects.create_user(username=f'emp{SUFFIX}', password='employe123', role='buyer')
 member = StoreMember.objects.create(
     store=store, user=emp_user, role=role, warehouse=None, salary=60000,
@@ -180,21 +180,41 @@ check('Login employé', c_emp.login(username=f'emp{SUFFIX}', password='employe12
 r = safe_get(c_emp, '/fr/dashboard/')
 check('Employé accède au dashboard (200)', r.status_code == 200, f'-> {r.status_code}')
 
-# Pages autorisées : inventaire/produits (filtre lecture)
+# Pages autorisées : inventaire/produits (permission products.view)
 r = safe_get(c_emp, '/fr/dashboard/produits/')
 check('Employé voit les produits (200)', r.status_code == 200, f'-> {r.status_code}')
+import re
+_shown = re.search(r'sur (\d+) produit', r.content.decode()) if r.status_code == 200 else None
+_count = int(_shown.group(1)) if _shown else (0 if 'Aucun produit' in r.content.decode() else -1)
+check('Employé ne voit que les produits de sa boutique', _count == store.products.count(),
+      f'-> {_count} affichés / {store.products.count()} dans la boutique')
 r = safe_get(c_emp, '/fr/dashboard/inventaire/')
 check('Employé voit linventaire (200)', r.status_code == 200, f'-> {r.status_code}')
 
-# Ajustement stock refusé : l'employé n'a pas de boutique propre et la vue
-# dash_stock_adjust n'autorise que le propriétaire (permissions de rôle non lues ici)
+# Ajustement stock : autorisé par la permission de rôle stock.adjust
 stock_before = product.stock
 r = safe_post(c_emp, f'/fr/dashboard/inventaire/{product.id}/ajuster/', {
     'movement_type': 'in', 'quantity': '2', 'reason': 'Réception employé',
 })
 product.refresh_from_db()
-check('Employé sans droits suffisants ne peut pas ajuster (stock inchangé)', product.stock == stock_before,
+check('Employé avec stock.adjust peut ajuster (+2)', product.stock == stock_before + 2,
       f'-> {product.stock}')
+
+# Sans stock.adjust : refusé
+role.permissions = ['stock.view']
+role.save()
+stock_before = product.stock
+r = safe_post(c_emp, f'/fr/dashboard/inventaire/{product.id}/ajuster/', {
+    'movement_type': 'in', 'quantity': '2', 'reason': 'Réception employé',
+})
+product.refresh_from_db()
+check('Employé sans stock.adjust ne peut pas ajuster (stock inchangé)', product.stock == stock_before,
+      f'-> {product.stock}')
+# Sans products.view : page Produits refusée
+r = safe_get(c_emp, '/fr/dashboard/produits/')
+check('Employé sans products.view → produits refusés (302)', r.status_code == 302, f'-> {r.status_code}')
+role.permissions = ['stock.view', 'stock.adjust', 'products.view']
+role.save()
 
 # Page paie : l'employé (sans boutique propre) est redirigé
 r = safe_get(c_emp, '/fr/dashboard/paie/')

@@ -21,6 +21,7 @@ urlpatterns = [
 
     # Page publique (vitrine)
     path('campagne/<int:pk>/', views.campaign_public, name='campaign_public'),
+    path('desinscription/<str:token>/', views.unsubscribe, name='unsubscribe'),
 
     # Analytics
     path('analytics/', views.analytics, name='analytics'),

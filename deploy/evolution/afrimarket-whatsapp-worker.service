@@ -1,0 +1,24 @@
+# Service systemd du worker d'envoi WhatsApp (production Linux).
+# Installation :
+#   sudo cp deploy/evolution/afrimarket-whatsapp-worker.service /etc/systemd/system/
+#   (adapter User, WorkingDirectory, EnvironmentFile et le chemin de Python ci-dessous)
+#   sudo systemctl daemon-reload && sudo systemctl enable --now afrimarket-whatsapp-worker
+#   journalctl -u afrimarket-whatsapp-worker -f        # voir les envois
+[Unit]
+Description=AfriMarket - worker d'envoi WhatsApp (Evolution API)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=afrimarket
+WorkingDirectory=/srv/afrimarket
+# Mêmes variables que le site Django : WHATSAPP_ENABLED, EVOLUTION_API_KEY, WHATSAPP_WEBHOOK_SECRET,
+# WHATSAPP_DELIVERY_MODE=worker, DJANGO_SECRET_KEY, etc.
+EnvironmentFile=/srv/afrimarket/.env.production
+ExecStart=/srv/afrimarket/.venv/bin/python manage.py whatsapp_worker
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -1,15 +1,7 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Produits{% endblock %}
 {% block dash %}
-{% if warehouse %}
-<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
-<div class="dash-header" style="margin-top:12px;">
-    <div>
-        <h1><i class="fa-solid fa-tag" style="color:var(--dash-accent);"></i> Produits — {{ warehouse.name }}</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">Produits de cet entrepôt</p>
-    </div>
-</div>
-{% endif %}
+{% include 'dashboard/_warehouse_header.html' with title='Produits' icon='fa-tag' subtitle='Tous les produits de la boutique' %}
 <style>
 .prod-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
 .prod-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
@@ -41,48 +33,57 @@
 .dmodal-body { padding: 22px; }
 .dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--dash-border); }
 .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.prod-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--dash-border); font-size: 12px; color: var(--dash-text3); flex-wrap: wrap; }
+.prod-pager .pages { display: flex; gap: 6px; }
+a.prod-stat { text-decoration: none; transition: var(--dash-transition); }
+a.prod-stat:hover { border-color: var(--dash-accent); }
 @media (max-width: 900px) { .prod-stats { grid-template-columns: repeat(2, 1fr); } .frow { grid-template-columns: 1fr; } }
 </style>
 
 <!-- ═══ Stats ═══ -->
 <div class="prod-stats">
     <div class="prod-stat">
-        <div><div class="lbl">Total Produits</div><div class="val">{{ total }}</div><div class="sub">Tous les produits</div></div>
+        <div><div class="lbl">Total Produits</div><div class="val">{{ total }}</div><div class="sub">{% if warehouse %}Stockés dans {{ warehouse.code }}{% else %}Tous les produits{% endif %}</div></div>
         <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-tag"></i></div>
     </div>
     <div class="prod-stat">
         <div><div class="lbl">Actifs</div><div class="val">{{ active }}</div><div class="sub">Visibles en boutique</div></div>
         <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-circle-check"></i></div>
     </div>
-    <div class="prod-stat">
-        <div><div class="lbl">Stock faible</div><div class="val">{{ low }}</div><div class="sub">5 unités ou moins</div></div>
+    <a href="?{{ wh_query }}stock=low" class="prod-stat">
+        <div><div class="lbl">Stock faible{% if warehouse %} ici{% endif %}</div><div class="val" style="color:var(--dash-yellow);">{{ low }}</div><div class="sub">Sous le seuil d'alerte du produit</div></div>
         <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-triangle-exclamation"></i></div>
-    </div>
-    <div class="prod-stat">
-        <div><div class="lbl">En vedette</div><div class="val">{{ featured }}</div><div class="sub">Produits mis en avant</div></div>
-        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-star"></i></div>
-    </div>
+    </a>
+    <a href="?{{ wh_query }}stock=out" class="prod-stat">
+        <div><div class="lbl">Ruptures{% if warehouse %} ici{% endif %}</div><div class="val" style="color:var(--dash-red);">{{ stats.out }}</div><div class="sub">{{ featured }} produit{{ featured|pluralize:"s" }} en vedette</div></div>
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-ban"></i></div>
+    </a>
 </div>
 
 <!-- ═══ Table ═══ -->
 <div class="dash-card">
     <div class="prod-toolbar">
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <a href="{% url 'dashboard:products' %}" class="btn btn-sm {% if not stock_filter %}btn-orange{% else %}btn-outline{% endif %}">Tous</a>
-            <a href="?stock=low" class="btn btn-sm {% if stock_filter == 'low' %}btn-orange{% else %}btn-outline{% endif %}">Stock faible</a>
-            <a href="?stock=out" class="btn btn-sm {% if stock_filter == 'out' %}btn-orange{% else %}btn-outline{% endif %}">Ruptures</a>
-            <a href="?stock=archived" class="btn btn-sm {% if stock_filter == 'archived' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-box-archive"></i> Archivés</a>
+            <a href="?{{ wh_query }}" class="btn btn-sm {% if not stock_filter %}btn-orange{% else %}btn-outline{% endif %}">Tous</a>
+            <a href="?{{ wh_query }}stock=low" class="btn btn-sm {% if stock_filter == 'low' %}btn-orange{% else %}btn-outline{% endif %}">Stock faible</a>
+            <a href="?{{ wh_query }}stock=out" class="btn btn-sm {% if stock_filter == 'out' %}btn-orange{% else %}btn-outline{% endif %}">Ruptures</a>
+            <a href="?{{ wh_query }}stock=archived" class="btn btn-sm {% if stock_filter == 'archived' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-box-archive"></i> Archivés</a>
         </div>
-        <form method="get" class="prod-search">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un produit...">
-        </form>
-        <button type="button" class="btn btn-orange" onclick="openProductModal()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <form method="get" class="prod-search">
+                {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
+                {% if stock_filter %}<input type="hidden" name="stock" value="{{ stock_filter }}">{% endif %}
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Nom ou SKU...">
+            </form>
+            <a href="{% url 'dashboard:products_export' %}?{{ base_query }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+            {% if can_edit %}<button type="button" class="btn btn-orange" onclick="openProductModal()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>{% endif %}
+        </div>
     </div>
     <div class="dash-table-responsive">
     <table class="dash-table">
         <thead>
-            <tr><th>Produit</th><th>Catégorie</th><th>Prix</th><th>Stock</th><th>Ventes</th><th>Statut</th><th style="text-align:right;">Actions</th></tr>
+            <tr><th>Produit</th><th>Catégorie</th><th>Prix</th><th>{% if warehouse %}Stock ici{% else %}Stock{% endif %}</th><th>Ventes</th><th>Statut</th><th style="text-align:right;">Actions</th></tr>
         </thead>
         <tbody>
             {% for p in products %}
@@ -99,19 +100,30 @@
                     </div>
                 </td>
                 <td>{{ p.category.name }}</td>
-                <td style="font-weight:700;">{{ p.price|intcomma }} F</td>
-                <td>{% if p.stock <= 5 %}<span style="color:var(--dash-red);font-weight:700;">{{ p.stock }}</span>{% else %}{{ p.stock }}{% endif %}</td>
+                <td>
+                    <div style="font-weight:700;">{{ p.price|intcomma }} F</div>
+                    {% if p.cost_price is not None %}<div style="font-size:11px;color:var(--dash-text3);">Achat {{ p.cost_price|intcomma }} F{% if p.margin_percent is not None %} · <span style="color:{% if p.margin_percent >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">marge {{ p.margin_percent }} %</span>{% endif %}</div>{% endif %}
+                </td>
+                <td>
+                    {% if warehouse %}{% with qty=p.stock_here|default:0 %}
+                    <span style="font-weight:700;{% if qty <= p.low_stock_threshold %}color:var(--dash-red);{% endif %}">{{ qty }}</span>
+                    <div style="font-size:11px;color:var(--dash-text3);">Global : {{ p.stock }}</div>
+                    {% endwith %}{% else %}
+                    {% if p.stock <= p.low_stock_threshold %}<span style="color:var(--dash-red);font-weight:700;">{{ p.stock }}</span>{% else %}{{ p.stock }}{% endif %}
+                    {% endif %}
+                </td>
                 <td>{{ p.orders_count }}</td>
                 <td>{% if p.is_active %}<span class="status-badge st-delivered">Actif</span>{% else %}<span class="status-badge st-cancelled">Inactif</span>{% endif %}</td>
                 <td style="text-align:right;">
                     <div class="prod-actions-menu">
                         <button class="dots-btn" onclick="toggleProdMenu(event, {{ p.id }})"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                         <div class="prod-dropdown" id="prodMenu{{ p.id }}">
-                            <button type="button" onclick='openProductModal({{ p.id }})'><i class="fa-solid fa-pen"></i> Modifier</button>
-                            <button type="button" onclick="openAdjustModal({{ p.id }}, '{{ p.name|escapejs }}', {{ p.stock }}, {{ p.low_stock_threshold }})"><i class="fa-solid fa-sliders"></i> Ajuster le stock</button>
-                            <a href="{% url 'billing:boost_product' p.pk %}"><i class="fa-solid fa-rocket"></i> Booster</a>
+                            {% if can_edit %}<button type="button" onclick='openProductModal({{ p.id }})'><i class="fa-solid fa-pen"></i> Modifier</button>{% endif %}
+                            {% if can_adjust %}<button type="button" onclick="openAdjustModal({{ p.id }}, '{{ p.name|escapejs }}', {% if warehouse %}{{ p.stock_here|default:0 }}{% else %}{{ p.stock }}{% endif %}, {{ p.low_stock_threshold }})"><i class="fa-solid fa-sliders"></i> Ajuster le stock{% if warehouse %} ici{% endif %}</button>{% endif %}
+                            {% if warehouse %}<a href="{% url 'dashboard:inventory' %}?warehouse={{ warehouse.pk }}&q={{ p.name|urlencode }}"><i class="fa-solid fa-clock-rotate-left"></i> Historique</a>{% endif %}
+                            {% if can_edit %}<a href="{% url 'billing:boost_product' p.pk %}"><i class="fa-solid fa-rocket"></i> Booster</a>{% endif %}
                             <a href="{% url 'catalog:product_detail' p.slug %}" target="_blank"><i class="fa-solid fa-eye"></i> Voir en ligne</a>
-                            {% if p.is_active %}
+                            {% if not can_edit %}{% elif p.is_active %}
                             <button type="button" style="color:var(--dash-yellow);" onclick="openDeleteModal({{ p.id }}, '{{ p.name|escapejs }}')"><i class="fa-solid fa-box-archive" style="color:var(--dash-yellow);"></i> Archiver</button>
                             {% else %}
                             <form method="post" action="{% url 'dashboard:product_unarchive' p.pk %}" style="margin:0;">{% csrf_token %}
@@ -131,8 +143,15 @@
         </tbody>
     </table>
     </div>
-    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
-        Affichage de {{ products|length }} produit{{ products|length|pluralize:"s" }}
+    <div class="prod-pager">
+        <span>{% if page_obj.paginator.count %}{{ page_obj.start_index }}–{{ page_obj.end_index }} sur {{ page_obj.paginator.count }} produit{{ page_obj.paginator.count|pluralize:"s" }}{% else %}0 produit{% endif %}</span>
+        {% if page_obj.has_other_pages %}
+        <div class="pages">
+            {% if page_obj.has_previous %}<a href="?{{ base_query }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-left"></i></a>{% endif %}
+            <span class="btn btn-sm btn-outline" style="pointer-events:none;">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?{{ base_query }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -156,8 +175,16 @@
                     </div>
                 </div>
                 <div class="frow">
-                    <div class="form-group"><label>Prix (FCFA) *</label><input type="number" name="price" id="pf_price" class="form-control" min="0" required></div>
+                    <div class="form-group"><label>Prix (FCFA) *</label><input type="number" name="price" id="pf_price" class="form-control" min="0" required oninput="updateMarginHint()"></div>
                     <div class="form-group"><label>Ancien prix</label><input type="number" name="old_price" id="pf_old_price" class="form-control" min="0"></div>
+                </div>
+                <div class="frow">
+                    <div class="form-group">
+                        <label>Prix d'achat (FCFA)</label>
+                        <input type="number" name="cost_price" id="pf_cost_price" class="form-control" min="0" oninput="updateMarginHint()">
+                        <small style="font-size:11px;color:var(--dash-text3);">Facultatif — sert au calcul de la marge en comptabilité</small>
+                    </div>
+                    <div class="form-group"><label>Marge</label><div id="pf_margin" style="padding:9px 0;font-size:14px;font-weight:700;color:var(--dash-text3);">—</div></div>
                 </div>
                 <div class="frow">
                     <div class="form-group" id="stock_field">
@@ -211,8 +238,9 @@
         </div>
         <form method="post" id="adjustForm">
             {% csrf_token %}
+            {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
             <div class="dmodal-body">
-                <p style="font-size:13px;color:var(--dash-text3);margin-bottom:14px;">Produit : <strong id="adjName" style="color:var(--dash-text);"></strong> · Stock actuel : <strong id="adjStock" style="color:var(--dash-accent);"></strong></p>
+                <p style="font-size:13px;color:var(--dash-text3);margin-bottom:14px;">Produit : <strong id="adjName" style="color:var(--dash-text);"></strong> · Stock {% if warehouse %}dans {{ warehouse.code }}{% else %}actuel{% endif %} : <strong id="adjStock" style="color:var(--dash-accent);"></strong></p>
                 <div class="form-group">
                     <label>Type de mouvement</label>
                     <select name="movement_type" class="form-control">
@@ -270,6 +298,7 @@ var PRODUCTS = {
     category: {{ p.category_id }},
     price: "{{ p.price }}",
     old_price: "{{ p.old_price|default:'' }}",
+    cost_price: "{{ p.cost_price|default:'' }}",
     stock: {{ p.stock }},
     min_order: {{ p.min_order }},
     description: "{{ p.description|escapejs }}",
@@ -327,6 +356,7 @@ function openProductModal(id) {
         document.getElementById('pf_category').value = p.category;
         document.getElementById('pf_price').value = parseInt(p.price);
         document.getElementById('pf_old_price').value = p.old_price ? parseInt(p.old_price) : '';
+        document.getElementById('pf_cost_price').value = p.cost_price ? parseInt(p.cost_price) : '';
         document.getElementById('pf_stock').value = p.stock;
         document.getElementById('pf_stock').readOnly = true;
         document.getElementById('pf_stock').style.background = 'var(--dash-bg)';
@@ -347,7 +377,18 @@ function openProductModal(id) {
         document.getElementById('stock_hint').style.display = 'none';
         resetPreviews(null);
     }
+    updateMarginHint();
     modal.classList.add('open');
+}
+/* Marge unitaire calculée pendant la saisie */
+function updateMarginHint() {
+    var price = parseFloat(document.getElementById('pf_price').value);
+    var cost = parseFloat(document.getElementById('pf_cost_price').value);
+    var box = document.getElementById('pf_margin');
+    if (!(price > 0) || isNaN(cost)) { box.textContent = '—'; box.style.color = 'var(--dash-text3)'; return; }
+    var margin = price - cost;
+    box.textContent = margin.toLocaleString('fr') + ' F (' + Math.round(margin * 100 / price) + ' %)';
+    box.style.color = margin >= 0 ? 'var(--dash-green)' : 'var(--dash-red)';
 }
 function closeProductModal() { document.getElementById('productModal').classList.remove('open'); }
 

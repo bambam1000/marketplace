@@ -48,6 +48,6 @@
     <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);font-weight:700;font-size:14px;">
         <i class="fa-solid fa-eye" style="color:var(--dash-accent);"></i> Aperçu de l'email
     </div>
-    <iframe srcdoc="{{ html_preview|escape }}" style="width:100%;height:560px;border:none;background:#f4f5f7;"></iframe>
+    <iframe sandbox title="Aperçu de l'email" srcdoc="{{ html_preview|escape }}" style="width:100%;height:560px;border:none;background:#f4f5f7;"></iframe>
 </div>
 {% endblock %}

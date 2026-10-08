@@ -2,6 +2,8 @@
 """Test fonctionnel complet du parcours acheteur (idempotent)."""
 import os, sys, django
 
+import test_utils  # noqa: F401 — base de test isolée (copie de db.sqlite3)
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 os.environ['DJANGO_ALLOWED_HOSTS'] = '127.0.0.1,localhost,testserver'
 django.setup()

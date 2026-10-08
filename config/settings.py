@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'invoicing',
     'pos',
     'inventory',
+    'whatsapp',
 ]
 
 MIDDLEWARE = [
@@ -61,6 +62,7 @@ TEMPLATES = [
                 'catalog.context_processors.categories_context',
                 'messaging.context_processors.unread_messages_count',
                 'messaging.context_processors.notifications_context',
+                'dashboard.context_processors.dash_nav',
             ],
         },
     },
@@ -70,7 +72,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        # DJANGO_DB_PATH permet aux scripts de test de travailler sur une copie de la base
+        'NAME': os.environ.get('DJANGO_DB_PATH') or BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -95,7 +98,8 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# DJANGO_MEDIA_ROOT permet aux scripts de test d'écrire leurs fichiers ailleurs que dans media/
+MEDIA_ROOT = os.environ.get('DJANGO_MEDIA_ROOT') or BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/compte/connexion/'
@@ -103,6 +107,17 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 # Boost System Configuration
+# ── Assistant IA (Claude, API Anthropic) — voir dashboard/ai_assistant.py ──
+# Activé dès qu'une clé est fournie (ANTHROPIC_API_KEY), ou forcé avec ASSISTANT_AI_ENABLED=1 (profil `ant auth login`).
+# Sans clé, l'ancien assistant par mots-clés reste utilisé.
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+ASSISTANT_AI_ENABLED = os.environ.get('ASSISTANT_AI_ENABLED', '1' if ANTHROPIC_API_KEY else '0') == '1'
+ASSISTANT_MODEL = os.environ.get('ASSISTANT_MODEL', 'claude-opus-5-5')
+ASSISTANT_EFFORT = os.environ.get('ASSISTANT_EFFORT', 'medium')        # low | medium | high | xhigh | max
+ASSISTANT_MAX_TOOL_ROUNDS = int(os.environ.get('ASSISTANT_MAX_TOOL_ROUNDS', '8'))
+ASSISTANT_TIMEOUT = float(os.environ.get('ASSISTANT_TIMEOUT', '120'))
+
+SALES_COMMISSION_RATE = 0.10  # commission plateforme sur les ventes en ligne (pas sur les ventes directes)
 BOOST_COMMISSION_RATE = 0.20  # 20% commission for Facebook/WhatsApp boosts
 
 # Email Configuration
@@ -119,6 +134,42 @@ else:
 
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AfriMarket <noreply@afrimarket.com>')
 SITE_URL = os.environ.get('SITE_URL', 'http://127.0.0.1:8000')
+
+# ── WhatsApp via Evolution API (mode Baileys) — voir deploy/evolution/README.md ──
+# Désactivé par défaut : aucun appel réseau tant que WHATSAPP_ENABLED=1 et EVOLUTION_API_KEY ne sont pas définis.
+def _local_evolution_env():
+    """En développement (DEBUG) : lit deploy/evolution/.env pour que « manage.py runserver » suffise.
+    Les variables d'environnement restent prioritaires ; en production ce fichier n'est jamais lu."""
+    path = BASE_DIR / 'deploy' / 'evolution' / '.env'
+    if not DEBUG or not path.exists():
+        return {}
+    values = {}
+    for line in path.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if line and not line.startswith('#') and '=' in line:
+            key, value = line.split('=', 1)
+            values[key.strip()] = value.strip()
+    return values
+
+
+_EVOLUTION_LOCAL = _local_evolution_env()
+WHATSAPP_ENABLED = os.environ.get('WHATSAPP_ENABLED', '1' if _EVOLUTION_LOCAL else '0') == '1'
+EVOLUTION_API_URL = os.environ.get('EVOLUTION_API_URL', 'http://127.0.0.1:8081')
+EVOLUTION_API_KEY = os.environ.get('EVOLUTION_API_KEY', _EVOLUTION_LOCAL.get('AUTHENTICATION_API_KEY', ''))
+WHATSAPP_WEBHOOK_SECRET = os.environ.get('WHATSAPP_WEBHOOK_SECRET', _EVOLUTION_LOCAL.get('AFRIMARKET_WEBHOOK_SECRET', ''))
+# En local, le conteneur Docker joint Django sur la machine via host.docker.internal
+WHATSAPP_WEBHOOK_URL = os.environ.get('WHATSAPP_WEBHOOK_URL', (
+    'http://host.docker.internal:8000/whatsapp/webhook/' if _EVOLUTION_LOCAL
+    else SITE_URL.rstrip('/') + '/whatsapp/webhook/'))
+if _EVOLUTION_LOCAL and 'host.docker.internal' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('host.docker.internal')
+WHATSAPP_PLATFORM_INSTANCE = os.environ.get('WHATSAPP_PLATFORM_INSTANCE', 'afrimarket')
+WHATSAPP_DEFAULT_COUNTRY_CODE = os.environ.get('WHATSAPP_DEFAULT_COUNTRY_CODE', '237')
+WHATSAPP_SEND_DELAY_MS = int(os.environ.get('WHATSAPP_SEND_DELAY_MS', '1200'))  # « en train d'écrire » avant envoi
+WHATSAPP_HTTP_TIMEOUT = int(os.environ.get('WHATSAPP_HTTP_TIMEOUT', '15'))
+# Qui envoie les messages en file : 'thread' (fil d'arrière-plan, défaut), 'worker' (manage.py whatsapp_worker,
+# recommandé en production), 'inline' (dans la requête, pour les tests)
+WHATSAPP_DELIVERY_MODE = os.environ.get('WHATSAPP_DELIVERY_MODE', 'thread')
 
 # Sécurité renforcée en production (DEBUG=False)
 if not DEBUG:

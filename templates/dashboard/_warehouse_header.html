@@ -1,0 +1,38 @@
+{% comment %}
+En-tête de page filtrable par entrepôt.
+Paramètres : title, icon (classe Font Awesome), subtitle (optionnel), warehouse, warehouses (sélecteur).
+Le sélecteur recharge la page courante avec ?warehouse=<id> (les autres filtres sont réinitialisés).
+{% endcomment %}
+<style>
+.whh { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 0 0 20px; flex-wrap: wrap; }
+.whh h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.whh-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--dash-text3); }
+.whh-meta i { margin-right: 4px; }
+.whh-code { font-size: 11px; font-weight: 700; background: var(--dash-bg); color: var(--dash-text2); border: 1px solid var(--dash-border); border-radius: 4px; padding: 2px 8px; letter-spacing: .03em; }
+.whh-select { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; color: var(--dash-text); }
+.whh-select:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+</style>
+{% if warehouse %}
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+{% endif %}
+<div class="whh">
+    <div>
+        <h1><i class="fa-solid {{ icon }}" style="color:var(--dash-accent);"></i> {{ title }}{% if warehouse %} — {{ warehouse.name }} <span class="whh-code">{{ warehouse.code }}</span>{% if warehouse.is_default %} <span class="tag tag-orange">Par défaut</span>{% endif %}{% endif %}</h1>
+        <div class="whh-meta">
+            {% if warehouse %}
+            <span><i class="fa-solid fa-location-dot"></i>{{ warehouse.city|default:"—" }}</span>
+            <span><i class="fa-solid fa-user-tie"></i>{% if warehouse.manager %}{{ warehouse.manager.display_name }}{% else %}Aucun responsable{% endif %}</span>
+            {% else %}
+            <span>{{ subtitle|default:"Tous les entrepôts" }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% if warehouses %}
+    <select class="whh-select" aria-label="Entrepôt" onchange="window.location.search = this.value ? '?warehouse=' + this.value : ''">
+        {% if warehouses|length > 1 or not warehouse %}<option value="">Tous les entrepôts</option>{% endif %}
+        {% for w in warehouses %}
+        <option value="{{ w.pk }}" {% if warehouse and warehouse.pk == w.pk %}selected{% endif %}>{{ w.name }} ({{ w.code }})</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+</div>

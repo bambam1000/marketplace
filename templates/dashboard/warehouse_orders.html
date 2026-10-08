@@ -1,83 +1,129 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Commandes — {{ warehouse.name }}{% endblock %}
 {% block dash %}
-<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+{% include 'dashboard/_warehouse_header.html' with title='Commandes' icon='fa-box' %}
+<style>
+.wo-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.wo-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); text-decoration: none; transition: var(--dash-transition); }
+a.wo-stat:hover { border-color: var(--dash-accent); }
+.wo-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.wo-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.wo-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.wo-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.wo-toolbar { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); display: flex; flex-direction: column; gap: 12px; }
+.wo-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wo-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.wo-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid var(--dash-border); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--dash-text2); cursor: pointer; background: #fff; transition: var(--dash-transition); }
+.wo-chip input { display: none; }
+.wo-chip .n { font-size: 10px; background: var(--dash-bg); color: var(--dash-text3); border-radius: 50px; padding: 0 6px; }
+.wo-chip:hover { border-color: var(--dash-accent); color: var(--dash-accent); }
+.wo-chip.active { background: var(--dash-accent); border-color: var(--dash-accent); color: #fff; }
+.wo-chip.active .n { background: rgba(255,255,255,.25); color: #fff; }
+.wo-fields { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.wo-fields input { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+.wo-fields input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.wo-fields label { font-size: 11px; color: var(--dash-text3); font-weight: 600; }
+.wo-search { position: relative; }
+.wo-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+.wo-search input { padding-left: 34px; width: 240px; }
+.wo-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--dash-border); font-size: 12px; color: var(--dash-text3); flex-wrap: wrap; }
+.wo-pager .pages { display: flex; gap: 6px; }
+@media (max-width: 900px) { .wo-stats { grid-template-columns: repeat(2, 1fr); } .wo-search input { width: 100%; } }
+</style>
 
-<div class="dash-header" style="margin-top:12px;">
-    <div>
-        <h1><i class="fa-solid fa-box" style="color:var(--dash-accent);"></i> Commandes — {{ warehouse.name }}</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">{{ orders|length }} commande{{ orders|length|pluralize:"s" }} liée{{ orders|length|pluralize:"s" }} à cet entrepôt</p>
+<!-- ═══ Stats ═══ -->
+<div class="wo-stats">
+    <div class="wo-stat">
+        <div><div class="lbl">À préparer</div><div class="val" style="color:var(--dash-yellow);">{{ stats.to_prepare }}</div><div class="sub">En attente, confirmées, en traitement</div></div>
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-box-open"></i></div>
+    </div>
+    <a href="?status=shipped" class="wo-stat">
+        <div><div class="lbl">Expédiées</div><div class="val" style="color:var(--dash-blue);">{{ stats.shipped }}</div><div class="sub">En cours de livraison</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-truck-fast"></i></div>
+    </a>
+    <a href="?status=delivered" class="wo-stat">
+        <div><div class="lbl">Livrées</div><div class="val" style="color:var(--dash-green);">{{ stats.delivered }}</div><div class="sub">sur {{ stats.total }} commande{{ stats.total|pluralize:"s" }}</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-circle-check"></i></div>
+    </a>
+    <div class="wo-stat">
+        <div><div class="lbl">Montant entrepôt</div><div class="val" style="color:var(--dash-accent);">{{ stats.amount|floatformat:0|intcomma }} F</div><div class="sub">Hors annulées et remboursées</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-sack-dollar"></i></div>
     </div>
 </div>
 
 <div class="dash-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--dash-border);flex-wrap:wrap;">
-        <div style="display:flex;gap:8px;align-items:center;">
-            <div style="position:relative;">
-                <button type="button" class="btn btn-outline btn-sm" onclick="toggleOrdFilterMenu(event)">
-                    <i class="fa-solid fa-filter"></i> Filtres {% if current_status %}<span style="background:var(--dash-accent);color:#fff;border-radius:50%;width:8px;height:8px;display:inline-block;margin-left:4px;"></span>{% endif %}
-                </button>
-                <div id="ordFilterMenu" style="display:none;position:fixed;background:#fff;border:1px solid var(--dash-border);border-radius:8px;box-shadow:var(--dash-shadow-lg);min-width:200px;z-index:1500;padding:10px;">
-                    <div style="font-size:10px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;padding:6px 10px;">Statut</div>
-                    <a href="?" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if not current_status %}background:var(--dash-bg);font-weight:600;{% endif %}">Toutes</a>
-                    {% for code, label in status_choices %}
-                    <a href="?status={{ code }}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if current_status == code %}background:var(--dash-bg);font-weight:600;{% endif %}">{{ label }}</a>
-                    {% endfor %}
-                </div>
+    <form method="get" class="wo-toolbar">
+        <div class="wo-row">
+            <div class="wo-chips">
+                <label class="wo-chip {% if not current_status %}active{% endif %}"><input type="radio" name="status" value="" {% if not current_status %}checked{% endif %} onchange="this.form.submit()"> Toutes <span class="n">{{ stats.total }}</span></label>
+                {% for code, label, n in status_chips %}{% if n or current_status == code %}
+                <label class="wo-chip {% if current_status == code %}active{% endif %}"><input type="radio" name="status" value="{{ code }}" {% if current_status == code %}checked{% endif %} onchange="this.form.submit()"> {{ label }} <span class="n">{{ n }}</span></label>
+                {% endif %}{% endfor %}
             </div>
-            {% if current_status %}
-            <a href="?" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser</a>
+            <a href="{% url 'dashboard:warehouse_orders_export' warehouse.pk %}?{{ base_query }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+        </div>
+        <div class="wo-row">
+            <div class="wo-fields">
+                <div class="wo-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="N°, client, téléphone...">
+                </div>
+                <label for="woFrom">Du</label>
+                <input type="date" id="woFrom" name="from" value="{{ date_from }}" onchange="this.form.submit()">
+                <label for="woTo">Au</label>
+                <input type="date" id="woTo" name="to" value="{{ date_to }}" onchange="this.form.submit()">
+            </div>
+            {% if current_status or search_query or date_from or date_to %}
+            <a href="?" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser les filtres</a>
             {% endif %}
         </div>
-        <form method="get" style="position:relative;">
-            {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
-            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
-            <input type="text" name="q" value="{{ search_query }}" placeholder="N° commande ou client..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:220px;">
-        </form>
-    </div>
+    </form>
     <div class="dash-table-responsive">
     <table class="dash-table">
-        <thead><tr><th>N°</th><th>Client</th><th>Produits de cet entrepôt</th><th>Total</th><th>Statut</th><th>Date</th><th style="text-align:right;">Action</th></tr></thead>
+        <thead><tr><th>N°</th><th>Client</th><th>Produits de cet entrepôt</th><th>Montant entrepôt</th><th>Statut</th><th>Date</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
             {% for o in orders %}
             <tr>
-                <td style="font-weight:700;">#{{ o.order_number }}</td>
-                <td>{{ o.buyer.display_name }}</td>
-                <td style="font-size:12px;">
-                    {% for item in o.items.all %}{% if item.warehouse == warehouse %}{{ item.product.name|truncatechars:20 }} ×{{ item.quantity }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
+                <td style="font-weight:700;white-space:nowrap;">#{{ o.order_number }}{% if o.is_direct_sale %}<div style="font-size:10px;color:var(--dash-purple);font-weight:600;">Vente directe</div>{% endif %}</td>
+                <td>
+                    <div style="font-weight:600;color:var(--dash-text);">{{ o.shipping_name|default:o.buyer.display_name }}</div>
+                    <div style="font-size:11px;color:var(--dash-text3);">{{ o.shipping_phone }}{% if o.shipping_city %} · {{ o.shipping_city }}{% endif %}</div>
                 </td>
-                <td style="font-weight:700;">{{ o.total_amount|intcomma }} F</td>
-                <td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td>
-                <td style="font-size:12px;color:var(--dash-text3);">{{ o.created_at|date:"d/m/Y" }}</td>
-                <td style="text-align:right;"><a href="{% url 'dashboard:order_detail' o.order_number %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-eye"></i> Voir</a></td>
+                <td style="font-size:12px;">
+                    {% for item in o.wh_items %}{{ item.product.name|truncatechars:22 }} <strong>×{{ item.quantity }}</strong>{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                </td>
+                <td>
+                    <div style="font-weight:700;color:var(--dash-accent);">{{ o.wh_total|floatformat:0|intcomma }} F</div>
+                    {% if o.wh_total != o.total_amount %}<div style="font-size:11px;color:var(--dash-text3);" title="La commande contient aussi d'autres produits">sur {{ o.total_amount|floatformat:0|intcomma }} F</div>{% endif %}
+                </td>
+                <td>
+                    <span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span>
+                    {% if not o.is_paid %}<div style="font-size:10px;color:var(--dash-red);font-weight:600;margin-top:3px;">Non payée</div>{% endif %}
+                </td>
+                <td style="font-size:12px;color:var(--dash-text3);white-space:nowrap;">{{ o.created_at|date:"d/m/Y" }}<div>{{ o.created_at|date:"H:i" }}</div></td>
+                <td style="text-align:right;white-space:nowrap;">
+                    <a href="{% url 'dashboard:order_detail' o.order_number %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-eye"></i> Voir</a>
+                    {% if can_invoice %}<a href="{% url 'invoicing:invoice_from_order' o.order_number %}" class="btn btn-sm btn-outline" title="Créer ou ouvrir la facture"><i class="fa-solid fa-file-invoice"></i></a>{% endif %}
+                </td>
             </tr>
             {% empty %}
             <tr><td colspan="7" style="text-align:center;padding:3rem;">
                 <div style="font-size:40px;opacity:.25;margin-bottom:12px;"><i class="fa-solid fa-box-open"></i></div>
-                <div style="color:var(--dash-text3);">Aucune commande liée à cet entrepôt</div>
+                <div style="color:var(--dash-text3);">{% if current_status or search_query or date_from or date_to %}Aucune commande ne correspond aux filtres{% else %}Aucune commande liée à cet entrepôt{% endif %}</div>
             </td></tr>
             {% endfor %}
         </tbody>
     </table>
     </div>
+    <div class="wo-pager">
+        <span>{% if page_obj.paginator.count %}{{ page_obj.start_index }}–{{ page_obj.end_index }} sur {{ page_obj.paginator.count }} commande{{ page_obj.paginator.count|pluralize:"s" }}{% else %}0 commande{% endif %}</span>
+        {% if page_obj.has_other_pages %}
+        <div class="pages">
+            {% if page_obj.has_previous %}<a href="?{{ base_query }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-left"></i></a>{% endif %}
+            <span class="btn btn-sm btn-outline" style="pointer-events:none;">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?{{ base_query }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+        </div>
+        {% endif %}
+    </div>
 </div>
-
-<script>
-function toggleOrdFilterMenu(e) {
-    e.stopPropagation();
-    var menu = document.getElementById('ordFilterMenu');
-    if (menu.style.display === 'block') { menu.style.display = 'none'; return; }
-    var rect = e.currentTarget.getBoundingClientRect();
-    menu.style.top = (rect.bottom + 6) + 'px';
-    menu.style.left = rect.left + 'px';
-    menu.style.display = 'block';
-}
-document.addEventListener('click', function(e) {
-    var menu = document.getElementById('ordFilterMenu');
-    if (menu && menu.style.display === 'block' && !menu.contains(e.target)) menu.style.display = 'none';
-});
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') document.getElementById('ordFilterMenu').style.display = 'none';
-});
-</script>
 {% endblock %}

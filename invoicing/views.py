@@ -10,16 +10,76 @@ from decimal import Decimal
 from .models import Invoice, InvoiceItem, InvoiceSettings, DeliveryNote, PaymentReceipt
 from .pdf_generator import generate_invoice_pdf, generate_delivery_note_pdf, generate_payment_receipt_pdf
 from orders.models import Order
+from store import access
+
+
+def _invoicing_scope(request, permission):
+    """(boutique, entrepôt limite) si l'utilisateur a la permission, sinon (None, None).
+    Propriétaire : tout. Employé : permission de son rôle, limité à son entrepôt s'il en a un."""
+    store = access.acting_store(request.user)
+    if store is None or not access.has_perm(request.user, store, permission):
+        return None, None
+    return store, access.member_warehouse_id(request.user, store)
+
+
+def _visible_invoices(store, limit):
+    invoices = Invoice.objects.filter(store=store)
+    return invoices.filter(warehouse_id=limit) if limit else invoices
+
+
+def _deny(request):
+    messages.error(request, "Vous n'avez pas accès à la facturation.")
+    return redirect('dashboard:index')
+
+
+def _to_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_decimal(value, default='0'):
+    from decimal import InvalidOperation
+    try:
+        d = Decimal(str(value).strip() or default)
+    except (InvalidOperation, ValueError):
+        d = Decimal(default)
+    return d if d >= 0 else Decimal(default)
+
+
+def _to_date(value, default=None):
+    from datetime import datetime
+    try:
+        return datetime.strptime(value or '', '%Y-%m-%d').date()
+    except ValueError:
+        return default
+
+
+def _save_items(request, invoice):
+    """Lignes item_description[] / item_quantity[] / item_unit_price[] ; lignes vides ou invalides ignorées."""
+    descriptions = request.POST.getlist('item_description[]')
+    quantities = request.POST.getlist('item_quantity[]')
+    unit_prices = request.POST.getlist('item_unit_price[]')
+    for i, desc in enumerate(descriptions):
+        if not desc.strip():
+            continue
+        qty = _to_int(quantities[i] if i < len(quantities) else 1, 1)
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            description=desc.strip()[:500],
+            quantity=max(qty, 1),
+            unit_price=_to_decimal(unit_prices[i] if i < len(unit_prices) else 0),
+            order=i,
+        )
 
 
 @login_required
 def invoices_dashboard(request):
     """Dashboard des factures"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        messages.error(request, 'Accès réservé aux vendeurs.')
-        return redirect('dashboard:index')
-
-    store = request.user.store
+    store, limit = _invoicing_scope(request, 'invoicing.view')
+    if store is None:
+        return _deny(request)
     now = timezone.now()
     last_30_days = now - timedelta(days=30)
 
@@ -36,7 +96,7 @@ def invoices_dashboard(request):
     )
 
     # Statistiques
-    invoices = Invoice.objects.filter(store=store)
+    invoices = _visible_invoices(store, limit)
     stats = {
         'total_invoices': invoices.count(),
         'draft': invoices.filter(status='draft').count(),
@@ -61,108 +121,129 @@ def invoices_dashboard(request):
 
 @login_required
 def invoices_list(request):
-    """Liste des factures"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
+    """Liste des factures (filtrable par entrepôt, statut, type, recherche)"""
+    from django.core.paginator import Paginator
+    from django.db.models import Prefetch
+    from orders.models import OrderItem
+    store, limit = _invoicing_scope(request, 'invoicing.view')
+    if store is None:
+        return _deny(request)
 
-    store = request.user.store
-    invoices = Invoice.objects.filter(store=store).select_related('customer', 'order')
+    warehouse, invalid = access.resolve_warehouse(request, store, limit)
+    scoped = _visible_invoices(store, limit)
+    if invalid:
+        scoped = scoped.none()
+    elif warehouse:
+        scoped = scoped.filter(warehouse=warehouse)
+    today = timezone.localdate()
 
-    # Filtre par entrepôt
-    warehouse_id = request.GET.get('warehouse')
-    current_warehouse = None
-    if warehouse_id:
-        from inventory.models import Warehouse
-        invoices = invoices.filter(warehouse_id=warehouse_id)
-        current_warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
-
-    # Filtres
-    status = request.GET.get('status')
-    if status:
+    invoices = scoped.select_related('customer', 'order')
+    status = request.GET.get('status', '')
+    if status == 'overdue':
+        invoices = invoices.filter(status='sent', due_date__lt=today)
+    elif status:
         invoices = invoices.filter(status=status)
-
     invoice_type = request.GET.get('type')
     if invoice_type:
         invoices = invoices.filter(invoice_type=invoice_type)
-
-    search = request.GET.get('q', '')
+    search = request.GET.get('q', '').strip()
     if search:
         invoices = invoices.filter(
             Q(invoice_number__icontains=search) |
             Q(customer_name__icontains=search) |
             Q(customer_email__icontains=search)
         )
+    page_obj = Paginator(invoices.order_by('-created_at'), 25).get_page(request.GET.get('page'))
+    params = request.GET.copy()
+    params.pop('page', None)
 
-    invoices = invoices.order_by('-created_at')
+    # Statistiques sur le périmètre affiché (entrepôt compris)
+    stats = scoped.aggregate(
+        total_count=Count('id'),
+        paid_count=Count('id', filter=Q(status='paid')),
+        overdue_count=Count('id', filter=Q(status='sent', due_date__lt=today)),
+        pending_amount=Sum('total_amount', filter=Q(status='sent')),
+        total_revenue=Sum('total_amount', filter=Q(status='paid')),
+    )
 
-    all_invoices = Invoice.objects.filter(store=store)
-
-    # Ventes récentes sans facture (pour pré-remplir la modale)
-    from orders.models import Order
-    recent_sales = Order.objects.filter(
-        items__store=store, is_paid=True
-    ).exclude(invoices__isnull=False).distinct().select_related('buyer').order_by('-created_at')[:30]
+    # Ventes payées sans facture, pour pré-remplir la modale : uniquement les lignes de cette boutique
+    can_create = access.stock_access(request.user, store, 'invoicing.create', warehouse) if (limit or warehouse) \
+        else access.has_perm(request.user, store, 'invoicing.create')
+    recent_sales = []
+    if can_create:
+        my_items = OrderItem.objects.filter(store=store).select_related('product')
+        if warehouse:
+            my_items = my_items.filter(warehouse=warehouse)
+        recent_sales = (Order.objects.filter(pk__in=my_items.filter(order__is_paid=True).values('order'))
+                        .exclude(invoices__store=store).select_related('buyer')
+                        .prefetch_related(Prefetch('items', queryset=my_items, to_attr='my_items'))
+                        .order_by('-created_at')[:30])
 
     context = {
-        'invoices': invoices,
+        'invoices': page_obj,
+        'page_obj': page_obj,
         'status_filter': status,
         'type_filter': invoice_type,
         'search': search,
-        'total_count': all_invoices.count(),
-        'paid_count': all_invoices.filter(status='paid').count(),
-        'pending_amount': all_invoices.filter(status='sent').aggregate(t=Sum('total_amount'))['t'] or 0,
-        'total_revenue': all_invoices.filter(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0,
+        'total_count': stats['total_count'],
+        'paid_count': stats['paid_count'],
+        'overdue_count': stats['overdue_count'],
+        'pending_amount': stats['pending_amount'] or 0,
+        'total_revenue': stats['total_revenue'] or 0,
         'recent_sales': recent_sales,
-        'today': timezone.now().date().isoformat(),
-        'my_products': store.products.filter(is_active=True),
-        'warehouse': current_warehouse,
+        'today': today.isoformat(),
+        'today_date': today,
+        'my_products': store.products.filter(is_active=True) if can_create else [],
+        'warehouse': warehouse,
+        'warehouses': access.selectable_warehouses(store, limit),
+        'wh_query': f'warehouse={warehouse.pk}&' if warehouse else '',
+        'base_query': params.urlencode(),
+        'can_create': can_create,
+        'can_manage': access.has_perm(request.user, store, 'invoicing.create'),
     }
     return render(request, 'invoicing/invoices_list.html', context)
 
 
 @login_required
 def invoice_create(request):
-    """Créer une facture manuelle"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
-
-    store = request.user.store
+    """Créer une facture manuelle (rattachée à l'entrepôt de la page si précisé)"""
+    from django.db import transaction
+    from inventory.models import Warehouse
+    store, limit = _invoicing_scope(request, 'invoicing.create')
+    if store is None:
+        return _deny(request)
     settings_obj, _ = InvoiceSettings.objects.get_or_create(store=store)
 
     if request.method == 'POST':
-        # Créer la facture
-        invoice = Invoice.objects.create(
-            store=store,
-            invoice_number=settings_obj.get_next_invoice_number(),
-            invoice_type=request.POST.get('invoice_type', 'standard'),
-            customer_name=request.POST.get('customer_name'),
-            customer_email=request.POST.get('customer_email', ''),
-            customer_phone=request.POST.get('customer_phone', ''),
-            customer_address=request.POST.get('customer_address', ''),
-            issue_date=request.POST.get('issue_date', timezone.now().date()),
-            due_date=request.POST.get('due_date') or None,
-            notes=request.POST.get('notes', ''),
-            shipping_amount=Decimal(str(request.POST.get('shipping_amount') or 0)),
-            discount_amount=Decimal(str(request.POST.get('discount_amount') or 0)),
-            status='draft',
-        )
-
-        # Ajouter les articles
-        descriptions = request.POST.getlist('item_description[]')
-        quantities = request.POST.getlist('item_quantity[]')
-        unit_prices = request.POST.getlist('item_unit_price[]')
-
-        for i, desc in enumerate(descriptions):
-            if desc.strip():
-                InvoiceItem.objects.create(
-                    invoice=invoice,
-                    description=desc,
-                    quantity=int(quantities[i]) if i < len(quantities) else 1,
-                    unit_price=Decimal(str(unit_prices[i])) if i < len(unit_prices) else Decimal('0'),
-                    order=i
-                )
-
-        invoice.calculate_totals()
+        customer_name = request.POST.get('customer_name', '').strip()
+        if not customer_name:
+            messages.error(request, 'Le nom du client est requis.')
+            return redirect('invoicing:invoices')
+        warehouse_id = limit or request.POST.get('warehouse') or None
+        warehouse = Warehouse.objects.filter(pk=warehouse_id, store=store).first() if warehouse_id else None
+        invoice_type = request.POST.get('invoice_type', 'standard')
+        if invoice_type not in dict(Invoice.INVOICE_TYPE_CHOICES):
+            invoice_type = 'standard'
+        issue_date = _to_date(request.POST.get('issue_date'), timezone.localdate())
+        with transaction.atomic():
+            invoice = Invoice.objects.create(
+                store=store,
+                warehouse=warehouse,
+                invoice_number=settings_obj.get_next_invoice_number(),
+                invoice_type=invoice_type,
+                customer_name=customer_name,
+                customer_email=request.POST.get('customer_email', '').strip(),
+                customer_phone=request.POST.get('customer_phone', '').strip(),
+                customer_address=request.POST.get('customer_address', '').strip(),
+                issue_date=issue_date,
+                due_date=_to_date(request.POST.get('due_date')),
+                notes=request.POST.get('notes', ''),
+                shipping_amount=_to_decimal(request.POST.get('shipping_amount')),
+                discount_amount=_to_decimal(request.POST.get('discount_amount')),
+                status='draft',
+            )
+            _save_items(request, invoice)
+            invoice.calculate_totals()
         messages.success(request, f'Facture {invoice.invoice_number} créée !')
         return redirect('invoicing:invoice_detail', pk=invoice.pk)
 
@@ -171,12 +252,18 @@ def invoice_create(request):
 
 @login_required
 def invoice_from_order(request, order_number):
-    """Créer une facture depuis une commande"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
-
-    store = request.user.store
+    """Créer une facture depuis une commande (lignes de la boutique uniquement)"""
+    store, limit = _invoicing_scope(request, 'invoicing.create')
+    if store is None:
+        return _deny(request)
     order = get_object_or_404(Order, order_number=order_number)
+    my_items = order.items.filter(store=store).select_related('product', 'warehouse')
+    if limit:
+        my_items = my_items.filter(warehouse_id=limit)
+    if not my_items.exists():
+        # Sans ce contrôle, on pouvait facturer (et lire les coordonnées du client) d'une commande d'un autre vendeur
+        messages.error(request, "Cette commande ne contient aucun de vos produits.")
+        return redirect('invoicing:invoices')
     settings_obj, _ = InvoiceSettings.objects.get_or_create(store=store)
 
     # Vérifier si une facture existe déjà
@@ -190,7 +277,7 @@ def invoice_from_order(request, order_number):
         store=store,
         invoice_number=settings_obj.get_next_invoice_number(),
         order=order,
-        warehouse=order.items.first().warehouse if order.items.exists() else None,
+        warehouse=my_items.first().warehouse,
         customer=order.buyer,
         customer_name=order.buyer.get_full_name() or order.buyer.username,
         customer_email=order.buyer.email,
@@ -202,7 +289,7 @@ def invoice_from_order(request, order_number):
     )
 
     # Ajouter les articles de la commande liés au vendeur
-    for item in order.items.filter(store=store):
+    for item in my_items:
         InvoiceItem.objects.create(
             invoice=invoice,
             product=item.product,
@@ -223,13 +310,15 @@ def invoice_from_order(request, order_number):
 @login_required
 def invoice_detail(request, pk):
     """Détail d'une facture"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
+    store, limit = _invoicing_scope(request, 'invoicing.view')
+    if store is None:
+        return _deny(request)
 
-    invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
+    invoice = get_object_or_404(_visible_invoices(store, limit), pk=pk)
 
     context = {
         'invoice': invoice,
+        'can_manage': access.has_perm(request.user, store, 'invoicing.create'),
     }
     return render(request, 'invoicing/invoice_detail.html', context)
 
@@ -237,46 +326,33 @@ def invoice_detail(request, pk):
 @login_required
 def invoice_edit(request, pk):
     """Modifier une facture"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
+    store, limit = _invoicing_scope(request, 'invoicing.create')
+    if store is None:
+        return _deny(request)
 
-    invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
+    invoice = get_object_or_404(_visible_invoices(store, limit), pk=pk)
 
     if invoice.status == 'paid':
         messages.error(request, 'Impossible de modifier une facture payée.')
         return redirect('invoicing:invoice_detail', pk=pk)
 
     if request.method == 'POST':
-        invoice.customer_name = request.POST.get('customer_name')
-        invoice.customer_email = request.POST.get('customer_email', '')
-        invoice.customer_phone = request.POST.get('customer_phone', '')
-        invoice.customer_address = request.POST.get('customer_address', '')
-        invoice.issue_date = request.POST.get('issue_date')
-        invoice.due_date = request.POST.get('due_date') or None
+        from django.db import transaction
+        invoice.customer_name = request.POST.get('customer_name', '').strip() or invoice.customer_name
+        invoice.customer_email = request.POST.get('customer_email', '').strip()
+        invoice.customer_phone = request.POST.get('customer_phone', '').strip()
+        invoice.customer_address = request.POST.get('customer_address', '').strip()
+        invoice.issue_date = _to_date(request.POST.get('issue_date'), invoice.issue_date)
+        invoice.due_date = _to_date(request.POST.get('due_date'))
         invoice.notes = request.POST.get('notes', '')
-        invoice.shipping_amount = request.POST.get('shipping_amount', 0)
-        invoice.discount_amount = request.POST.get('discount_amount', 0)
-        invoice.save()
-
-        # Supprimer les anciens articles
-        invoice.items.all().delete()
-
-        # Ajouter les nouveaux articles
-        descriptions = request.POST.getlist('item_description[]')
-        quantities = request.POST.getlist('item_quantity[]')
-        unit_prices = request.POST.getlist('item_unit_price[]')
-
-        for i, desc in enumerate(descriptions):
-            if desc.strip():
-                InvoiceItem.objects.create(
-                    invoice=invoice,
-                    description=desc,
-                    quantity=int(quantities[i]) if i < len(quantities) else 1,
-                    unit_price=Decimal(str(unit_prices[i])) if i < len(unit_prices) else Decimal('0'),
-                    order=i
-                )
-
-        invoice.calculate_totals()
+        invoice.shipping_amount = _to_decimal(request.POST.get('shipping_amount'))
+        invoice.discount_amount = _to_decimal(request.POST.get('discount_amount'))
+        with transaction.atomic():
+            invoice.save()
+            # Remplacer les articles
+            invoice.items.all().delete()
+            _save_items(request, invoice)
+            invoice.calculate_totals()
         messages.success(request, 'Facture modifiée !')
         return redirect('invoicing:invoice_detail', pk=pk)
 
@@ -289,10 +365,11 @@ def invoice_edit(request, pk):
 @login_required
 def invoice_generate_pdf(request, pk):
     """Générer et télécharger le PDF d'une facture"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
+    store, limit = _invoicing_scope(request, 'invoicing.view')
+    if store is None:
+        return _deny(request)
 
-    invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
+    invoice = get_object_or_404(_visible_invoices(store, limit), pk=pk)
 
     # Générer le PDF
     pdf_buffer = generate_invoice_pdf(invoice)
@@ -311,10 +388,14 @@ def invoice_generate_pdf(request, pk):
 @login_required
 def invoice_send(request, pk):
     """Envoyer une facture par email"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
+    store, limit = _invoicing_scope(request, 'invoicing.create')
+    if store is None:
+        return _deny(request)
+    if request.method != 'POST':
+        # Action qui modifie la facture : formulaire POST (protégé CSRF) obligatoire
+        return redirect('invoicing:invoice_detail', pk=pk)
 
-    invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
+    invoice = get_object_or_404(_visible_invoices(store, limit), pk=pk)
 
     # Générer le PDF si nécessaire
     if not invoice.pdf_file:
@@ -371,17 +452,24 @@ def invoice_send(request, pk):
     invoice.sent_at = timezone.now()
     invoice.save()
 
-    messages.success(request, f'Facture {invoice.invoice_number} envoyée au client !')
+    from whatsapp.services import send_invoice
+    wa = send_invoice(invoice)
+    messages.success(request, f'Facture {invoice.invoice_number} envoyée au client !'
+                     + (' (et par WhatsApp)' if wa is not None else ''))
     return redirect('invoicing:invoice_detail', pk=pk)
 
 
 @login_required
 def invoice_mark_paid(request, pk):
     """Marquer une facture comme payée"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
+    store, limit = _invoicing_scope(request, 'invoicing.create')
+    if store is None:
+        return _deny(request)
+    if request.method != 'POST':
+        # Action qui modifie la facture : formulaire POST (protégé CSRF) obligatoire
+        return redirect('invoicing:invoice_detail', pk=pk)
 
-    invoice = get_object_or_404(Invoice, pk=pk, store=request.user.store)
+    invoice = get_object_or_404(_visible_invoices(store, limit), pk=pk)
     invoice.mark_as_paid()
     # Notifier le client du paiement confirmé
     if invoice.customer:
@@ -399,11 +487,10 @@ def invoice_mark_paid(request, pk):
 
 @login_required
 def invoice_settings_view(request):
-    """Gérer les paramètres de facturation"""
-    if not request.user.is_seller or not (request.user.store is not None):
-        return redirect('dashboard:index')
-
-    store = request.user.store
+    """Gérer les paramètres de facturation (propriétaire uniquement)"""
+    store, _ = _invoicing_scope(request, None)
+    if store is None:
+        return _deny(request)
     settings_obj, _ = InvoiceSettings.objects.get_or_create(
         store=store,
         defaults={

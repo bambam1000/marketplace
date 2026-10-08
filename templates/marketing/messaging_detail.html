@@ -73,7 +73,7 @@
 
 <script>
 function copyMessage() {
-    navigator.clipboard.writeText({{ full_message|escapejs|safe }}).then(function() {
+    navigator.clipboard.writeText("{{ full_message|escapejs }}").then(function() {
         alert('Message copié !');
     });
 }

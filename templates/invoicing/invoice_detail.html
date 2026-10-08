@@ -11,14 +11,18 @@
     </div>
     <div style="display: flex; gap: 0.5rem;">
         <a href="{% url 'invoicing:invoice_pdf' invoice.pk %}" class="btn btn-primary">⬇️ Télécharger PDF</a>
-        {% if invoice.status == 'draft' %}
+        {% if can_manage and invoice.status == 'draft' %}
         <a href="{% url 'invoicing:invoice_edit' invoice.pk %}" class="btn">✏️ Modifier</a>
-        <a href="{% url 'invoicing:invoice_send' invoice.pk %}" class="btn"
-           onclick="return confirm('Envoyer cette facture au client ?')">📤 Envoyer</a>
+        <form method="post" action="{% url 'invoicing:invoice_send' invoice.pk %}" style="margin:0;"
+              onsubmit="return confirm('Envoyer cette facture au client ?')">{% csrf_token %}
+            <button type="submit" class="btn">📤 Envoyer</button>
+        </form>
         {% endif %}
-        {% if invoice.status == 'sent' %}
-        <a href="{% url 'invoicing:invoice_mark_paid' invoice.pk %}" class="btn btn-success"
-           onclick="return confirm('Marquer cette facture comme payée ?')">✓ Marquer payée</a>
+        {% if can_manage and invoice.status == 'sent' %}
+        <form method="post" action="{% url 'invoicing:invoice_mark_paid' invoice.pk %}" style="margin:0;"
+              onsubmit="return confirm('Marquer cette facture comme payée ?')">{% csrf_token %}
+            <button type="submit" class="btn btn-success">✓ Marquer payée</button>
+        </form>
         {% endif %}
     </div>
 </div>

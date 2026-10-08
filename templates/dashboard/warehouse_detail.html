@@ -34,34 +34,50 @@
 </div>
 
 <!-- ═══ Actions de stock ═══ -->
+{% if can.transfer %}
 <div class="wh-actions">
+    {% if other_warehouses %}
     <button type="button" class="btn btn-orange" onclick="openModal('transferModal')"><i class="fa-solid fa-truck-arrow-right"></i> Transfert</button>
+    {% else %}
+    <button type="button" class="btn btn-orange" disabled title="Créez un second entrepôt pour faire un transfert" style="opacity:.5;cursor:not-allowed;"><i class="fa-solid fa-truck-arrow-right"></i> Transfert</button>
+    {% endif %}
 </div>
+{% endif %}
 
 <!-- ═══ Cartes de navigation (filtrées par cet entrepôt) ═══ -->
 <div class="wh-cards">
+    {% if can.orders %}
     <a href="{% url 'dashboard:warehouse_orders' warehouse.pk %}" class="wh-link-card">
         {% if pending_orders > 0 %}<span class="wh-badge red">{{ pending_orders }}</span>{% endif %}
         <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-box"></i></div>
         <div><div class="t">Commandes</div><div class="s">{% if pending_orders > 0 %}{{ pending_orders }} en attente{% else %}Commandes de cet entrepôt{% endif %}</div></div>
     </a>
+    {% endif %}
+    {% if can.products %}
     <a href="{% url 'dashboard:products' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
         <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-tag"></i></div>
         <div><div class="t">Produits</div><div class="s">Produits de cet entrepôt</div></div>
     </a>
+    {% endif %}
+    {% if can.owner %}
     <a href="{% url 'dashboard:warehouse_employees' warehouse.pk %}" class="wh-link-card">
         <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-user-tie"></i></div>
         <div><div class="t">Employés</div><div class="s">{{ employees_count }} membre{{ employees_count|pluralize:"s" }}</div></div>
     </a>
+    {% endif %}
+    {% if can.sales %}
     <a href="{% url 'dashboard:sales' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
         <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-chart-line"></i></div>
         <div><div class="t">Ventes</div><div class="s">Ventes de cet entrepôt</div></div>
     </a>
+    {% endif %}
+    {% if can.invoicing %}
     <a href="{% url 'invoicing:invoices' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
         {% if unpaid_invoices > 0 %}<span class="wh-badge red">{{ unpaid_invoices }}</span>{% endif %}
         <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-receipt"></i></div>
         <div><div class="t">Facturation</div><div class="s">{% if unpaid_invoices > 0 %}{{ unpaid_invoices }} impayée{{ unpaid_invoices|pluralize:"s" }}{% else %}Factures de cet entrepôt{% endif %}</div></div>
     </a>
+    {% endif %}
     <a href="{% url 'dashboard:inventory' %}?warehouse={{ warehouse.pk }}" class="wh-link-card">
         <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-boxes-stacked"></i></div>
         <div><div class="t">Inventaire</div><div class="s">Mouvements de cet entrepôt</div></div>
@@ -76,14 +92,18 @@
         <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-boxes-stacked"></i></div>
         <div><div class="t">Stock</div><div class="s">{% if out_of_stock_count > 0 %}{{ out_of_stock_count }} rupture{{ out_of_stock_count|pluralize:"s" }}{% elif low_stock_count > 0 %}{{ low_stock_count }} stock faible{% else %}{{ stocks|length }} produit{{ stocks|length|pluralize:"s" }} en stock{% endif %}</div></div>
     </a>
+    {% if can.finances %}
     <a href="{% url 'dashboard:warehouse_accounting' warehouse.pk %}" class="wh-link-card">
         <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-chart-line"></i></div>
         <div><div class="t">Comptabilité</div><div class="s">Revenus, dépenses, résultat</div></div>
     </a>
+    {% endif %}
+    {% if can.finances %}
     <a href="{% url 'dashboard:warehouse_expenses' warehouse.pk %}" class="wh-link-card">
         <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-money-bill-wave"></i></div>
         <div><div class="t">Dépenses</div><div class="s">Dépenses de l'entrepôt</div></div>
     </a>
+    {% endif %}
 </div>
 
 <!-- ═══ Modale Transfert ═══ -->

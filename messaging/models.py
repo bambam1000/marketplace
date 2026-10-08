@@ -82,6 +82,8 @@ class NotificationPreference(models.Model):
     email_payment = models.BooleanField(default=True, verbose_name="Paiements")
     email_stock = models.BooleanField(default=False, verbose_name="Alertes stock")
     email_account = models.BooleanField(default=True, verbose_name="Compte")
+    email_marketing = models.BooleanField(default=True, verbose_name="Offres et promotions des boutiques")
+    whatsapp_orders = models.BooleanField(default=True, verbose_name="WhatsApp : commandes et factures")
 
     def __str__(self):
         return f"Préférences notif — {self.user.username}"

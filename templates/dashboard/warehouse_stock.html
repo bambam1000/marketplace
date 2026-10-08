@@ -1,43 +1,313 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Stock — {{ warehouse.name }}{% endblock %}
 {% block dash %}
+<style>
+.ws-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin: 12px 0 20px; flex-wrap: wrap; }
+.ws-head h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ws-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--dash-text3); }
+.ws-meta i { margin-right: 4px; }
+.ws-code { font-size: 11px; font-weight: 700; background: var(--dash-bg); color: var(--dash-text2); border: 1px solid var(--dash-border); border-radius: 4px; padding: 2px 8px; letter-spacing: .03em; }
+.ws-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.ws-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.ws-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); text-decoration: none; transition: var(--dash-transition); }
+a.ws-stat:hover { border-color: var(--dash-accent); }
+a.ws-stat.active { border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.ws-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.ws-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.ws-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.ws-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.ws-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
+.ws-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0; }
+.ws-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ws-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid var(--dash-border); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--dash-text2); cursor: pointer; background: #fff; transition: var(--dash-transition); }
+.ws-chip input { display: none; }
+.ws-chip:hover { border-color: var(--dash-accent); color: var(--dash-accent); }
+.ws-chip.active { background: var(--dash-accent); border-color: var(--dash-accent); color: #fff; }
+.ws-search { position: relative; }
+.ws-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+.ws-search input { padding: 8px 12px 8px 34px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; width: 220px; }
+.ws-filters select { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; }
+.ws-search input:focus, .ws-filters select:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.ws-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-light)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.ws-bar { width: 90px; height: 6px; border-radius: 3px; background: var(--dash-bg); overflow: hidden; margin-top: 5px; }
+.ws-bar span { display: block; height: 100%; border-radius: 3px; }
+.ws-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--dash-border); font-size: 12px; color: var(--dash-text3); flex-wrap: wrap; }
+.ws-pager .pages { display: flex; gap: 6px; }
+.ws-empty { text-align: center; padding: 3.5rem 1rem; }
+.ws-empty .ic { font-size: 40px; opacity: .25; margin-bottom: 12px; }
+.ws-empty h4 { margin: 0 0 6px; font-size: 15px; color: var(--dash-text); }
+.ws-empty p { margin: 0 0 18px; font-size: 13px; color: var(--dash-text3); }
+.dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+.dmodal.open { display: flex; }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 460px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
+.dmodal-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
+.dmodal-body { padding: 20px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+.adj-types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.adj-types label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--dash-text2); }
+.adj-types input { display: none; }
+.adj-types label.on-in { border-color: var(--dash-green); background: rgba(18,183,106,.08); color: var(--dash-green); }
+.rec-line { display: grid; grid-template-columns: 1fr 90px 32px; gap: 8px; margin-bottom: 8px; }
+.rec-line button { background: none; border: none; color: var(--dash-red); cursor: pointer; }
+.adj-types label.on-out { border-color: var(--dash-red); background: rgba(240,68,56,.08); color: var(--dash-red); }
+@media (max-width: 900px) { .ws-stats { grid-template-columns: repeat(2, 1fr); } .ws-search input { width: 100%; } }
+</style>
+
 <a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
 
-<div class="dash-header" style="margin-top:12px;">
+<!-- ═══ En-tête ═══ -->
+<div class="ws-head">
     <div>
-        <h1><i class="fa-solid fa-boxes-stacked" style="color:var(--dash-accent);"></i> Stock — {{ warehouse.name }}</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">{{ stocks|length }} produit{{ stocks|length|pluralize:"s" }} dans cet entrepôt</p>
+        <h1><i class="fa-solid fa-cubes" style="color:var(--dash-accent);"></i> Stock — {{ warehouse.name }} <span class="ws-code">{{ warehouse.code }}</span>{% if warehouse.is_default %} <span class="tag tag-orange">Par défaut</span>{% endif %}{% if not warehouse.is_active %} <span class="status-badge st-cancelled">Inactif</span>{% endif %}</h1>
+        <div class="ws-meta">
+            <span><i class="fa-solid fa-location-dot"></i>{{ warehouse.city|default:"—" }}</span>
+            <span><i class="fa-solid fa-user-tie"></i>{% if warehouse.manager %}{{ warehouse.manager.display_name }}{% else %}Aucun responsable{% endif %}</span>
+            <span><i class="fa-solid fa-store"></i>{{ warehouse.store.name }}</span>
+        </div>
+    </div>
+    <div class="ws-actions">
+        {% if can_adjust %}
+        <button type="button" class="btn btn-sm btn-orange" onclick="openReception()"><i class="fa-solid fa-truck-ramp-box"></i> Réceptionner</button>
+        <button type="button" class="btn btn-sm" style="background:var(--dash-green);color:#fff;" onclick="openAdjustModal('in')"><i class="fa-solid fa-arrow-down"></i> Entrée</button>
+        <button type="button" class="btn btn-sm" style="background:var(--dash-red);color:#fff;" onclick="openAdjustModal('out')"><i class="fa-solid fa-arrow-up"></i> Sortie</button>
+        {% endif %}
+        {% if can_transfer %}<a href="{% url 'dashboard:transfers' %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-right-left"></i> Transfert</a>{% endif %}
+        <a href="{% url 'dashboard:inventory' %}?warehouse={{ warehouse.pk }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-clock-rotate-left"></i> Mouvements</a>
     </div>
 </div>
 
-<div class="dash-card">
-    <div style="display:flex;justify-content:flex-end;padding:14px 18px;border-bottom:1px solid var(--dash-border);">
-        <form method="get" style="position:relative;">
-            <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
-            <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un produit..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:240px;">
-        </form>
+<!-- ═══ Stats (les deux dernières servent de filtre rapide) ═══ -->
+<div class="ws-stats">
+    <div class="ws-stat">
+        <div><div class="lbl">Produits</div><div class="val">{{ stats.products }}</div><div class="sub">{{ stats.units|intcomma }} unité{{ stats.units|pluralize:"s" }} en stock</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-box"></i></div>
     </div>
+    <div class="ws-stat">
+        <div><div class="lbl">Valeur du stock</div><div class="val" style="color:var(--dash-accent);">{{ stats.value|floatformat:0|intcomma }} F</div><div class="sub">Au prix de vente</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-sack-dollar"></i></div>
+    </div>
+    <a href="?status=low" class="ws-stat {% if status_filter == 'low' %}active{% endif %}">
+        <div><div class="lbl">Stock faible</div><div class="val" style="color:var(--dash-yellow);">{{ stats.low }}</div><div class="sub">Sous le seuil d'alerte</div></div>
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    </a>
+    <a href="?status=out" class="ws-stat {% if status_filter == 'out' %}active{% endif %}">
+        <div><div class="lbl">Ruptures</div><div class="val" style="color:var(--dash-red);">{{ stats.out }}</div><div class="sub">Stock à zéro</div></div>
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-ban"></i></div>
+    </a>
+</div>
+
+<!-- ═══ Tableau ═══ -->
+<div class="dash-card">
+    {% if stats.products %}
+    <form method="get" class="ws-toolbar">
+        <div class="ws-chips">
+            <label class="ws-chip {% if not status_filter %}active{% endif %}"><input type="radio" name="status" value="" {% if not status_filter %}checked{% endif %} onchange="this.form.submit()"> Tous</label>
+            <label class="ws-chip {% if status_filter == 'ok' %}active{% endif %}"><input type="radio" name="status" value="ok" {% if status_filter == 'ok' %}checked{% endif %} onchange="this.form.submit()"> En stock</label>
+            <label class="ws-chip {% if status_filter == 'low' %}active{% endif %}"><input type="radio" name="status" value="low" {% if status_filter == 'low' %}checked{% endif %} onchange="this.form.submit()"> Stock faible</label>
+            <label class="ws-chip {% if status_filter == 'out' %}active{% endif %}"><input type="radio" name="status" value="out" {% if status_filter == 'out' %}checked{% endif %} onchange="this.form.submit()"> Rupture</label>
+        </div>
+        <div class="ws-filters">
+            <div class="ws-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Nom ou SKU...">
+            </div>
+            <select name="sort" onchange="this.form.submit()" aria-label="Trier">
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>Nom (A→Z)</option>
+                <option value="qty" {% if sort == 'qty' %}selected{% endif %}>Quantité croissante</option>
+                <option value="-qty" {% if sort == '-qty' %}selected{% endif %}>Quantité décroissante</option>
+                <option value="-value" {% if sort == '-value' %}selected{% endif %}>Valeur décroissante</option>
+            </select>
+            <a href="{% url 'dashboard:warehouse_stock_export' warehouse.pk %}?{{ base_query }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+        </div>
+    </form>
+
     <div class="dash-table-responsive">
     <table class="dash-table">
-        <thead><tr><th>Produit</th><th>Quantité</th><th>Seuil d'alerte</th><th>Valeur</th><th>Statut</th></tr></thead>
+        <thead><tr><th>Produit</th><th>Quantité</th><th>Seuil</th><th>Prix unitaire</th><th>Valeur</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
             {% for s in stocks %}
+            {% with threshold=s.product.low_stock_threshold %}
             <tr>
-                <td style="font-weight:600;">{{ s.product.name|truncatechars:40 }}</td>
-                <td style="font-weight:800;font-size:15px;">{{ s.quantity }}</td>
-                <td style="color:var(--dash-text3);">{{ s.low_stock_threshold }}</td>
-                <td style="font-weight:600;">{% widthratio s.product.price 1 s.quantity %} F</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="ws-avatar">{{ s.product.name|slice:":2"|upper }}</div>
+                        <div>
+                            <div style="font-weight:600;color:var(--dash-text);">{{ s.product.name|truncatechars:40 }}</div>
+                            {% if s.product.sku %}<div style="font-size:11px;color:var(--dash-text3);">SKU {{ s.product.sku }}</div>{% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div style="font-weight:800;font-size:15px;">{{ s.quantity|intcomma }}</div>
+                    <div class="ws-bar"><span style="width:{% if s.quantity == 0 %}0{% elif s.quantity <= threshold %}30{% else %}100{% endif %}%;background:{% if s.quantity <= threshold %}var(--dash-yellow){% else %}var(--dash-green){% endif %};"></span></div>
+                </td>
+                <td style="color:var(--dash-text3);">{{ threshold }}</td>
+                <td>{{ s.product.price|intcomma }} F</td>
+                <td style="font-weight:700;color:var(--dash-accent);">{{ s.value|floatformat:0|intcomma }} F</td>
                 <td>
                     {% if s.quantity == 0 %}<span class="status-badge st-cancelled">Rupture</span>
-                    {% elif s.quantity <= s.low_stock_threshold %}<span class="status-badge st-pending">Stock faible</span>
+                    {% elif s.quantity <= threshold %}<span class="status-badge st-pending">Stock faible</span>
                     {% else %}<span class="status-badge st-delivered">En stock</span>{% endif %}
                 </td>
+                <td style="text-align:right;white-space:nowrap;">
+                    {% if can_adjust %}
+                    <button type="button" class="btn btn-sm btn-outline" onclick="openAdjustModal('in', {{ s.product.pk }})" title="Entrée de stock"><i class="fa-solid fa-plus"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="openAdjustModal('out', {{ s.product.pk }})" title="Sortie de stock"><i class="fa-solid fa-minus"></i></button>
+                    {% endif %}
+                    <a href="{% url 'dashboard:inventory' %}?warehouse={{ warehouse.pk }}&q={{ s.product.name|urlencode }}" class="btn btn-sm btn-outline" title="Historique des mouvements"><i class="fa-solid fa-clock-rotate-left"></i></a>
+                </td>
             </tr>
+            {% endwith %}
             {% empty %}
-            <tr><td colspan="5" style="text-align:center;padding:3rem;color:var(--dash-text3);">Aucun produit dans cet entrepôt</td></tr>
+            <tr><td colspan="7" style="text-align:center;padding:3rem;">
+                <div style="font-size:36px;opacity:.25;margin-bottom:10px;"><i class="fa-solid fa-filter-circle-xmark"></i></div>
+                <div style="color:var(--dash-text3);margin-bottom:12px;">Aucun produit ne correspond{% if search_query %} à « {{ search_query }} »{% endif %}</div>
+                <a href="?" class="btn btn-sm btn-outline">Réinitialiser les filtres</a>
+            </td></tr>
             {% endfor %}
         </tbody>
     </table>
     </div>
+    <div class="ws-pager">
+        <span>{% if page_obj.paginator.count %}{{ page_obj.start_index }}–{{ page_obj.end_index }} sur {{ page_obj.paginator.count }} produit{{ page_obj.paginator.count|pluralize:"s" }}{% else %}0 produit{% endif %}</span>
+        {% if page_obj.has_other_pages %}
+        <div class="pages">
+            {% if page_obj.has_previous %}<a href="?{{ base_query }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-left"></i></a>{% endif %}
+            <span class="btn btn-sm btn-outline" style="pointer-events:none;">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?{{ base_query }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Entrepôt vide -->
+    <div class="ws-empty">
+        <div class="ic"><i class="fa-solid fa-box-open"></i></div>
+        <h4>Cet entrepôt est vide</h4>
+        <p>Réceptionnez une livraison ou transférez du stock depuis un autre entrepôt pour commencer.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            {% if can_adjust %}<button type="button" class="btn btn-orange" onclick="openReception()"><i class="fa-solid fa-truck-ramp-box"></i> Réceptionner du stock</button>{% endif %}
+            {% if can_transfer %}<a href="{% url 'dashboard:transfers' %}" class="btn btn-outline"><i class="fa-solid fa-right-left"></i> Faire un transfert</a>{% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+{% if can_adjust %}
+<!-- ═══ Modale Entrée / Sortie ═══ -->
+<div class="dmodal" id="adjustModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-boxes-stacked" style="color:var(--dash-accent);"></i> Mouvement de stock — {{ warehouse.code }}</h3>
+            <button type="button" class="dmodal-close" onclick="closeAdjustModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" id="adjustForm">
+            {% csrf_token %}
+            <input type="hidden" name="warehouse" value="{{ warehouse.pk }}">
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <div class="adj-types">
+                        <label id="adjLblIn"><input type="radio" name="movement_type" value="in" onchange="syncAdjustType()"> <i class="fa-solid fa-arrow-down"></i> Entrée</label>
+                        <label id="adjLblOut"><input type="radio" name="movement_type" value="out" onchange="syncAdjustType()"> <i class="fa-solid fa-arrow-up"></i> Sortie</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Produit *</label>
+                    <select id="adjProduct" class="form-control" required>
+                        <option value="">— Choisir un produit —</option>
+                        {% for p in products %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantité *</label>
+                    <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Motif</label>
+                    <input type="text" name="reason" class="form-control" placeholder="Ex : réception fournisseur, casse, inventaire...">
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeAdjustModal()">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- ═══ Modale Réception (plusieurs produits) ═══ -->
+<div class="dmodal" id="receptionModal">
+    <div class="dmodal-box" style="max-width:540px;">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-truck-ramp-box" style="color:var(--dash-accent);"></i> Réception — {{ warehouse.name }}</h3>
+            <button type="button" class="dmodal-close" onclick="closeReception()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" action="{% url 'dashboard:warehouse_reception' warehouse.pk %}">
+            {% csrf_token %}
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <label>Produits reçus *</label>
+                    <div id="recLines"></div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addRecLine()"><i class="fa-solid fa-plus"></i> Ajouter un produit</button>
+                </div>
+                <div class="form-group">
+                    <label>Motif / N° de bon</label>
+                    <input type="text" name="reason" class="form-control" placeholder="Ex : livraison fournisseur BL-2031">
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeReception()">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer la réception</button>
+            </div>
+        </form>
+    </div>
+</div>
+<template id="recLineTpl">
+    <div class="rec-line">
+        <select name="product[]" class="form-control" required>
+            <option value="">— Produit —</option>
+            {% for p in products %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+        </select>
+        <input type="number" name="quantity[]" class="form-control" min="1" value="1" required>
+        <button type="button" onclick="removeRecLine(this)" title="Retirer"><i class="fa-solid fa-trash-can"></i></button>
+    </div>
+</template>
+
+<script>
+function addRecLine() {
+    document.getElementById('recLines').appendChild(document.getElementById('recLineTpl').content.cloneNode(true));
+}
+function removeRecLine(btn) {
+    var lines = document.querySelectorAll('#recLines .rec-line');
+    if (lines.length > 1) btn.closest('.rec-line').remove();
+}
+function openReception() {
+    var box = document.getElementById('recLines');
+    if (!box.children.length) addRecLine();
+    document.getElementById('receptionModal').classList.add('open');
+}
+function closeReception() { document.getElementById('receptionModal').classList.remove('open'); }
+document.getElementById('receptionModal').addEventListener('click', function(e) { if (e.target === this) closeReception(); });
+var URL_ADJUST = "{% url 'dashboard:stock_adjust' 0 %}";
+function syncAdjustType() {
+    var t = document.querySelector('#adjustForm input[name=movement_type]:checked').value;
+    document.getElementById('adjLblIn').className = t === 'in' ? 'on-in' : '';
+    document.getElementById('adjLblOut').className = t === 'out' ? 'on-out' : '';
+}
+function openAdjustModal(type, productId) {
+    document.querySelector('#adjustForm input[name=movement_type][value=' + type + ']').checked = true;
+    syncAdjustType();
+    document.getElementById('adjProduct').value = productId || '';
+    document.getElementById('adjustModal').classList.add('open');
+}
+function closeAdjustModal() { document.getElementById('adjustModal').classList.remove('open'); }
+document.getElementById('adjustForm').addEventListener('submit', function(e) {
+    var pid = document.getElementById('adjProduct').value;
+    if (!pid) { e.preventDefault(); return; }
+    this.action = URL_ADJUST.replace('/0/', '/' + pid + '/');
+});
+document.getElementById('adjustModal').addEventListener('click', function(e) { if (e.target === this) closeAdjustModal(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeAdjustModal(); closeReception(); } });
+</script>
+{% endif %}
 {% endblock %}

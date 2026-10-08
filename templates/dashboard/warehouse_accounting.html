@@ -1,158 +1,272 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Comptabilité — {{ warehouse.name }}{% endblock %}
 {% block dash %}
+{% include 'dashboard/_warehouse_header.html' with title='Comptabilité' icon='fa-scale-balanced' %}
 <style>
+.acc-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.acc-period { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.acc-period .cur { font-size: 16px; font-weight: 800; color: var(--dash-text); min-width: 150px; text-align: center; }
+.acc-period select { padding: 7px 10px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; }
+.acc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .acc-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
 .acc-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; box-shadow: var(--dash-shadow); }
-.acc-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
-.acc-stat .val { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
-.acc-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.acc-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.acc-stat .val { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin-top: 4px; }
+.acc-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 4px; }
+.var { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 50px; white-space: nowrap; }
+.var.up { background: rgba(18,183,106,.1); color: var(--dash-green); }
+.var.down { background: rgba(240,68,56,.1); color: var(--dash-red); }
+.var.flat { background: var(--dash-bg); color: var(--dash-text3); }
+.acc-grid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap: 16px; margin-bottom: 16px; }
+.acc-panel { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); }
+.acc-panel-head { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.acc-panel-head h3 { margin: 0; font-size: 14px; }
+.acc-panel-body { padding: 16px 18px; }
+.pl-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--dash-text2); }
+.pl-row.sub { padding-left: 14px; font-size: 12px; color: var(--dash-text3); }
+.pl-row.total { border-top: 2px solid var(--dash-border); margin-top: 6px; padding-top: 12px; font-weight: 800; font-size: 15px; color: var(--dash-text); }
+.pl-row .amt { font-weight: 700; white-space: nowrap; }
+.cat-row { margin-bottom: 12px; }
+.cat-row .top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+.cat-row .top span:first-child { font-weight: 600; color: var(--dash-text); }
+.cat-row .top span:last-child { color: var(--dash-text3); }
+.cat-bar { height: 7px; background: var(--dash-bg); border-radius: 4px; overflow: hidden; }
+.cat-bar span { display: block; height: 100%; background: var(--dash-red); border-radius: 4px; opacity: .8; }
+.payroll-note { margin-top: 14px; padding: 12px 14px; border-radius: 6px; background: rgba(46,144,250,.07); border: 1px solid rgba(46,144,250,.2); font-size: 12px; color: var(--dash-text2); line-height: 1.5; }
+.exp-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--dash-border); }
+.exp-row:last-child { border-bottom: none; }
+.exp-row .d { font-weight: 600; font-size: 13px; color: var(--dash-text); }
+.exp-row .m { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.exp-row .m a { color: var(--dash-blue); }
+.exp-right { display: flex; align-items: center; gap: 6px; }
+.icon-btn { background: none; border: none; color: var(--dash-text3); cursor: pointer; padding: 6px 8px; border-radius: 6px; }
+.icon-btn:hover { background: rgba(240,68,56,.08); color: var(--dash-red); }
 .dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
 .dmodal.open { display: flex; }
-.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 440px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 460px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
 .dmodal-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--dash-border); }
 .dmodal-head h3 { margin: 0; font-size: 15px; }
 .dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
 .dmodal-body { padding: 20px; }
 .dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
-@media (max-width: 900px) { .acc-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px) { .acc-stats { grid-template-columns: repeat(2, 1fr); } .acc-grid { grid-template-columns: 1fr; } }
 </style>
 
-<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
-
-<div class="dash-header" style="margin-top:12px;">
-    <div>
-        <h1><i class="fa-solid fa-chart-line" style="color:var(--dash-accent);"></i> Comptabilité — {{ warehouse.name }}</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">Suivi financier de cet entrepôt</p>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-        <form method="get" style="display:flex;gap:8px;">
-            <select name="month" class="form-control" style="width:auto;" onchange="this.form.submit()">
+<!-- ═══ Période + actions ═══ -->
+<div class="acc-bar">
+    <div class="acc-period">
+        <a href="?month={{ prev_period.month }}&year={{ prev_period.year }}" class="btn btn-sm btn-outline" title="Mois précédent" aria-label="Mois précédent"><i class="fa-solid fa-chevron-left"></i></a>
+        <span class="cur">{{ month_label }}</span>
+        {% if not is_current_month %}<a href="?month={{ next_period.month }}&year={{ next_period.year }}" class="btn btn-sm btn-outline" title="Mois suivant" aria-label="Mois suivant"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+        <form method="get" style="display:flex;gap:6px;margin:0;">
+            <select name="month" onchange="this.form.submit()" aria-label="Mois">
                 {% for num, name in months %}<option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>{% endfor %}
             </select>
-            <select name="year" class="form-control" style="width:auto;" onchange="this.form.submit()">
+            <select name="year" onchange="this.form.submit()" aria-label="Année">
                 {% for y in years %}<option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>{% endfor %}
             </select>
         </form>
-        <button type="button" class="btn btn-orange" onclick="document.getElementById('expenseModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Dépense</button>
+        {% if not is_current_month %}<a href="?" class="btn btn-sm btn-outline">Ce mois</a>{% endif %}
+    </div>
+    <div class="acc-actions">
+        <a href="{% url 'dashboard:warehouse_accounting_export' warehouse.pk %}?month={{ current_month }}&year={{ current_year }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+        <a href="{% url 'dashboard:warehouse_expenses' warehouse.pk %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-list"></i> Toutes les dépenses</a>
+        {% if can_add_expense %}<button type="button" class="btn btn-sm btn-orange" onclick="openExpense()"><i class="fa-solid fa-plus"></i> Dépense</button>{% endif %}
     </div>
 </div>
 
-<!-- ═══ Stats ═══ -->
+<!-- ═══ Stats (avec variation vs mois précédent) ═══ -->
 <div class="acc-stats">
     <div class="acc-stat">
-        <div class="lbl">Revenus</div>
-        <div class="val" style="color:var(--dash-green);">{{ revenue|intcomma }} F</div>
-        <div class="sub">Ventes payées ce mois</div>
+        <div class="lbl">Revenus {% include 'dashboard/_variation.html' with v=variations.revenue %}</div>
+        <div class="val" style="color:var(--dash-green);">{{ f.revenue|intcomma }} F</div>
+        <div class="sub">{{ prev_label }} : {{ previous.revenue|intcomma }} F</div>
     </div>
     <div class="acc-stat">
-        <div class="lbl">Commissions</div>
-        <div class="val" style="color:var(--dash-yellow);">-{{ commission|intcomma }} F</div>
-        <div class="sub">10% plateforme</div>
+        <div class="lbl">Marge brute {% include 'dashboard/_variation.html' with v=variations.gross %}</div>
+        <div class="val" style="color:{% if f.gross >= 0 %}var(--dash-text){% else %}var(--dash-red){% endif %};">{{ f.gross|intcomma }} F</div>
+        <div class="sub">{% if f.revenue %}{% widthratio f.gross f.revenue 100 %} % des revenus · {% endif %}coût marchandises {{ f.cogs|intcomma }} F</div>
     </div>
     <div class="acc-stat">
-        <div class="lbl">Dépenses</div>
-        <div class="val" style="color:var(--dash-red);">-{{ total_expenses|intcomma }} F</div>
-        <div class="sub">{{ expenses|length }} dépense{{ expenses|length|pluralize:"s" }}</div>
+        <div class="lbl">Dépenses {% include 'dashboard/_variation.html' with v=variations.expenses inverse=True %}</div>
+        <div class="val" style="color:var(--dash-red);">−{{ f.expenses|intcomma }} F</div>
+        <div class="sub">{{ expenses|length }} dépense{{ expenses|length|pluralize:"s" }} · commissions {{ f.commission|intcomma }} F</div>
     </div>
-    <div class="acc-stat" style="border-left:3px solid {% if net_profit >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">
-        <div class="lbl">Résultat net</div>
-        <div class="val" style="color:{% if net_profit >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">{{ net_profit|intcomma }} F</div>
-        <div class="sub">Revenus − commissions − dépenses</div>
+    <div class="acc-stat" style="border-left:3px solid {% if f.net >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">
+        <div class="lbl">Résultat net {% include 'dashboard/_variation.html' with v=variations.net %}</div>
+        <div class="val" style="color:{% if f.net >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">{{ f.net|intcomma }} F</div>
+        <div class="sub">{% if f.revenue %}Marge : {% widthratio f.net f.revenue 100 %} % des revenus{% else %}Aucun revenu ce mois{% endif %}</div>
     </div>
 </div>
 
-<!-- ═══ Graphique + Dépenses ═══ -->
-<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;">
-    <div class="dash-card" style="padding:20px;">
-        <h3 style="margin:0 0 16px;font-size:15px;">Revenus sur 6 mois</h3>
-        <div style="height:240px;"><canvas id="revChart"></canvas></div>
+<!-- ═══ Graphique + compte de résultat ═══ -->
+<div class="acc-grid">
+    <div class="acc-panel">
+        <div class="acc-panel-head"><h3><i class="fa-solid fa-chart-column" style="color:var(--dash-accent);"></i> Évolution sur 6 mois</h3></div>
+        <div class="acc-panel-body"><div style="height:250px;"><canvas id="accChart" role="img" aria-label="Revenus, dépenses et résultat sur 6 mois"></canvas></div></div>
     </div>
-    <div class="dash-card">
-        <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);">
-            <h3 style="margin:0;font-size:15px;">Dépenses du mois</h3>
+    <div class="acc-panel">
+        <div class="acc-panel-head"><h3><i class="fa-solid fa-file-invoice-dollar" style="color:var(--dash-accent);"></i> Compte de résultat</h3></div>
+        <div class="acc-panel-body">
+            <div class="pl-row"><span>Revenus</span><span class="amt" style="color:var(--dash-green);">{{ f.revenue|intcomma }} F</span></div>
+            <div class="pl-row sub"><span><i class="fa-solid fa-globe"></i> Ventes en ligne</span><span class="amt">{{ f.online|intcomma }} F</span></div>
+            <div class="pl-row sub"><span><i class="fa-solid fa-store"></i> Ventes directes</span><span class="amt">{{ f.direct|intcomma }} F</span></div>
+            <div class="pl-row sub"><span><i class="fa-solid fa-cash-register"></i> Caisse POS{% if f.pos_count %} ({{ f.pos_count }}){% endif %}</span><span class="amt">{{ f.pos|intcomma }} F</span></div>
+            <div class="pl-row"><span>Coût des marchandises vendues</span><span class="amt" style="color:var(--dash-red);">−{{ f.cogs|intcomma }} F</span></div>
+            <div class="pl-row" style="font-weight:700;color:var(--dash-text);"><span>Marge brute</span><span class="amt">{{ f.gross|intcomma }} F</span></div>
+            <div class="pl-row"><span>Commissions plateforme ({{ commission_pct }} % du en ligne)</span><span class="amt" style="color:var(--dash-yellow);">−{{ f.commission|intcomma }} F</span></div>
+            <div class="pl-row"><span>Dépenses</span><span class="amt" style="color:var(--dash-red);">−{{ f.expenses|intcomma }} F</span></div>
+            <div class="pl-row total"><span>Résultat net</span><span class="amt" style="color:{% if f.net >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">{{ f.net|intcomma }} F</span></div>
+            {% if f.missing_cost %}
+            <div class="payroll-note" style="background:rgba(247,144,9,.08);border-color:rgba(247,144,9,.3);">
+                <i class="fa-solid fa-triangle-exclamation" style="color:var(--dash-yellow);"></i>
+                <strong>{{ f.missing_cost }} ligne{{ f.missing_cost|pluralize:"s" }} vendue{{ f.missing_cost|pluralize:"s" }} sans prix d'achat</strong> : leur coût est compté à 0, la marge est donc surestimée.
+                <a href="{% url 'dashboard:products' %}?warehouse={{ warehouse.pk }}">Renseigner les prix d'achat</a>
+            </div>
+            {% endif %}
+            <p style="font-size:11px;color:var(--dash-text3);margin:10px 0 0;">Commandes payées et ventes de caisse de cet entrepôt, hors annulées et remboursées. TVA collectée en caisse exclue des revenus.</p>
         </div>
-        <div style="max-height:280px;overflow-y:auto;">
+    </div>
+</div>
+
+<!-- ═══ Dépenses : répartition + liste ═══ -->
+<div class="acc-grid">
+    <div class="acc-panel">
+        <div class="acc-panel-head">
+            <h3><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-red);"></i> Dépenses de {{ month_label }}</h3>
+            <span style="font-size:12px;color:var(--dash-text3);">{{ f.expenses|intcomma }} F</span>
+        </div>
+        <div style="max-height:360px;overflow-y:auto;">
             {% for e in expenses %}
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--dash-border);">
-                <div>
-                    <div style="font-weight:600;font-size:13px;">{{ e.description }}</div>
-                    <div style="font-size:11px;color:var(--dash-text3);">{{ e.get_category_display }} · {{ e.date|date:"d/m/Y" }}</div>
+            <div class="exp-row">
+                <div style="min-width:0;">
+                    <div class="d">{{ e.description }}</div>
+                    <div class="m">{{ e.get_category_display }} · {{ e.date|date:"d/m/Y" }}{% if e.created_by %} · {{ e.created_by.display_name }}{% endif %}{% if e.receipt %} · <a href="{{ e.receipt.url }}" target="_blank" rel="noopener"><i class="fa-solid fa-paperclip"></i> Justificatif</a>{% endif %}</div>
                 </div>
-                <div style="font-weight:700;color:var(--dash-red);">-{{ e.amount|intcomma }} F</div>
+                <div class="exp-right">
+                    <span style="font-weight:700;color:var(--dash-red);white-space:nowrap;">−{{ e.amount|intcomma }} F</span>
+                    {% if can_add_expense %}
+                    <form method="post" action="{% url 'dashboard:warehouse_expense_delete' warehouse.pk e.pk %}" style="margin:0;" onsubmit="return confirm('Supprimer cette dépense ?');">{% csrf_token %}
+                        <button type="submit" class="icon-btn" title="Supprimer" aria-label="Supprimer la dépense"><i class="fa-solid fa-trash-can"></i></button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
             {% empty %}
-            <div style="text-align:center;padding:2.5rem;color:var(--dash-text3);font-size:13px;">Aucune dépense ce mois</div>
+            <div style="text-align:center;padding:2.5rem 1rem;color:var(--dash-text3);font-size:13px;">
+                <div style="font-size:30px;opacity:.3;margin-bottom:8px;"><i class="fa-solid fa-receipt"></i></div>
+                Aucune dépense en {{ month_label }}
+                {% if can_add_expense %}<div style="margin-top:12px;"><button type="button" class="btn btn-sm btn-outline" onclick="openExpense()"><i class="fa-solid fa-plus"></i> Ajouter une dépense</button></div>{% endif %}
+            </div>
             {% endfor %}
         </div>
     </div>
+    <div class="acc-panel">
+        <div class="acc-panel-head"><h3><i class="fa-solid fa-chart-pie" style="color:var(--dash-red);"></i> Répartition</h3></div>
+        <div class="acc-panel-body">
+            {% for c in by_category %}
+            <div class="cat-row">
+                <div class="top"><span>{{ c.label }}</span><span>{{ c.total|intcomma }} F · {{ c.pct }} %</span></div>
+                <div class="cat-bar"><span style="width:{{ c.pct }}%;"></span></div>
+            </div>
+            {% empty %}
+            <div style="font-size:13px;color:var(--dash-text3);text-align:center;padding:1rem 0;">Aucune dépense à répartir</div>
+            {% endfor %}
+            {% if payroll %}
+            <div class="payroll-note">
+                <i class="fa-solid fa-circle-info" style="color:var(--dash-blue);"></i>
+                <strong>{{ payslips_count }} fiche{{ payslips_count|pluralize:"s" }} de paie</strong> pour les employés de cet entrepôt : <strong>{{ payroll|intcomma }} F</strong> net.
+                {% if salary_expenses < payroll %}
+                Elles ne sont pas comptées dans le résultat tant qu'elles ne sont pas saisies en dépense « Salaires »{% if salary_expenses %} ({{ salary_expenses|intcomma }} F saisis){% endif %}.
+                {% if can_add_expense %}<div style="margin-top:8px;"><button type="button" class="btn btn-sm btn-outline" onclick="openExpense('salary', {{ payroll }}, 'Salaires {{ month_label }}')"><i class="fa-solid fa-plus"></i> Ajouter en dépense</button></div>{% endif %}
+                {% else %}Elles sont déjà saisies en dépense « Salaires ».{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
+{% if can_add_expense %}
 <!-- ═══ Modale dépense ═══ -->
 <div class="dmodal" id="expenseModal">
     <div class="dmodal-box">
         <div class="dmodal-head">
             <h3><i class="fa-solid fa-money-bill-wave" style="color:var(--dash-accent);"></i> Nouvelle dépense</h3>
-            <button type="button" class="dmodal-close" onclick="document.getElementById('expenseModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="dmodal-close" onclick="closeExpense()" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data" id="expenseForm">
             {% csrf_token %}
             <div class="dmodal-body">
                 <div class="form-group">
-                    <label>Catégorie *</label>
-                    <select name="category" class="form-control">
+                    <label for="expCategory">Catégorie *</label>
+                    <select name="category" id="expCategory" class="form-control">
                         {% for code, label in expense_categories %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
                     </select>
                 </div>
-                <div class="form-group"><label>Description *</label><input type="text" name="description" class="form-control" required placeholder="Ex: Loyer septembre"></div>
+                <div class="form-group"><label for="expDesc">Description *</label><input type="text" name="description" id="expDesc" class="form-control" required maxlength="300" placeholder="Ex : Loyer {{ month_label }}"></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-                    <div class="form-group"><label>Montant (F) *</label><input type="number" name="amount" class="form-control" min="1" required></div>
-                    <div class="form-group"><label>Date</label><input type="date" name="date" class="form-control" value="{{ today }}"></div>
+                    <div class="form-group"><label for="expAmount">Montant (F) *</label><input type="number" name="amount" id="expAmount" class="form-control" min="1" required></div>
+                    <div class="form-group"><label for="expDate">Date</label><input type="date" name="date" id="expDate" class="form-control" value="{{ today }}"></div>
+                </div>
+                <div class="form-group">
+                    <label for="expReceipt">Justificatif (facultatif)</label>
+                    <input type="file" name="receipt" id="expReceipt" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                    <small style="font-size:11px;color:var(--dash-text3);">PDF ou image, 5 Mo maximum</small>
                 </div>
             </div>
             <div class="dmodal-foot">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('expenseModal').classList.remove('open')">Annuler</button>
+                <button type="button" class="btn btn-outline" onclick="closeExpense()">Annuler</button>
                 <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
             </div>
         </form>
     </div>
 </div>
+{% endif %}
+{{ monthly|json_script:"acc-monthly" }}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.getElementById('expenseModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('expenseModal').classList.remove('open'); });
+function openExpense(category, amount, description) {
+    var modal = document.getElementById('expenseModal');
+    if (!modal) return;
+    document.getElementById('expenseForm').reset();
+    if (category) document.getElementById('expCategory').value = category;
+    if (amount) document.getElementById('expAmount').value = amount;
+    if (description) document.getElementById('expDesc').value = description;
+    modal.classList.add('open');
+}
+function closeExpense() { var m = document.getElementById('expenseModal'); if (m) m.classList.remove('open'); }
+var expModal = document.getElementById('expenseModal');
+if (expModal) expModal.addEventListener('click', function(e) { if (e.target === this) closeExpense(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeExpense(); });
 
-var ctx = document.getElementById('revChart');
-if (ctx) {
+/* Revenus et dépenses en barres, résultat net en ligne */
+var monthly = JSON.parse(document.getElementById('acc-monthly').textContent);
+var ctx = document.getElementById('accChart');
+if (ctx && window.Chart) {
+    var css = getComputedStyle(document.documentElement);
+    var c = function(name, fallback) { return (css.getPropertyValue(name) || '').trim() || fallback; };
+    var fmt = function(v) { return Math.abs(v) >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : Math.abs(v) >= 1000 ? Math.round(v / 1000) + 'K' : v; };
     new Chart(ctx, {
-        type: 'bar',
         data: {
-            labels: [{% for m in monthly %}'{{ m.label }}'{% if not forloop.last %},{% endif %}{% endfor %}],
-            datasets: [{
-                data: [{% for m in monthly %}{{ m.revenue }}{% if not forloop.last %},{% endif %}{% endfor %}],
-                backgroundColor: function(context) {
-                    var chart = context.chart;
-                    var area = chart.chartArea;
-                    if (!area) return '#ff6a00';
-                    var g = chart.ctx.createLinearGradient(0, area.bottom, 0, area.top);
-                    g.addColorStop(0, 'rgba(255,106,0,.6)');
-                    g.addColorStop(1, '#ff6a00');
-                    return g;
-                },
-                borderRadius: 6,
-                borderSkipped: false,
-                maxBarThickness: 32,
-            }]
+            labels: monthly.map(function(m) { return m.label; }),
+            datasets: [
+                { type: 'bar', label: 'Revenus', data: monthly.map(function(m) { return m.revenue; }), backgroundColor: c('--dash-green', '#12b76a'), borderRadius: 4, maxBarThickness: 26 },
+                { type: 'bar', label: 'Coûts (marchandises, commissions, dépenses)', data: monthly.map(function(m) { return m.cogs + m.expenses + m.commission; }), backgroundColor: c('--dash-red', '#f04438'), borderRadius: 4, maxBarThickness: 26 },
+                { type: 'line', label: 'Résultat net', data: monthly.map(function(m) { return m.net; }), borderColor: c('--dash-accent', '#ff6a00'), backgroundColor: c('--dash-accent', '#ff6a00'), borderWidth: 2, pointRadius: 3, tension: .3 }
+            ]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 }, color: c('--dash-text2', '#475467') } },
+                tooltip: { callbacks: { label: function(item) { return item.dataset.label + ' : ' + item.raw.toLocaleString('fr') + ' F'; } } }
+            },
             scales: {
-                x: { grid: { display: false }, border: { display: false }, ticks: { color: '#98a2b3', font: { size: 11 } } },
-                y: { border: { display: false }, grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#98a2b3', font: { size: 11 }, callback: function(v) { return v >= 1000 ? (v/1000) + 'K' : v; } } }
+                x: { grid: { display: false }, border: { display: false }, ticks: { color: c('--dash-text3', '#98a2b3'), font: { size: 11 } } },
+                y: { border: { display: false }, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { color: c('--dash-text3', '#98a2b3'), font: { size: 11 }, callback: fmt } }
             }
         }
     });

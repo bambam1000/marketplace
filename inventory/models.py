@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 
+from config.numbering import save_with_reference
+
 
 class Warehouse(models.Model):
     """Entrepôt / point de stockage — peut servir plusieurs boutiques"""
@@ -84,17 +86,29 @@ class StockTransfer(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            count = StockTransfer.objects.count() + 1
-            prefix = 'RET' if self.transfer_type == 'return' else 'TRF'
-            self.reference = f"{prefix}-{count:05d}"
+            prefix = 'RET-' if self.transfer_type == 'return' else 'TRF-'
+            return save_with_reference(self, 'reference', prefix, 5, lambda: super(StockTransfer, self).save(*args, **kwargs))
         super().save(*args, **kwargs)
 
-    def confirm(self):
+    def missing_stock(self):
+        """Produits dont le stock de l'entrepôt source ne couvre pas la quantité demandée.
+        Retourne une liste de (nom, disponible, demandé)."""
+        available = dict(ProductStock.objects.filter(
+            warehouse=self.from_warehouse, product__in=self.items.values('product')
+        ).values_list('product_id', 'quantity'))
+        missing = []
+        for item in self.items.select_related('product'):
+            have = available.get(item.product_id, 0)
+            if have < item.quantity:
+                missing.append((item.product.name, have, item.quantity))
+        return missing
+
+    def confirm(self, user=None):
         """Confirme : sort le stock de l'entrepôt source."""
-        if self.status != 'draft':
+        if self.status != 'draft' or self.missing_stock():
             return False
         for item in self.items.all():
-            item.product.adjust_stock(-item.quantity, 'out', user=self.created_by,
+            item.product.adjust_stock(-item.quantity, 'out', user=user or self.created_by,
                                       reason=f'Transfert vers {self.to_warehouse.name}',
                                       reference=self.reference, warehouse=self.from_warehouse,
                                       update_global=False)
@@ -103,13 +117,13 @@ class StockTransfer(models.Model):
         self.save()
         return True
 
-    def receive(self):
+    def receive(self, user=None):
         """Réception : entre le stock dans l'entrepôt destination."""
         if self.status != 'in_transit':
             return False
         for item in self.items.all():
             qty = item.quantity_received or item.quantity
-            item.product.adjust_stock(qty, 'in', user=self.created_by,
+            item.product.adjust_stock(qty, 'in', user=user or self.created_by,
                                       reason=f'Réception depuis {self.from_warehouse.name}',
                                       reference=self.reference, warehouse=self.to_warehouse,
                                       update_global=False)
@@ -118,13 +132,13 @@ class StockTransfer(models.Model):
         self.save()
         return True
 
-    def cancel(self):
+    def cancel(self, user=None):
         if self.status in ['received', 'cancelled']:
             return False
         # Si déjà confirmé, remettre le stock dans la source
         if self.status == 'in_transit':
             for item in self.items.all():
-                item.product.adjust_stock(item.quantity, 'return', user=self.created_by,
+                item.product.adjust_stock(item.quantity, 'return', user=user or self.created_by,
                                           reason='Annulation transfert',
                                           reference=self.reference, warehouse=self.from_warehouse,
                                           update_global=False)

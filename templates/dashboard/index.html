@@ -1,333 +1,293 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Vue d'ensemble{% endblock %}
 {% block dash %}
-
-<!-- ═══ 4 KPI Cards avec sparklines — toujours sur une ligne ═══ -->
 <style>
-.kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; width: 100%; }
-.kpi-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 14px 16px; box-shadow: var(--dash-shadow); transition: var(--dash-transition); min-width: 0; overflow: hidden; }
-.kpi-card:hover { box-shadow: var(--dash-shadow-hover); transform: translateY(-2px); }
-.kpi-head { display: flex; align-items: center; gap: 10px; }
-.kpi-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-.kpi-title { font-size: 11px; font-weight: 600; color: var(--dash-text3); margin: 0; }
-.kpi-value { font-size: 19px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; line-height: 1.15; }
-.kpi-sub { font-size: 10px; color: var(--dash-text3); margin-top: 1px; }
-.kpi-spark { height: 34px; margin-top: 8px; }
-.kpi-spark canvas { max-width: 100%; }
-@media (max-width: 1100px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .kpi-row { grid-template-columns: 1fr; } }
+.ov-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.ov-head h1 { margin: 0; font-size: 21px; }
+.ov-meta { font-size: 12px; color: var(--dash-text3); margin-top: 4px; }
+.ov-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ov-periods { display: inline-flex; background: var(--dash-card); border: 1px solid var(--dash-border); border-radius: 8px; padding: 3px; }
+.ov-periods a { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--dash-text2); text-decoration: none; }
+.ov-periods a.active { background: var(--dash-accent); color: #fff; }
+.ov-kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 16px; }
+.ov-kpi { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 14px 16px 10px; box-shadow: var(--dash-shadow); min-width: 0; }
+.ov-kpi-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ov-kpi .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; display: flex; align-items: center; gap: 7px; }
+.ov-kpi .lbl i { width: 26px; height: 26px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+.ov-kpi .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-kpi .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.ov-spark { height: 30px; margin-top: 6px; }
+.var { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 50px; white-space: nowrap; }
+.var.up { background: rgba(18,183,106,.1); color: var(--dash-green); }
+.var.down { background: rgba(240,68,56,.1); color: var(--dash-red); }
+.var.flat { background: var(--dash-bg); color: var(--dash-text3); }
+.ov-row { display: grid; gap: 16px; margin-bottom: 16px; }
+.ov-row.r1 { grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); }
+.ov-row.r2 { grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); }
+.ov-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); min-width: 0; }
+.ov-card-head { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ov-card-head h3 { margin: 0; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.ov-card-head h3 i { color: var(--dash-accent); }
+.ov-card-head a.more { font-size: 12px; color: var(--dash-accent); font-weight: 600; text-decoration: none; }
+.ov-card-body { padding: 16px 18px; }
+.ov-legend { display: flex; gap: 14px; font-size: 11px; color: var(--dash-text3); }
+.ov-legend span::before { content: ''; display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; background: currentColor; }
+.ov-legend .cur { color: var(--dash-accent); } .ov-legend .prev { color: var(--dash-text3); }
+.todo { display: flex; gap: 12px; align-items: flex-start; padding: 12px 18px; border-bottom: 1px solid var(--dash-border); text-decoration: none; color: inherit; transition: var(--dash-transition); }
+.todo:last-child { border-bottom: none; }
+.todo:hover { background: var(--dash-bg); }
+.todo .ic { width: 32px; height: 32px; border-radius: 8px; background: var(--dash-bg); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.todo .t { font-size: 13px; font-weight: 700; color: var(--dash-text); }
+.todo .d { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.todo .go { margin-left: auto; color: var(--dash-text3); font-size: 11px; align-self: center; }
+.todo-ok { padding: 28px 18px; text-align: center; color: var(--dash-text3); font-size: 13px; }
+.todo-ok i { display: block; font-size: 26px; color: var(--dash-green); margin-bottom: 8px; }
+.ch-row { margin-bottom: 12px; } .ch-row:last-child { margin-bottom: 0; }
+.ch-top { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+.ch-top span:first-child { font-weight: 600; color: var(--dash-text); }
+.ch-top span:last-child { color: var(--dash-text3); }
+.ch-bar { height: 7px; background: var(--dash-bg); border-radius: 4px; overflow: hidden; }
+.ch-bar span { display: block; height: 100%; border-radius: 4px; }
+.tp-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--dash-border); }
+.tp-row:last-child { border-bottom: none; }
+.tp-rank { width: 24px; height: 24px; border-radius: 6px; background: var(--dash-bg); font-size: 11px; font-weight: 700; color: var(--dash-text3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.tp-main { flex: 1; min-width: 0; }
+.tp-name { font-size: 13px; font-weight: 600; color: var(--dash-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-bar { height: 4px; background: var(--dash-bg); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+.tp-bar span { display: block; height: 100%; background: var(--dash-accent); border-radius: 2px; }
+.tp-val { text-align: right; flex-shrink: 0; }
+.tp-val .r { font-size: 12px; font-weight: 700; color: var(--dash-text); }
+.tp-val .q { font-size: 11px; color: var(--dash-text3); }
+.ov-empty { text-align: center; padding: 26px 0; color: var(--dash-text3); font-size: 13px; }
+.ov-platform { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 1px; background: var(--dash-border); }
+.ov-platform div { background: var(--dash-card); padding: 12px 16px; }
+.ov-platform .v { font-size: 18px; font-weight: 800; color: var(--dash-text); }
+.ov-platform .l { font-size: 11px; color: var(--dash-text3); }
+@media (max-width: 1100px) { .ov-kpis { grid-template-columns: repeat(2, 1fr); } .ov-row.r1, .ov-row.r2 { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .ov-kpis { grid-template-columns: 1fr; } }
 </style>
 
-<div class="kpi-row">
-    <div class="kpi-card">
-        <div class="kpi-head">
-            <div class="kpi-icon" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-chart-line"></i></div>
-            <div>
-                <p class="kpi-title">Ventes totales</p>
-                <div class="kpi-value">{{ total_revenue|intcomma }} F</div>
-                <div class="kpi-sub">Ce mois : {{ this_month_revenue|intcomma }} F</div>
-            </div>
-        </div>
-        <div class="kpi-spark"><canvas class="sparkline" data-values='{{ daily_data_json|safe }}' data-color="#ff6a00"></canvas></div>
+<!-- ═══ En-tête ═══ -->
+<div class="ov-head">
+    <div>
+        <h1>Bonjour {{ request.user.first_name|default:request.user.username }}</h1>
+        <div class="ov-meta">{{ day_name|capfirst }} {{ today|date:"j F Y" }}{% if store %} · {{ store.name }}{% elif is_admin %} · Toute la plateforme{% endif %}</div>
     </div>
-    <div class="kpi-card">
-        <div class="kpi-head">
-            <div class="kpi-icon" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-bag-shopping"></i></div>
-            <div>
-                <p class="kpi-title">Commandes</p>
-                <div class="kpi-value">{{ total_orders }}</div>
-                <div class="kpi-sub">Aujourd'hui : {{ today_orders }}</div>
-            </div>
-        </div>
-        <div class="kpi-spark"><canvas class="sparkline" data-values='{{ order_counts_json|safe }}' data-color="#2e90fa"></canvas></div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-head">
-            <div class="kpi-icon" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-clock"></i></div>
-            <div>
-                <p class="kpi-title">En attente</p>
-                <div class="kpi-value">{{ pending_orders }}</div>
-                <div class="kpi-sub">commandes à traiter</div>
-            </div>
-        </div>
-        <div class="kpi-spark"><canvas class="sparkline" data-values='{{ daily_data_json|safe }}' data-color="#f79009"></canvas></div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-head">
-            <div class="kpi-icon" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-coins"></i></div>
-            <div>
-                <p class="kpi-title">Rev. aujourd'hui</p>
-                <div class="kpi-value">{{ today_revenue|intcomma }} F</div>
-                <div class="kpi-sub">{% if is_seller %}En attente : {{ pending_payout|intcomma }} F{% else %}Stock faible : {{ low_stock }}{% endif %}</div>
-            </div>
-        </div>
-        <div class="kpi-spark"><canvas class="sparkline" data-values='{{ daily_data_json|safe }}' data-color="#12b76a"></canvas></div>
+    <div class="ov-tools">
+        <nav class="ov-periods" aria-label="Période">
+            {% for code, label in periods %}<a href="?period={{ code }}" class="{% if code == period %}active{% endif %}">{{ label }}</a>{% endfor %}
+        </nav>
+        {% if perms.sell and store %}<a href="{% url 'dashboard:sales' %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-cash-register"></i> Nouvelle vente</a>{% endif %}
+        {% if perms.owner and store %}<a href="{% url 'dashboard:products' %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-plus"></i> Produit</a>{% endif %}
+        <a href="{% url 'dashboard:assistant' %}" class="btn btn-sm btn-orange"><i class="fa-solid fa-robot"></i> Assistant IA</a>
     </div>
 </div>
 
-<!-- ═══ Recent Orders + Sales Overview ═══ -->
-<div class="dash-grid" style="grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);">
-    <!-- Recent Orders -->
-    <div class="dash-table-wrapper" style="margin:0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3 style="margin:0;">Commandes récentes</h3>
-            <a href="{% url 'dashboard:orders' %}" class="btn btn-sm btn-outline">Voir tout <i class="fa-solid fa-arrow-right" style="font-size:10px;"></i></a>
+{% if perms.sales %}
+<!-- ═══ Indicateurs de la période (comparés à la période précédente) ═══ -->
+<div class="ov-kpis">
+    <div class="ov-kpi">
+        <div class="ov-kpi-top"><span class="lbl"><i class="fa-solid fa-sack-dollar" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"></i> Chiffre d'affaires</span>{% include 'dashboard/_variation.html' with v=var.revenue %}</div>
+        <div class="val">{{ cur.revenue|intcomma }} F</div>
+        <div class="sub">Période précédente : {{ prev.revenue|intcomma }} F</div>
+        <div class="ov-spark"><canvas id="sparkRevenue" aria-hidden="true"></canvas></div>
+    </div>
+    <div class="ov-kpi">
+        <div class="ov-kpi-top"><span class="lbl"><i class="fa-solid fa-bag-shopping" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"></i> Ventes</span>{% include 'dashboard/_variation.html' with v=var.sales %}</div>
+        <div class="val">{{ cur.sales }}</div>
+        <div class="sub">{{ cur.orders }} commande{{ cur.orders|pluralize:"s" }} · {{ cur.pos_count }} en caisse · {{ cur.qty }} article{{ cur.qty|pluralize:"s" }}</div>
+    </div>
+    <div class="ov-kpi">
+        <div class="ov-kpi-top"><span class="lbl"><i class="fa-solid fa-basket-shopping" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"></i> Panier moyen</span>{% include 'dashboard/_variation.html' with v=var.basket %}</div>
+        <div class="val">{{ cur.basket|intcomma }} F</div>
+        <div class="sub">{{ new_customers }} nouveau{{ new_customers|pluralize:"x" }} client{{ new_customers|pluralize:"s" }} sur la période</div>
+    </div>
+    <div class="ov-kpi">
+        <div class="ov-kpi-top"><span class="lbl"><i class="fa-solid fa-chart-pie" style="background:rgba(18,183,106,.1);color:var(--dash-green);"></i> Marge brute</span>{% if cur.margin is not None %}{% include 'dashboard/_variation.html' with v=var.margin %}{% endif %}</div>
+        {% if cur.margin is not None %}
+        <div class="val" style="color:{% if cur.margin >= 0 %}var(--dash-green){% else %}var(--dash-red){% endif %};">{{ cur.margin|intcomma }} F</div>
+        <div class="sub">{{ cur.margin_rate }} % · calculée sur {{ cur.cost_coverage }} % des ventes</div>
+        {% else %}
+        <div class="val" style="color:var(--dash-text3);">—</div>
+        <div class="sub">Renseignez les prix d'achat pour la calculer</div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="ov-row r1">
+    {% if perms.sales %}
+    <!-- ═══ Évolution du chiffre d'affaires ═══ -->
+    <div class="ov-card">
+        <div class="ov-card-head">
+            <h3><i class="fa-solid fa-chart-line"></i> Chiffre d'affaires — {{ period_label }}</h3>
+            <div class="ov-legend"><span class="cur">Période</span><span class="prev">Période précédente</span></div>
         </div>
+        <div class="ov-card-body"><div style="height:260px;"><canvas id="revChart" role="img" aria-label="Évolution du chiffre d'affaires comparée à la période précédente"></canvas></div></div>
+    </div>
+    {% endif %}
+
+    <!-- ═══ À faire ═══ -->
+    <div class="ov-card">
+        <div class="ov-card-head"><h3><i class="fa-solid fa-list-check"></i> À faire</h3>{% if todo %}<span style="font-size:12px;color:var(--dash-text3);">{{ todo|length }} point{{ todo|length|pluralize:"s" }}</span>{% endif %}</div>
+        {% for icon, color, title, detail, url in todo %}
+        <a href="{{ url }}" class="todo">
+            <span class="ic" style="color:{{ color }};"><i class="fa-solid {{ icon }}"></i></span>
+            <span><span class="t" style="display:block;">{{ title }}</span><span class="d" style="display:block;">{{ detail }}</span></span>
+            <i class="fa-solid fa-chevron-right go"></i>
+        </a>
+        {% empty %}
+        <div class="todo-ok"><i class="fa-solid fa-circle-check"></i>Rien d'urgent : tout est à jour.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="ov-row r2">
+    {% if perms.orders %}
+    <!-- ═══ Commandes récentes ═══ -->
+    <div class="ov-card">
+        <div class="ov-card-head"><h3><i class="fa-solid fa-receipt"></i> Commandes récentes</h3><a href="{% url 'dashboard:orders' %}" class="more">Toutes les commandes</a></div>
         <div class="dash-table-responsive">
         <table class="dash-table">
-            <thead>
-                <tr><th>Commande</th><th>Client</th><th>Date</th><th>Montant</th><th>Statut</th></tr>
-            </thead>
+            <thead><tr><th>Commande</th><th>Client</th><th>Date</th><th>Montant</th><th>Statut</th></tr></thead>
             <tbody>
-                {% for order in recent_orders %}
+                {% for o in recent_orders %}
                 <tr>
-                    <td>
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <div style="width:34px;height:34px;background:var(--dash-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                                <i class="fa-solid fa-receipt" style="color:var(--dash-text3);font-size:12px;"></i>
-                            </div>
-                            <span style="font-weight:600;color:var(--dash-text);">#{{ order.order_number }}</span>
-                        </div>
-                    </td>
-                    <td style="font-weight:500;">{{ order.buyer.display_name }}</td>
-                    <td style="font-size:12px;color:var(--dash-text3);">{{ order.created_at|date:"d M · H:i" }}</td>
-                    <td style="font-weight:700;color:var(--dash-text);">{{ order.total_amount|intcomma }} F</td>
-                    <td><span class="status-badge st-{{ order.status }}">{{ order.get_status_display }}</span></td>
+                    <td><a href="{% url 'dashboard:order_detail' o.order_number %}" style="font-weight:700;color:var(--dash-text);">#{{ o.order_number }}</a>{% if o.is_direct_sale %}<div style="font-size:10px;color:var(--dash-purple);font-weight:600;">Vente directe</div>{% endif %}</td>
+                    <td>{{ o.shipping_name|default:o.buyer.display_name }}<div style="font-size:11px;color:var(--dash-text3);">{{ o.shipping_city }}</div></td>
+                    <td style="font-size:12px;color:var(--dash-text3);white-space:nowrap;">{{ o.created_at|date:"d/m · H:i" }}</td>
+                    <td style="font-weight:700;color:var(--dash-text);white-space:nowrap;">{{ o.share|intcomma }} F</td>
+                    <td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="5" style="text-align:center;padding:40px;">
-                    <div style="font-size:36px;opacity:.2;margin-bottom:10px;"><i class="fa-solid fa-box-open"></i></div>
-                    <div style="color:var(--dash-text3);font-size:13px;">Aucune commande récente</div>
-                </td></tr>
+                <tr><td colspan="5"><div class="ov-empty"><i class="fa-solid fa-box-open" style="font-size:26px;opacity:.3;display:block;margin-bottom:8px;"></i>Aucune commande pour l'instant</div></td></tr>
                 {% endfor %}
             </tbody>
         </table>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Sales Overview -->
-    <div class="dash-chart-card" style="display:flex;flex-direction:column;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div>
-                <h3 style="margin:0;">Aperçu des ventes</h3>
-                <p style="font-size:12px;color:var(--dash-text3);margin-top:2px;">6 derniers mois</p>
+    <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
+        {% if perms.sales %}
+        <!-- ═══ Canaux de vente ═══ -->
+        <div class="ov-card">
+            <div class="ov-card-head"><h3><i class="fa-solid fa-shuffle"></i> Canaux de vente</h3></div>
+            <div class="ov-card-body">
+                {% for label, value, pct, color in channels %}
+                <div class="ch-row">
+                    <div class="ch-top"><span>{{ label }}</span><span>{{ value|intcomma }} F · {{ pct }} %</span></div>
+                    <div class="ch-bar"><span style="width:{{ pct }}%;background:{{ color }};"></span></div>
+                </div>
+                {% endfor %}
             </div>
-            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--dash-text3);padding:4px 10px;background:var(--dash-bg);border-radius:50px;font-weight:500;">
-                <span style="width:8px;height:8px;border-radius:50%;background:var(--dash-accent);"></span> Revenus
-            </span>
         </div>
-        <div style="flex:1;min-height:260px;position:relative;">
-            <canvas id="revChart"></canvas>
+        {% endif %}
+        {% if perms.orders %}
+        <!-- ═══ Statuts ═══ -->
+        <div class="ov-card">
+            <div class="ov-card-head"><h3><i class="fa-solid fa-circle-half-stroke"></i> Commandes par statut</h3><span style="font-size:12px;color:var(--dash-text3);">{{ period_orders }} sur la période</span></div>
+            <div class="ov-card-body">
+                {% if period_orders %}<div style="height:190px;"><canvas id="statusChart" role="img" aria-label="Répartition des commandes par statut"></canvas></div>
+                {% else %}<div class="ov-empty">Aucune commande sur la période</div>{% endif %}
+            </div>
         </div>
+        {% endif %}
     </div>
 </div>
 
-<!-- ═══ Row 3 : Clients récents + Répartition + Top produits ═══ -->
-<div class="dash-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
-    <!-- Recent Customers -->
-    <div class="dash-chart-card">
-        <h3 style="margin-bottom:16px;">Clients récents</h3>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-            {% for order in recent_orders|slice:":5" %}
-            <div style="display:flex;align-items:center;gap:12px;padding:8px 0;{% if not forloop.last %}border-bottom:1px solid var(--dash-border);{% endif %}">
-                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--dash-accent),var(--dash-accent-light));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{{ order.buyer.initials }}</div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:13px;font-weight:600;color:var(--dash-text);">{{ order.buyer.display_name }}</div>
-                    <div style="font-size:11px;color:var(--dash-text3);">#{{ order.buyer.id }} · {{ order.total_amount|intcomma }} F</div>
-                </div>
-                <span class="status-badge st-{{ order.status }}" style="font-size:10px;">{{ order.get_status_display }}</span>
+<div class="ov-row r2">
+    {% if perms.sales %}
+    <!-- ═══ Top produits ═══ -->
+    <div class="ov-card">
+        <div class="ov-card-head"><h3><i class="fa-solid fa-trophy"></i> Top produits — {{ period_label }}</h3>{% if perms.products %}<a href="{% url 'dashboard:products' %}" class="more">Catalogue</a>{% endif %}</div>
+        <div class="ov-card-body" style="padding-top:6px;padding-bottom:6px;">
+            {% for t in top_products %}
+            <div class="tp-row">
+                <span class="tp-rank">{{ forloop.counter }}</span>
+                <div class="tp-main"><div class="tp-name">{{ t.name }}</div><div class="tp-bar"><span style="width:{{ t.pct }}%;"></span></div></div>
+                <div class="tp-val"><div class="r">{{ t.rev|intcomma }} F</div><div class="q">{{ t.qty }} vendu{{ t.qty|pluralize:"s" }}</div></div>
             </div>
             {% empty %}
-            <p style="font-size:13px;color:var(--dash-text3);text-align:center;padding:20px 0;">Aucun client pour le moment</p>
+            <div class="ov-empty">Aucune vente sur la période</div>
             {% endfor %}
         </div>
     </div>
-
-    <!-- Revenue by Status (donut) -->
-    <div class="dash-chart-card">
-        <h3 style="margin-bottom:6px;">Commandes par statut</h3>
-        <p style="font-size:12px;color:var(--dash-text3);margin-bottom:12px;">Répartition actuelle</p>
-        <div style="height:200px;position:relative;">
-            <canvas id="statusChart"></canvas>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
-                <div style="font-size:22px;font-weight:800;color:var(--dash-text);">{{ total_orders }}</div>
-                <div style="font-size:11px;color:var(--dash-text3);">commandes</div>
-            </div>
+    {% endif %}
+    {% if platform %}
+    <!-- ═══ Plateforme (admin) ═══ -->
+    <div class="ov-card">
+        <div class="ov-card-head"><h3><i class="fa-solid fa-earth-africa"></i> Plateforme</h3></div>
+        <div class="ov-platform">
+            <div><div class="v">{{ platform.users }}</div><div class="l">Utilisateurs</div></div>
+            <div><div class="v" style="color:var(--dash-green);">+{{ platform.new_users }}</div><div class="l">Inscrits en 30 jours</div></div>
+            <div><div class="v">{{ platform.sellers }}</div><div class="l">Vendeurs</div></div>
+            <div><div class="v">{{ platform.buyers }}</div><div class="l">Acheteurs</div></div>
+            <div><div class="v">{{ platform.stores }}</div><div class="l">Boutiques</div></div>
+            <div><div class="v">{{ platform.verified }}</div><div class="l">Boutiques vérifiées</div></div>
         </div>
     </div>
-
-    <!-- Top Products -->
-    <div class="dash-chart-card">
-        <h3 style="margin-bottom:16px;">Top produits</h3>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-            {% for tp in top_products %}
-            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;{% if not forloop.last %}border-bottom:1px solid var(--dash-border);{% endif %}">
-                <div style="width:28px;height:28px;border-radius:8px;background:var(--dash-bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--dash-text3);flex-shrink:0;">{{ forloop.counter }}</div>
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:13px;font-weight:600;color:var(--dash-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ tp.product__name }}</div>
-                    <div style="font-size:11px;color:var(--dash-text3);">{{ tp.qty }} vendu{{ tp.qty|pluralize:"s" }}</div>
-                </div>
-                <span style="font-size:12px;font-weight:700;color:var(--dash-accent);">{{ tp.rev|intcomma }} F</span>
-            </div>
-            {% empty %}
-            <p style="font-size:13px;color:var(--dash-text3);text-align:center;padding:20px 0;">Aucune vente pour le moment</p>
-            {% endfor %}
-        </div>
-    </div>
+    {% endif %}
 </div>
 
-{% if is_admin %}
-<!-- Admin quick stats -->
-<div class="quick-metrics" style="margin-top:4px;">
-    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
-        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Utilisateurs</div>
-        <div style="font-size:20px;font-weight:800;color:var(--dash-text);">{{ total_users }}</div>
-    </div>
-    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
-        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Vendeurs</div>
-        <div style="font-size:20px;font-weight:800;color:var(--dash-text);">{{ total_sellers }}</div>
-    </div>
-    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
-        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Boutiques</div>
-        <div style="font-size:20px;font-weight:800;color:var(--dash-text);">{{ total_stores }}</div>
-    </div>
-    <div style="background:var(--dash-card);border:1px solid var(--dash-card-border);border-radius:var(--dash-radius-sm);padding:16px 18px;box-shadow:var(--dash-shadow);">
-        <div style="font-size:11px;color:var(--dash-text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Vérifiées</div>
-        <div style="font-size:20px;font-weight:800;color:var(--dash-green);">{{ verified_stores }}</div>
-    </div>
-</div>
-{% endif %}
-
+{{ chart|json_script:"ov-chart" }}
+{{ spark|json_script:"ov-spark" }}
+{{ status_chart|json_script:"ov-status" }}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-/* ─── Sparklines (mini courbes des cartes KPI) ─── */
-document.querySelectorAll('.sparkline').forEach(function(el) {
-    var values = JSON.parse(el.dataset.values || '[]');
-    if (!values.length) values = [0, 0, 0, 0, 0, 0, 0];
-    var color = el.dataset.color || '#ff6a00';
-    new Chart(el, {
-        type: 'line',
-        data: {
-            labels: values.map(function(_, i) { return i; }),
-            datasets: [{
-                data: values,
-                borderColor: color,
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.4,
-                fill: true,
-                backgroundColor: function(context) {
-                    var chart = context.chart;
-                    var area = chart.chartArea;
-                    if (!area) return 'transparent';
-                    var g = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-                    g.addColorStop(0, color + '33');
-                    g.addColorStop(1, color + '00');
-                    return g;
-                }
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: { x: { display: false }, y: { display: false } },
-            animation: { duration: 600 }
-        }
-    });
-});
+(function() {
+    if (!window.Chart) return;
+    var css = getComputedStyle(document.documentElement);
+    var color = function(name, fallback) { return (css.getPropertyValue(name) || '').trim() || fallback; };
+    var read = function(id) { var el = document.getElementById(id); return el ? JSON.parse(el.textContent) : null; };
+    var fmt = function(v) { return Math.abs(v) >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : Math.abs(v) >= 1000 ? Math.round(v / 1000) + 'K' : v; };
+    var accent = color('--dash-accent', '#ff6a00'), muted = color('--dash-text3', '#98a2b3');
 
-/* ─── Sales Overview (barres mensuelles) ─── */
-var ctx = document.getElementById('revChart');
-if (ctx) {
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {{ months_json|safe }},
-            datasets: [{
-                label: 'Revenus',
-                data: {{ revenues_json|safe }},
-                backgroundColor: function(context) {
-                    var chart = context.chart;
-                    var area = chart.chartArea;
-                    if (!area) return '#ff6a00';
-                    var g = chart.ctx.createLinearGradient(0, area.bottom, 0, area.top);
-                    g.addColorStop(0, 'rgba(255,106,0,.65)');
-                    g.addColorStop(1, '#ff6a00');
-                    return g;
-                },
-                borderRadius: 6,
-                borderSkipped: false,
-                maxBarThickness: 26,
-                hoverBackgroundColor: '#ff8533'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#101828',
-                    padding: 12,
-                    cornerRadius: 10,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            return context.parsed.y.toLocaleString('fr') + ' F';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: { grid: { display: false }, border: { display: false }, ticks: { color: '#98a2b3', font: { size: 11, family: 'Inter' } } },
-                y: {
-                    border: { display: false },
-                    grid: { color: 'rgba(0,0,0,.04)', drawTicks: false },
-                    ticks: {
-                        color: '#98a2b3', font: { size: 11, family: 'Inter' }, padding: 10,
-                        callback: function(v) {
-                            if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
-                            if (v >= 1000) return (v / 1000) + 'K';
-                            return v;
-                        }
-                    }
+    var chart = read('ov-chart');
+    var rev = document.getElementById('revChart');
+    if (rev && chart) {
+        new Chart(rev, {
+            type: 'line',
+            data: { labels: chart.labels, datasets: [
+                { label: 'Période', data: chart.current, borderColor: accent, backgroundColor: accent + '22', fill: true, tension: .3, borderWidth: 2, pointRadius: chart.labels.length > 40 ? 0 : 2 },
+                { label: 'Période précédente', data: chart.previous, borderColor: muted, borderDash: [4, 4], fill: false, tension: .3, borderWidth: 1.5, pointRadius: 0 }
+            ] },
+            options: {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(i) { return i.dataset.label + ' : ' + i.raw.toLocaleString('fr') + ' F'; } } } },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false }, ticks: { color: muted, font: { size: 11 }, maxTicksLimit: 10, maxRotation: 0 } },
+                    y: { beginAtZero: true, border: { display: false }, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { color: muted, font: { size: 11 }, callback: fmt } }
                 }
             }
-        }
-    });
-}
+        });
+    }
 
-/* ─── Donut : commandes par statut ─── */
-var stx = document.getElementById('statusChart');
-if (stx) {
-    new Chart(stx, {
-        type: 'doughnut',
-        data: {
-            labels: {{ st_labels_json|safe }},
-            datasets: [{
-                data: {{ st_data_json|safe }},
-                backgroundColor: ['#f79009', '#2e90fa', '#7a5af8', '#12b6cb', '#12b76a', '#f04438', '#98a2b3'],
-                borderWidth: 3,
-                borderColor: '#fff',
-                hoverOffset: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '72%',
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { boxWidth: 8, boxHeight: 8, borderRadius: 4, usePointStyle: true, font: { size: 11, family: 'Inter' }, color: '#475467', padding: 10 }
-                }
-            }
-        }
-    });
-}
+    var spark = read('ov-spark');
+    var sp = document.getElementById('sparkRevenue');
+    if (sp && spark && spark.length) {
+        new Chart(sp, {
+            type: 'line',
+            data: { labels: spark.map(function(_, i) { return i; }), datasets: [{ data: spark, borderColor: accent, backgroundColor: accent + '22', fill: true, tension: .4, borderWidth: 2, pointRadius: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false, beginAtZero: true } }, animation: false }
+        });
+    }
+
+    var status = read('ov-status');
+    var st = document.getElementById('statusChart');
+    if (st && status && status.values.length) {
+        var palette = { 'En attente': color('--dash-yellow', '#f79009'), 'Confirmée': color('--dash-blue', '#2e90fa'),
+            'En traitement': color('--dash-purple', '#7a5af8'), 'Expédiée': '#12b6cb', 'Livrée': color('--dash-green', '#12b76a'),
+            'Annulée': color('--dash-red', '#f04438'), 'Remboursée': muted };
+        new Chart(st, {
+            type: 'doughnut',
+            data: { labels: status.labels, datasets: [{ data: status.values, backgroundColor: status.labels.map(function(l) { return palette[l] || muted; }), borderWidth: 2, borderColor: color('--dash-card', '#fff') }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '68%',
+                plugins: { legend: { position: 'right', labels: { boxWidth: 8, boxHeight: 8, usePointStyle: true, font: { size: 11 }, color: color('--dash-text2', '#475467') } } } }
+        });
+    }
+})();
 </script>
 {% endblock %}

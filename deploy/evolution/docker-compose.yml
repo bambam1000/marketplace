@@ -1,0 +1,53 @@
+# Evolution API (WhatsApp via Baileys) pour AfriMarket
+# Démarrage : cp .env.example .env  (puis remplir les secrets)  &&  docker compose up -d
+# L'API n'écoute que sur 127.0.0.1 : Django la joint en local, elle n'est pas exposée sur Internet.
+# Le manager web d'Evolution n'est volontairement pas déployé : les vendeurs passent par le dashboard AfriMarket.
+
+services:
+  evolution-api:
+    container_name: afrimarket_evolution_api
+    image: evoapicloud/evolution-api:v2.3.7   # version épinglée (testée avec le client Django)
+    restart: always
+    depends_on:
+      - evolution-redis
+      - evolution-postgres
+    ports:
+      - "127.0.0.1:8081:8080"   # 8081 côté machine : 8080 est souvent déjà utilisé
+    volumes:
+      - evolution_instances:/evolution/instances
+    env_file:
+      - .env
+    networks:
+      - evolution-net
+
+  evolution-redis:
+    container_name: afrimarket_evolution_redis
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --port 6379 --appendonly yes
+    volumes:
+      - evolution_redis:/data
+    networks:
+      - evolution-net
+
+  evolution-postgres:
+    container_name: afrimarket_evolution_postgres
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - evolution-net
+
+volumes:
+  evolution_instances:
+  evolution_redis:
+  postgres_data:
+
+networks:
+  evolution-net:
+    driver: bridge

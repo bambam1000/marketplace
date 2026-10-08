@@ -1,0 +1,130 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}{{ chat.display_name }} — WhatsApp{% endblock %}
+{% block dash %}
+<style>
+.wc-grid { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 16px; }
+.wc-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); }
+.wc-head { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); display: flex; align-items: center; gap: 12px; }
+.wc-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(37,211,102,.12); color: #128C7E; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.wc-thread { height: 460px; overflow-y: auto; padding: 18px; background: #efeae2; display: flex; flex-direction: column; gap: 8px; }
+.wc-msg { max-width: 75%; padding: 8px 12px 6px; border-radius: 8px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.wc-msg.in { align-self: flex-start; background: #fff; color: #111b21; border-top-left-radius: 2px; }
+.wc-msg.out { align-self: flex-end; background: #d9fdd3; color: #111b21; border-top-right-radius: 2px; }
+.wc-meta { display: flex; justify-content: flex-end; gap: 6px; font-size: 10px; color: #667781; margin-top: 3px; }
+.wc-meta .kind { margin-right: auto; font-style: italic; }
+.wc-st-read { color: #53bdeb; }
+.wc-st-failed { color: var(--dash-red); font-weight: 700; }
+.wc-reply { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--dash-border); }
+.wc-reply textarea { flex: 1; resize: none; min-height: 44px; max-height: 140px; padding: 10px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+.wc-reply textarea:focus { outline: none; border-color: #25D366; box-shadow: 0 0 0 3px rgba(37,211,102,.15); }
+.wc-side-body { padding: 16px 18px; font-size: 13px; }
+.wc-side-body dt { color: var(--dash-text3); font-weight: 600; font-size: 11px; margin-top: 10px; }
+.wc-side-body dd { margin: 2px 0 0; color: var(--dash-text); font-weight: 600; }
+.wc-order { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--dash-border); font-size: 12px; }
+.wc-order:last-child { border-bottom: none; }
+.wc-note { margin: 0 12px 12px; padding: 10px 12px; border-radius: 6px; font-size: 12px; background: rgba(247,144,9,.08); border: 1px solid rgba(247,144,9,.3); color: var(--dash-text2); }
+@media (max-width: 900px) { .wc-grid { grid-template-columns: 1fr; } .wc-thread { height: 380px; } }
+</style>
+
+<a href="{% url 'whatsapp:inbox' %}{% if scope %}?scope={{ scope }}{% endif %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Toutes les conversations</a>
+
+<div class="wc-grid">
+    <div class="wc-card">
+        <div class="wc-head">
+            <div class="wc-avatar">{{ chat.display_name|slice:":2"|upper }}</div>
+            <div>
+                <div style="font-weight:700;color:var(--dash-text);">{{ chat.display_name }}</div>
+                <div style="font-size:12px;color:var(--dash-text3);">+{{ chat.number }}{% if not chat.instance.is_connected %} · <span style="color:var(--dash-red);">numéro déconnecté</span>{% endif %}</div>
+            </div>
+            <a href="https://wa.me/{{ chat.number }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline" style="margin-left:auto;" title="Ouvrir dans WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+        </div>
+        <div class="wc-thread" id="wcThread" aria-live="polite">
+            {% for m in history %}
+            <div class="wc-msg {{ m.direction }}" data-id="{{ m.pk }}">{{ m.body|default:m.file_name }}<div class="wc-meta">{% if m.direction == 'out' and m.purpose != 'reply' %}<span class="kind">{{ m.get_purpose_display }}</span>{% elif m.sent_by %}<span class="kind">{{ m.sent_by.display_name }}</span>{% endif %}<span>{{ m.created_at|date:"d/m H:i" }}</span>{% if m.direction == 'out' %}<span class="wc-st wc-st-{{ m.status }}" data-status-for="{{ m.pk }}" {% if m.error %}title="{{ m.error|truncatechars:150 }}"{% endif %}>{{ m.get_status_display }}</span>{% endif %}</div></div>
+            {% empty %}
+            <div style="margin:auto;color:#667781;font-size:13px;" id="wcEmpty">Aucun message</div>
+            {% endfor %}
+        </div>
+        {% if opted_out %}<div class="wc-note"><i class="fa-solid fa-bell-slash"></i> Ce contact a répondu STOP : il ne reçoit plus de messages automatiques. Vous pouvez toujours lui répondre.</div>{% endif %}
+        <form method="post" class="wc-reply">
+            {% csrf_token %}
+            <textarea name="text" placeholder="{% if chat.instance.is_connected %}Votre réponse…{% else %}Reconnectez WhatsApp pour répondre{% endif %}" required maxlength="4000" aria-label="Votre réponse" {% if not chat.instance.is_connected %}disabled{% endif %} onkeydown="if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"></textarea>
+            <button type="submit" class="btn" style="background:#25D366;color:#fff;" {% if not chat.instance.is_connected %}disabled{% endif %} aria-label="Envoyer"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+    </div>
+
+    <div class="wc-card">
+        <div class="wc-head"><h3 style="margin:0;font-size:14px;">Contact</h3></div>
+        <div class="wc-side-body">
+            <dl style="margin:0;">
+                <dt>Nom WhatsApp</dt><dd>{{ chat.contact_name|default:"—" }}</dd>
+                <dt>Numéro</dt><dd>+{{ chat.number }}</dd>
+                <dt>Compte AfriMarket</dt><dd>{% if chat.customer %}{{ chat.customer.display_name }}{% if chat.customer.email %}<div style="font-weight:400;font-size:12px;color:var(--dash-text3);">{{ chat.customer.email }}</div>{% endif %}{% else %}Non reconnu{% endif %}</dd>
+            </dl>
+            {% if orders %}
+            <div style="font-size:11px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;margin:18px 0 6px;">Dernières commandes</div>
+            {% for o in orders %}
+            <div class="wc-order">
+                <a href="{% url 'dashboard:order_detail' o.order_number %}" style="font-weight:700;color:var(--dash-accent);">#{{ o.order_number }}</a>
+                <span>{{ o.total_amount|floatformat:0|intcomma }} F</span>
+                <span class="status-badge st-{{ o.status }}" style="font-size:10px;">{{ o.get_status_display }}</span>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var thread = document.getElementById('wcThread');
+    var lastId = {{ last_id }};
+    var url = "{% url 'whatsapp:chat_updates' chat.pk %}";
+    thread.scrollTop = thread.scrollHeight;
+
+    function bubble(m) {
+        var div = document.createElement('div');
+        div.className = 'wc-msg ' + m.direction;
+        div.dataset.id = m.id;
+        div.appendChild(document.createTextNode(m.body));   // texte du client : jamais interprété comme HTML
+        var meta = document.createElement('div');
+        meta.className = 'wc-meta';
+        var time = document.createElement('span'); time.textContent = m.time; meta.appendChild(time);
+        if (m.direction === 'out') {
+            var st = document.createElement('span');
+            st.className = 'wc-st wc-st-' + m.status;
+            st.dataset.statusFor = m.id;
+            st.textContent = m.status_label;
+            meta.appendChild(st);
+        }
+        div.appendChild(meta);
+        return div;
+    }
+
+    function poll() {
+        fetch(url + '?after=' + lastId, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.ok) return;
+                var nearBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+                data.messages.forEach(function(m) {
+                    if (thread.querySelector('[data-id="' + m.id + '"]')) return;
+                    var empty = document.getElementById('wcEmpty'); if (empty) empty.remove();
+                    thread.appendChild(bubble(m));
+                    lastId = Math.max(lastId, m.id);
+                });
+                Object.keys(data.statuses).forEach(function(id) {
+                    var el = thread.querySelector('[data-status-for="' + id + '"]');
+                    if (el) { el.textContent = data.statuses[id][1]; el.className = 'wc-st wc-st-' + data.statuses[id][0]; }
+                });
+                if (nearBottom) thread.scrollTop = thread.scrollHeight;
+            })
+            .catch(function() {})
+            .finally(function() { setTimeout(poll, 5000); });
+    }
+    setTimeout(poll, 5000);
+})();
+</script>
+{% endblock %}

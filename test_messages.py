@@ -1,7 +1,18 @@
 """
-Script pour créer des messages de test
-Exécuter avec: python manage.py shell < test_messages.py
+Script pour créer des messages de démonstration (écrit dans la vraie base, c'est voulu).
+Exécuter avec : python test_messages.py
+       ou     : python manage.py shell < test_messages.py
 """
+import os
+import sys
+
+import django
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 from django.contrib.auth import get_user_model
 from messaging.models import Conversation, Message
 

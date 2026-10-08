@@ -57,12 +57,13 @@ class PromoCode(models.Model):
         if self.max_discount_amount:
             discount = min(discount, self.max_discount_amount)
 
-        return discount
+        # Jamais plus que le montant concerné (sinon total négatif ou remise prise sur d'autres boutiques)
+        return max(min(discount, amount), 0)
 
     def apply_code(self):
-        """Incrémente le compteur d'utilisation"""
-        self.usage_count += 1
-        self.save()
+        """Incrémente le compteur d'utilisation (atomique : deux commandes simultanées comptent bien 2)"""
+        type(self).objects.filter(pk=self.pk).update(usage_count=models.F('usage_count') + 1)
+        self.refresh_from_db(fields=['usage_count'])
 
 
 class Campaign(models.Model):
@@ -256,8 +257,9 @@ class MessagingCampaign(models.Model):
             return 0
         return round(len(self.get_sent_list()) / total * 100)
 
-    def build_message(self, base_url='http://127.0.0.1:8000'):
+    def build_message(self, base_url=None):
         """Message final avec produits et code promo."""
+        base_url = base_url or settings.SITE_URL.rstrip('/')
         text = self.message
         products = list(self.products.all())
         if products:
@@ -294,8 +296,9 @@ class FacebookPost(models.Model):
     def __str__(self):
         return f"{self.title} — {self.store.name}"
 
-    def build_post_text(self, base_url='http://127.0.0.1:8000'):
+    def build_post_text(self, base_url=None):
         """Texte final du post aux normes Facebook."""
+        base_url = base_url or settings.SITE_URL.rstrip('/')
         lines = [self.content.strip(), '']
         products = list(self.products.all())
         if products:

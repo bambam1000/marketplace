@@ -43,6 +43,8 @@ class Product(models.Model):
     specifications = models.TextField(blank=True, help_text='One per line: Key: Value')
     price = models.DecimalField(max_digits=12, decimal_places=0)
     old_price = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
+    cost_price = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True,
+                                     help_text="Prix d'achat unitaire (sert au calcul de la marge)")
     min_order = models.IntegerField(default=1, help_text='Minimum order quantity')
     bulk_price = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     bulk_min_qty = models.IntegerField(default=10)
@@ -115,6 +117,7 @@ class Product(models.Model):
             self.stock = max(0, self.stock + quantity)
             self.save(update_fields=['stock'])
         # Synchroniser le stock de l'entrepôt (par défaut si non précisé)
+        wh = warehouse
         try:
             from inventory.models import Warehouse, ProductStock
             wh = warehouse or Warehouse.objects.filter(store=self.store, is_default=True).first()
@@ -141,8 +144,15 @@ class Product(models.Model):
             product=self, store=self.store, movement_type=movement_type,
             quantity=quantity, stock_before=before, stock_after=self.stock,
             reason=reason, reference=reference, created_by=user,
-            warehouse=warehouse,
+            warehouse=wh,
         )
+
+    @property
+    def margin_percent(self):
+        """Marge en % du prix de vente (None si le prix d'achat n'est pas renseigné)."""
+        if self.cost_price is None or not self.price:
+            return None
+        return round((self.price - self.cost_price) * 100 / self.price)
 
     @property
     def avg_rating(self):

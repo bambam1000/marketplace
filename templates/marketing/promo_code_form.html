@@ -4,7 +4,7 @@
 <div class="dash-header">
     <div>
         <a href="{% url 'marketing:promo_codes' %}" style="font-size:12px;color:var(--dash-text3);text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Codes Promo</a>
-        <h1><i class="fa-solid fa-ticket" style="color:var(--dash-accent);"></i> {% if promo_code %}Modifier « {{ promo_code.code }} »{% else %}Nouveau code promo{% endif %}</h1>
+        <h1><i class="fa-solid fa-ticket" style="color:var(--dash-accent);"></i> {% if promo_code.pk %}Modifier « {{ promo_code.code }} »{% else %}Nouveau code promo{% endif %}</h1>
     </div>
 </div>
 

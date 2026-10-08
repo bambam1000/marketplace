@@ -20,7 +20,7 @@
         <h1><i class="fa-solid fa-warehouse" style="color:var(--dash-accent);"></i> Entrepôts</h1>
         <p style="font-size:13px;color:var(--dash-text3);">{{ warehouses|length }} entrepôt{{ warehouses|length|pluralize:"s" }}</p>
     </div>
-    <button type="button" class="btn btn-orange" onclick="document.getElementById('whModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvel entrepôt</button>
+    {% if can_create %}<button type="button" class="btn btn-orange" onclick="document.getElementById('whModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvel entrepôt</button>{% endif %}
 </div>
 
 <div class="wh-grid">

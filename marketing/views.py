@@ -9,6 +9,136 @@ from catalog.models import Product
 from orders.models import Order
 
 
+def _parse_local_dt(value):
+    """'AAAA-MM-JJTHH:MM' (champ datetime-local) -> datetime aware à l'heure de Douala, sinon None."""
+    from datetime import datetime
+    try:
+        return timezone.make_aware(datetime.strptime((value or '').strip(), '%Y-%m-%dT%H:%M'))
+    except ValueError:
+        return None
+
+
+def _store_products(store, ids):
+    """Ne garde que les produits de la boutique (un id d'une autre boutique est ignoré)."""
+    clean = [i for i in ids if str(i).isdigit()]
+    return Product.objects.filter(store=store, pk__in=clean)
+
+
+def _store_promo(store, promo_id):
+    """Code promo de la boutique, ou None (un id d'une autre boutique est ignoré)."""
+    if not promo_id or not str(promo_id).isdigit():
+        return None
+    return PromoCode.objects.filter(store=store, pk=promo_id).first()
+
+
+def _site_url(request=None):
+    """Adresse publique du site pour les liens des emails et messages (SITE_URL en production)."""
+    from django.conf import settings as dj_settings
+    if request is not None:
+        return request.build_absolute_uri('/')[:-1]
+    return dj_settings.SITE_URL.rstrip('/')
+
+
+def _decimal(value, default=None):
+    from decimal import Decimal, InvalidOperation
+    if value is None or str(value).strip() == '':
+        return default
+    try:
+        return Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return 'invalid'
+
+
+def _promo_from_post(request, store, promo_code=None):
+    """Remplit un code promo depuis le formulaire. Retourne (code_promo, erreurs)."""
+    import re
+    from decimal import Decimal
+    promo = promo_code or PromoCode(store=store)
+    errors = []
+    code = request.POST.get('code', '').strip().upper()
+    promo.code = code
+    promo.description = request.POST.get('description', '').strip()
+    discount_type = request.POST.get('discount_type', 'percentage')
+    promo.discount_type = discount_type if discount_type in dict(PromoCode.DISCOUNT_TYPE_CHOICES) else 'percentage'
+    if not re.fullmatch(r'[A-Z0-9_-]{3,50}', code):
+        errors.append('Le code doit contenir de 3 à 50 lettres, chiffres, tirets ou soulignés.')
+    elif PromoCode.objects.filter(code=code).exclude(pk=promo.pk).exists():
+        errors.append(f'Le code « {code} » est déjà utilisé sur la plateforme. Choisissez-en un autre.')
+
+    value = _decimal(request.POST.get('discount_value'))
+    if value in (None, 'invalid') or value <= 0:
+        errors.append('La réduction doit être un nombre supérieur à 0.')
+    elif promo.discount_type == 'percentage' and value > 100:
+        errors.append('Une réduction en pourcentage ne peut pas dépasser 100 %.')
+    else:
+        promo.discount_value = value
+    min_purchase = _decimal(request.POST.get('min_purchase_amount'), Decimal('0'))
+    if min_purchase == 'invalid' or min_purchase < 0:
+        errors.append("Le montant minimum d'achat est invalide.")
+    else:
+        promo.min_purchase_amount = min_purchase
+    max_discount = _decimal(request.POST.get('max_discount_amount'))
+    if max_discount == 'invalid' or (max_discount is not None and max_discount <= 0):
+        errors.append('La réduction maximale doit être vide ou supérieure à 0.')
+    else:
+        promo.max_discount_amount = max_discount
+    limit = request.POST.get('usage_limit', '').strip()
+    if limit and (not limit.isdigit() or int(limit) < 1):
+        errors.append("La limite d'utilisation doit être vide ou au moins 1.")
+    else:
+        promo.usage_limit = int(limit) if limit else None
+
+    valid_from = _parse_local_dt(request.POST.get('valid_from')) or (promo.valid_from if promo.pk else timezone.now())
+    valid_to = _parse_local_dt(request.POST.get('valid_to'))
+    if valid_to is None:
+        errors.append('La date de fin de validité est requise.')
+    elif valid_to <= valid_from:
+        errors.append('La date de fin doit être après la date de début.')
+    promo.valid_from = valid_from
+    if valid_to:
+        promo.valid_to = valid_to
+    promo.is_active = 'is_active' in request.POST
+    return promo, errors
+
+
+def _campaign_from_post(request, store, campaign=None):
+    """Remplit une campagne depuis le formulaire. Retourne (campagne, erreurs, produits, code promo)."""
+    from decimal import Decimal
+    campaign = campaign or Campaign(store=store)
+    errors = []
+    campaign.name = request.POST.get('name', '').strip()[:200]
+    campaign.description = request.POST.get('description', '').strip()
+    ctype = request.POST.get('campaign_type', '')
+    if not campaign.name:
+        errors.append('Le nom de la campagne est requis.')
+    if ctype not in dict(Campaign.CAMPAIGN_TYPE_CHOICES):
+        errors.append('Type de campagne invalide.')
+    else:
+        campaign.campaign_type = ctype
+    status = request.POST.get('status', 'scheduled')
+    campaign.status = status if status in dict(Campaign.STATUS_CHOICES) else 'scheduled'
+    budget = _decimal(request.POST.get('budget'), Decimal('0'))
+    if budget == 'invalid' or budget < 0:
+        errors.append('Le budget doit être un nombre positif.')
+    else:
+        campaign.budget = budget
+    start = _parse_local_dt(request.POST.get('start_date'))
+    end = _parse_local_dt(request.POST.get('end_date'))
+    if not start or not end or end <= start:
+        errors.append('Dates de campagne invalides : la fin doit être après le début.')
+    else:
+        campaign.start_date, campaign.end_date = start, end
+    banner = request.FILES.get('banner')
+    if banner:
+        if not banner.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.gif')) or banner.size > 5 * 1024 * 1024:
+            errors.append('Bannière refusée : image JPG, PNG, WEBP ou GIF de 5 Mo maximum.')
+        else:
+            campaign.banner = banner
+    products = _store_products(store, request.POST.getlist('target_products'))
+    promo = _store_promo(store, request.POST.get('promo_code'))
+    return campaign, errors, products, promo
+
+
 @login_required
 def marketing_dashboard(request):
     """Dashboard marketing principal"""
@@ -28,15 +158,15 @@ def marketing_dashboard(request):
     messaging_count = MessagingCampaign.objects.filter(store=store).count()
     facebook_count = FacebookPost.objects.filter(store=store).count()
 
-    # Analytics des 30 derniers jours
-    analytics = MarketingAnalytics.objects.filter(
-        store=store, date__gte=last_30_days.date()
-    ).aggregate(
-        total_views=Sum('page_views'),
-        total_visitors=Sum('unique_visitors'),
-        total_purchases=Sum('purchases'),
-        total_revenue=Sum('revenue')
-    )
+    # 30 derniers jours : MarketingAnalytics n'est alimenté nulle part, on calcule depuis les vraies ventes
+    paid_items = _store_paid_items(store, last_30_days)
+    camp_totals = Campaign.objects.filter(store=store).aggregate(views=Sum('views_count'), clicks=Sum('clicks_count'))
+    analytics = {
+        'total_views': camp_totals['views'] or 0,
+        'total_visitors': camp_totals['clicks'] or 0,
+        'total_purchases': paid_items.values('order').distinct().count(),
+        'total_revenue': paid_items.aggregate(t=Sum(F('price') * F('quantity')))['t'] or 0,
+    }
 
     # Campagnes récentes
     recent_campaigns = Campaign.objects.filter(store=store).order_by('-created_at')[:5]
@@ -56,6 +186,13 @@ def marketing_dashboard(request):
         'active_promo_codes': active_promo_codes,
     }
     return render(request, 'marketing/dashboard.html', context)
+
+
+def _store_paid_items(store, since):
+    """Lignes de vente de la boutique, payées, hors commandes annulées ou remboursées, depuis `since`."""
+    from orders.models import OrderItem
+    return (OrderItem.objects.filter(store=store, order__is_paid=True, order__created_at__gte=since)
+            .exclude(order__status__in=['cancelled', 'refunded']))
 
 
 # ========== CODES PROMO ==========
@@ -86,20 +223,13 @@ def promo_code_create(request):
     store = request.user.store
 
     if request.method == 'POST':
-        PromoCode.objects.create(
-            store=store,
-            code=request.POST.get('code').upper(),
-            description=request.POST.get('description', ''),
-            discount_type=request.POST.get('discount_type', 'percentage'),
-            discount_value=request.POST.get('discount_value'),
-            min_purchase_amount=request.POST.get('min_purchase_amount', 0),
-            max_discount_amount=request.POST.get('max_discount_amount') or None,
-            usage_limit=request.POST.get('usage_limit') or None,
-            valid_from=request.POST.get('valid_from'),
-            valid_to=request.POST.get('valid_to'),
-            is_active='is_active' in request.POST,
-        )
-        messages.success(request, 'Code promo créé avec succès !')
+        promo, errors = _promo_from_post(request, store)
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return render(request, 'marketing/promo_code_form.html', {'promo_code': promo})
+        promo.save()
+        messages.success(request, f'Code promo {promo.code} créé avec succès !')
         return redirect('marketing:promo_codes')
 
     return render(request, 'marketing/promo_code_form.html')
@@ -114,16 +244,11 @@ def promo_code_edit(request, pk):
     promo_code = get_object_or_404(PromoCode, pk=pk, store=request.user.store)
 
     if request.method == 'POST':
-        promo_code.code = request.POST.get('code').upper()
-        promo_code.description = request.POST.get('description', '')
-        promo_code.discount_type = request.POST.get('discount_type', 'percentage')
-        promo_code.discount_value = request.POST.get('discount_value')
-        promo_code.min_purchase_amount = request.POST.get('min_purchase_amount', 0)
-        promo_code.max_discount_amount = request.POST.get('max_discount_amount') or None
-        promo_code.usage_limit = request.POST.get('usage_limit') or None
-        promo_code.valid_from = request.POST.get('valid_from')
-        promo_code.valid_to = request.POST.get('valid_to')
-        promo_code.is_active = 'is_active' in request.POST
+        promo_code, errors = _promo_from_post(request, request.user.store, promo_code)
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return render(request, 'marketing/promo_code_form.html', {'promo_code': promo_code})
         promo_code.save()
         messages.success(request, 'Code promo modifié !')
         return redirect('marketing:promo_codes')
@@ -176,7 +301,11 @@ def campaign_public(request, pk):
     if campaign.status != 'active':
         messages.info(request, 'Cette campagne est terminée.')
         return redirect('catalog:product_list')
-    Campaign.objects.filter(pk=pk).update(clicks_count=campaign.clicks_count + 1)
+    # Incrément atomique (deux visites simultanées ne s'écrasent plus) ; une seule fois par visiteur et session
+    seen = request.session.get('campaigns_seen', [])
+    if pk not in seen:
+        Campaign.objects.filter(pk=pk).update(clicks_count=F('clicks_count') + 1, views_count=F('views_count') + 1)
+        request.session['campaigns_seen'] = (seen + [pk])[-50:]
     products = campaign.target_products.filter(is_active=True)
     return render(request, 'marketing/campaign_public.html', {
         'campaign': campaign,
@@ -195,43 +324,15 @@ def campaign_create(request):
     promo_codes = PromoCode.objects.filter(store=store, is_active=True)
 
     if request.method == 'POST':
-        from datetime import datetime
-        def parse_dt(val):
-            try:
-                return timezone.make_aware(datetime.strptime(val, '%Y-%m-%dT%H:%M'))
-            except (ValueError, TypeError):
-                return None
-        start = parse_dt(request.POST.get('start_date'))
-        end = parse_dt(request.POST.get('end_date'))
-        if not start or not end or end <= start:
-            messages.error(request, 'Dates de campagne invalides.')
+        campaign, errors, target_products, promo = _campaign_from_post(request, store)
+        if errors:
+            for e in errors:
+                messages.error(request, e)
             return redirect('marketing:campaigns')
-        campaign = Campaign.objects.create(
-            store=store,
-            name=request.POST.get('name'),
-            campaign_type=request.POST.get('campaign_type'),
-            description=request.POST.get('description'),
-            start_date=start,
-            end_date=end,
-            status=request.POST.get('status', 'scheduled'),
-            budget=request.POST.get('budget', 0),
-        )
-
-        if request.FILES.get('banner'):
-            campaign.banner = request.FILES['banner']
-            campaign.save()
-
-        # Ajouter les produits ciblés
-        product_ids = request.POST.getlist('target_products')
-        if product_ids:
-            campaign.target_products.set(product_ids)
-
-        # Associer un code promo
-        promo_id = request.POST.get('promo_code')
-        if promo_id:
-            campaign.promo_code_id = promo_id
-            campaign.save()
-
+        campaign.promo_code = promo
+        campaign.save()
+        campaign.target_products.set(target_products)
+        campaign.refresh_status()
         messages.success(request, 'Campagne créée avec succès !')
         return redirect('marketing:campaigns')
 
@@ -267,39 +368,15 @@ def campaign_edit(request, pk):
     promo_codes = PromoCode.objects.filter(store=request.user.store, is_active=True)
 
     if request.method == 'POST':
-        from datetime import datetime
-        def parse_dt(val):
-            try:
-                return timezone.make_aware(datetime.strptime(val, '%Y-%m-%dT%H:%M'))
-            except (ValueError, TypeError):
-                return None
-        start = parse_dt(request.POST.get('start_date'))
-        end = parse_dt(request.POST.get('end_date'))
-        if not start or not end or end <= start:
-            messages.error(request, 'Dates de campagne invalides.')
+        campaign, errors, target_products, promo = _campaign_from_post(request, request.user.store, campaign)
+        if errors:
+            for e in errors:
+                messages.error(request, e)
             return redirect('marketing:campaign_edit', pk=pk)
-        campaign.name = request.POST.get('name')
-        campaign.campaign_type = request.POST.get('campaign_type')
-        campaign.description = request.POST.get('description')
-        campaign.start_date = start
-        campaign.end_date = end
-        campaign.status = request.POST.get('status', 'draft')
-        campaign.budget = request.POST.get('budget', 0)
-
-        if request.FILES.get('banner'):
-            campaign.banner = request.FILES['banner']
-
+        campaign.promo_code = promo
         campaign.save()
-
-        # Mettre à jour les produits
-        product_ids = request.POST.getlist('target_products')
-        campaign.target_products.set(product_ids)
-
-        # Code promo
-        promo_id = request.POST.get('promo_code')
-        campaign.promo_code_id = promo_id if promo_id else None
-        campaign.save()
-
+        campaign.target_products.set(target_products)
+        campaign.refresh_status()
         messages.success(request, 'Campagne modifiée !')
         return redirect('marketing:campaigns')
 
@@ -322,23 +399,26 @@ def analytics(request):
     now = timezone.now()
     last_30_days = now - timedelta(days=30)
 
-    # --- Commandes réelles de la boutique (30 derniers jours) ---
-    orders_qs = Order.objects.filter(items__product__store=store, created_at__gte=last_30_days).distinct()
-    orders_count = orders_qs.count()
-    revenue = orders_qs.aggregate(t=Sum('total_amount'))['t'] or 0
+    # --- Ventes de la boutique (30 derniers jours) ---
+    # Uniquement SES lignes (une commande peut contenir d'autres vendeurs), payées, hors annulées/remboursées
+    paid_items = _store_paid_items(store, last_30_days)
+    line = F('price') * F('quantity')
+    orders_count = paid_items.values('order').distinct().count()
+    revenue = paid_items.aggregate(t=Sum(line))['t'] or 0
     avg_order = round(revenue / orders_count) if orders_count else 0
 
     # Ventes par jour (30 jours) pour le graphique
     from django.db.models.functions import TruncDate
     daily = (
-        orders_qs.annotate(day=TruncDate('created_at'))
-        .values('day').annotate(total=Sum('total_amount'), count=Count('id'))
+        paid_items.annotate(day=TruncDate('order__created_at'))
+        .values('day').annotate(total=Sum(line), count=Count('order', distinct=True))
         .order_by('day')
     )
     daily_map = {d['day']: d for d in daily}
     chart_labels, chart_revenue, chart_orders = [], [], []
+    today = timezone.localdate()
     for i in range(30):
-        day = (last_30_days + timedelta(days=i + 1)).date()
+        day = today - timedelta(days=29 - i)
         chart_labels.append(day.strftime('%d/%m'))
         entry = daily_map.get(day)
         chart_revenue.append(float(entry['total']) if entry else 0)
@@ -369,7 +449,7 @@ def analytics(request):
     # --- Top produits (par quantité vendue, 30 jours) ---
     from orders.models import OrderItem
     top_products = (
-        OrderItem.objects.filter(product__store=store, order__created_at__gte=last_30_days)
+        paid_items
         .values('product__name')
         .annotate(qty=Sum('quantity'), revenue=Sum(F('quantity') * F('price')))
         .order_by('-qty')[:5]
@@ -379,9 +459,7 @@ def analytics(request):
         'orders_count': orders_count,
         'revenue': revenue,
         'avg_order': avg_order,
-        'chart_labels': chart_labels,
-        'chart_revenue': chart_revenue,
-        'chart_orders': chart_orders,
+        'chart': {'labels': chart_labels, 'revenue': chart_revenue, 'orders': chart_orders},
         'campaigns_performance': campaigns_performance,
         'camp_totals': camp_totals,
         'emails_sent': emails_sent,
@@ -407,11 +485,24 @@ def loyalty_program(request):
     from .models import LoyaltySettings
     cfg, _ = LoyaltySettings.objects.get_or_create(store=store)
     if request.method == 'POST':
+        values = {}
         for field in ['points_per_amount', 'silver_threshold', 'silver_rate',
                       'gold_threshold', 'gold_rate', 'platinum_threshold', 'platinum_rate']:
-            val = request.POST.get(field)
-            if val is not None and str(val).isdigit():
-                setattr(cfg, field, int(val))
+            val = str(request.POST.get(field, getattr(cfg, field))).strip()
+            values[field] = int(val) if val.isdigit() else getattr(cfg, field)
+        errors = []
+        if values['points_per_amount'] < 1:
+            errors.append('Il faut au moins 1 FCFA par point.')
+        if not (0 < values['silver_threshold'] < values['gold_threshold'] < values['platinum_threshold']):
+            errors.append('Les seuils doivent être croissants : Argent < Or < Platine.')
+        if not (0 <= values['silver_rate'] <= values['gold_rate'] <= values['platinum_rate'] <= 50):
+            errors.append('Les réductions doivent être croissantes et ne pas dépasser 50 %.')
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            return redirect('marketing:loyalty')
+        for field, val in values.items():
+            setattr(cfg, field, val)
         cfg.save()
         # Recalculer les niveaux de tous les membres
         for m in LoyaltyProgram.objects.filter(store=store):
@@ -454,23 +545,27 @@ def _get_seller_store(request):
 
 
 def _get_email_recipients(store, audience):
-    """Retourne le queryset des destinataires selon l'audience."""
+    """Retourne le queryset des destinataires selon l'audience (désinscrits exclus)."""
     from accounts.models import User
     if audience == 'customers':
         # Clients ayant commandé un produit de cette boutique
-        return User.objects.filter(
-            orders__items__product__store=store, email__isnull=False
-        ).exclude(email='').distinct()
-    # 'all' : tous les acheteurs de la plateforme
-    return User.objects.filter(
-        role='buyer', email__isnull=False
-    ).exclude(email='').distinct()
+        users = User.objects.filter(orders__items__product__store=store)
+    else:
+        # 'all' : tous les acheteurs de la plateforme
+        users = User.objects.filter(role='buyer')
+    users = users.filter(email__isnull=False).exclude(email='')
+    users = users.exclude(notification_prefs__email_marketing=False)
+    return users.distinct()
 
 
 def _get_newsletter_emails(newsletter):
-    """Retourne la liste d'emails pour une newsletter (toutes audiences)."""
+    """Retourne la liste d'emails pour une newsletter (toutes audiences, désinscrits exclus)."""
     if newsletter.target_audience == 'custom':
-        return [e.strip() for e in newsletter.custom_recipients.splitlines() if e.strip()]
+        from accounts.models import User
+        emails = [e.strip().lower() for e in newsletter.custom_recipients.splitlines() if e.strip()]
+        opted_out = set(User.objects.filter(email__in=emails, notification_prefs__email_marketing=False)
+                        .values_list('email', flat=True))
+        return [e for e in emails if e not in {o.lower() for o in opted_out}]
     return list(_get_email_recipients(
         newsletter.store, newsletter.target_audience
     ).values_list('email', flat=True))
@@ -496,8 +591,11 @@ def _parse_recipients_excel(file):
     return emails
 
 
-def _build_email_html(newsletter, base_url='http://127.0.0.1:8000'):
-    """Construit le HTML de l'email avec branding boutique + produits + code promo."""
+def _build_email_html(newsletter, base_url=None, unsubscribe_url=None):
+    """Construit le HTML de l'email avec branding boutique + produits + code promo.
+    Les noms (produits, boutique) sont échappés ; le contenu est le HTML rédigé par le vendeur."""
+    from django.utils.html import escape
+    base_url = base_url or _site_url()
     store = newsletter.store
 
     # Bloc produits (2 colonnes)
@@ -513,7 +611,7 @@ def _build_email_html(newsletter, base_url='http://127.0.0.1:8000'):
                     <div style="border:1px solid #eaecf0;border-radius:8px;overflow:hidden;">
                         {img}
                         <div style="padding:12px;">
-                            <div style="font-weight:700;font-size:13px;color:#101828;margin-bottom:4px;">{p.name}</div>
+                            <div style="font-weight:700;font-size:13px;color:#101828;margin-bottom:4px;">{escape(p.name)}</div>
                             <div style="margin-bottom:8px;"><span style="color:#ff6a00;font-weight:800;font-size:15px;">{p.price:.0f} FCFA</span>{old}</div>
                             <a href="{base_url}{p.get_absolute_url()}" style="display:block;background:#ff6a00;color:#fff;text-align:center;padding:8px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:700;">Voir le produit</a>
                         </div>
@@ -550,10 +648,35 @@ def _build_email_html(newsletter, base_url='http://127.0.0.1:8000'):
         {promo_block}
     </div>
     <div style="background:#f9fafb;padding:18px;text-align:center;font-size:11px;color:#98a2b3;">
-        {store.name} · {store.city or 'Douala'} · AfriMarket
+        {escape(store.name)} · {escape(store.city or 'Douala')} · AfriMarket
+        {f'<br><a href="{unsubscribe_url}" style="color:#98a2b3;">Se désinscrire des emails promotionnels</a>' if unsubscribe_url else ''}
     </div>
 </div>
 </body></html>'''
+
+
+def _unsubscribe_url(email):
+    """Lien de désinscription signé (pas besoin d'être connecté pour l'utiliser)."""
+    from django.core import signing
+    from django.urls import reverse
+    token = signing.dumps(email.lower(), salt='marketing-unsubscribe')
+    return _site_url() + reverse('marketing:unsubscribe', args=[token])
+
+
+def unsubscribe(request, token):
+    """Désinscription des emails promotionnels depuis le lien de l'email."""
+    from django.core import signing
+    from accounts.models import User
+    from messaging.models import NotificationPreference
+    try:
+        email = signing.loads(token, salt='marketing-unsubscribe')
+    except signing.BadSignature:
+        return render(request, 'marketing/unsubscribe.html', {'ok': False}, status=400)
+    for user in User.objects.filter(email__iexact=email):
+        prefs, _ = NotificationPreference.objects.get_or_create(user=user)
+        prefs.email_marketing = False
+        prefs.save(update_fields=['email_marketing'])
+    return render(request, 'marketing/unsubscribe.html', {'ok': True, 'email': email})
 
 
 @login_required
@@ -609,18 +732,18 @@ def email_create(request):
                 messages.error(request, 'Aucun email valide trouvé dans le fichier.')
                 return redirect('marketing:email_create')
 
+        if audience not in ('customers', 'all', 'custom'):
+            audience = 'customers'
         newsletter = Newsletter.objects.create(
             store=store,
-            subject=subject,
+            subject=subject[:200],
             content=content,
             target_audience=audience,
-            promo_code_id=promo_id,
+            promo_code=_store_promo(store, promo_id),
             custom_recipients='\n'.join(custom_emails),
             status='draft',
         )
-        product_ids = request.POST.getlist('products')
-        if product_ids:
-            newsletter.products.set(product_ids)
+        newsletter.products.set(_store_products(store, request.POST.getlist('products')))
 
         if action == 'send':
             return _send_newsletter(request, newsletter)
@@ -665,10 +788,11 @@ def _send_newsletter_now(newsletter):
     if not recipients:
         return 0
 
-    html = _build_email_html(newsletter)
     sent = 0
     for email in recipients:
         try:
+            # Un lien de désinscription personnel par destinataire
+            html = _build_email_html(newsletter, unsubscribe_url=_unsubscribe_url(email))
             msg = EmailMessage(
                 subject=newsletter.subject,
                 body=html,
@@ -833,13 +957,15 @@ def messaging_create(request):
                 return redirect('marketing:messaging_create')
             custom_numbers = '\n'.join(numbers)
 
+        if channel not in dict(MessagingCampaign.CHANNEL_CHOICES):
+            channel = 'whatsapp'
+        if audience not in dict(MessagingCampaign.AUDIENCE_CHOICES):
+            audience = 'customers'
         campaign = MessagingCampaign.objects.create(
-            store=store, name=name, message=message, channel=channel,
-            audience=audience, promo_code_id=promo_id, custom_numbers=custom_numbers,
+            store=store, name=name[:200], message=message, channel=channel,
+            audience=audience, promo_code=_store_promo(store, promo_id), custom_numbers=custom_numbers,
         )
-        product_ids = request.POST.getlist('products')
-        if product_ids:
-            campaign.products.set(product_ids)
+        campaign.products.set(_store_products(store, request.POST.getlist('products')))
 
         messages.success(request, f'Campagne « {name} » créée.')
         return redirect('marketing:messaging_detail', pk=campaign.pk)
@@ -891,7 +1017,9 @@ def messaging_mark_sent(request, pk):
     if request.method == 'POST':
         number = request.POST.get('number', '').strip()
         sent = campaign.get_sent_list()
-        if number and number not in sent:
+        if number not in campaign.get_recipients():
+            return JsonResponse({'ok': False, 'error': 'Numéro absent de la campagne'}, status=400)
+        if number not in sent:
             sent.append(number)
             campaign.sent_numbers = '\n'.join(sent)
             if len(sent) >= len(campaign.get_recipients()):
@@ -941,6 +1069,7 @@ def messaging_numbers_template(request):
 
 
 # ========== FACEBOOK ==========
+from urllib.parse import quote
 from .models import FacebookPost
 
 
@@ -977,12 +1106,10 @@ def facebook_create(request):
             return redirect('marketing:facebook_create')
 
         post = FacebookPost.objects.create(
-            store=store, title=title, content=content,
-            hashtags=hashtags, promo_code_id=promo_id,
+            store=store, title=title[:200], content=content,
+            hashtags=hashtags[:300], promo_code=_store_promo(store, promo_id),
         )
-        product_ids = request.POST.getlist('products')
-        if product_ids:
-            post.products.set(product_ids)
+        post.products.set(_store_products(store, request.POST.getlist('products')))
 
         messages.success(request, f'Post « {title} » créé.')
         return redirect('marketing:facebook_detail', pk=post.pk)
@@ -1017,8 +1144,17 @@ def facebook_detail(request, pk):
         'post': post,
         'post_text': post_text,
         'fb_page_url': fb_page_url,
-        'share_url': f'https://www.facebook.com/sharer/sharer.php?u={base_url}',
+        # Partage : la boutique (ou le premier produit du post) plutôt que la page d'accueil du site
+        'share_url': 'https://www.facebook.com/sharer/sharer.php?u=' + quote(_post_share_target(post, base_url), safe=''),
     })
+
+
+def _post_share_target(post, base_url):
+    first = post.products.first()
+    if first:
+        return base_url + first.get_absolute_url()
+    from django.urls import reverse
+    return base_url + reverse('store:detail', args=[post.store.slug])
 
 
 @login_required

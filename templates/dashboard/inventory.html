@@ -1,17 +1,47 @@
 {% extends 'dashboard/base.html' %}{% load humanize %}
-{% block title %}Inventaire — Mouvements de stock{% endblock %}
+{% block title %}{% if warehouse %}{{ warehouse.name }} — Inventaire{% else %}Inventaire — Mouvements de stock{% endif %}{% endblock %}
 {% block dash %}
-{% if warehouse %}
-<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
-{% endif %}
 <style>
-.mv-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); flex-wrap: wrap; }
-.mv-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.mv-filters input, .mv-filters select { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 12px; font-family: inherit; color: var(--dash-text); }
-.mv-filters input:focus, .mv-filters select:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
-.mv-filters label { font-size: 11px; color: var(--dash-text3); font-weight: 600; }
+.inv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.inv-head h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.inv-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--dash-text3); }
+.inv-meta i { margin-right: 4px; }
+.inv-code { font-size: 11px; font-weight: 700; background: var(--dash-bg); color: var(--dash-text2); border: 1px solid var(--dash-border); border-radius: 4px; padding: 2px 8px; letter-spacing: .03em; }
+.inv-head-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inv-select { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; color: var(--dash-text); }
+.inv-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 20px; }
+.inv-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--dash-shadow); }
+.inv-stat .lbl { font-size: 12px; color: var(--dash-text3); font-weight: 600; }
+.inv-stat .val { font-size: 22px; font-weight: 800; color: var(--dash-text); letter-spacing: -.02em; }
+.inv-stat .sub { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.inv-stat .ic { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.inv-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.inv-toolbar { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); display: flex; flex-direction: column; gap: 12px; }
+.inv-toolbar-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.inv-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.inv-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1.5px solid var(--dash-border); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--dash-text2); cursor: pointer; background: #fff; transition: var(--dash-transition); }
+.inv-chip input { display: none; }
+.inv-chip:hover { border-color: var(--dash-accent); color: var(--dash-accent); }
+.inv-chip.active { background: var(--dash-accent); border-color: var(--dash-accent); color: #fff; }
+.inv-fields { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inv-fields input { padding: 8px 12px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-family: inherit; color: var(--dash-text); }
+.inv-fields input:focus, .inv-select:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.inv-fields label { font-size: 11px; color: var(--dash-text3); font-weight: 600; }
+.inv-search { position: relative; }
+.inv-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+.inv-search input { padding-left: 34px; width: 240px; }
+.inv-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-light)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.mt { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.mt-in { background: rgba(18,183,106,.1); color: var(--dash-green); }
+.mt-out { background: rgba(240,68,56,.1); color: var(--dash-red); }
+.mt-adjustment { background: rgba(122,90,248,.1); color: var(--dash-purple); }
+.mt-sale { background: rgba(255,106,0,.1); color: var(--dash-accent); }
+.mt-pos { background: rgba(46,144,250,.1); color: var(--dash-blue); }
+.mt-return { background: rgba(247,144,9,.1); color: var(--dash-yellow); }
 .mv-in { color: var(--dash-green); font-weight: 700; }
 .mv-out { color: var(--dash-red); font-weight: 700; }
+.inv-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--dash-border); font-size: 12px; color: var(--dash-text3); flex-wrap: wrap; }
+.inv-pager .pages { display: flex; gap: 6px; }
 .dmodal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
 .dmodal.open { display: flex; }
 .dmodal-box { background: #fff; border-radius: 8px; width: 100%; max-width: 480px; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
@@ -19,99 +49,217 @@
 .dmodal-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .dmodal-close { background: none; border: none; font-size: 18px; color: var(--dash-text3); cursor: pointer; }
 .dmodal-body { padding: 20px; }
-.detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dash-border); font-size: 13px; }
+.dmodal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--dash-border); }
+.detail-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--dash-border); font-size: 13px; }
 .detail-row:last-child { border-bottom: none; }
 .detail-row .k { color: var(--dash-text3); font-weight: 600; }
 .detail-row .v { font-weight: 600; color: var(--dash-text); text-align: right; }
+.adj-types { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.adj-types label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--dash-text2); }
+.adj-types input { display: none; }
+.adj-types label.on-in { border-color: var(--dash-green); background: rgba(18,183,106,.08); color: var(--dash-green); }
+.adj-types label.on-out { border-color: var(--dash-red); background: rgba(240,68,56,.08); color: var(--dash-red); }
+@media (max-width: 900px) { .inv-stats { grid-template-columns: repeat(2, 1fr); } .inv-search input { width: 100%; } }
 </style>
 
-<div class="dash-header">
+<!-- ═══ En-tête ═══ -->
+{% if warehouse %}
+<a href="{% url 'dashboard:warehouse_detail' warehouse.pk %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Retour à {{ warehouse.name }}</a>
+{% endif %}
+<div class="inv-head">
     <div>
+        {% if warehouse %}
+        <h1><i class="fa-solid fa-warehouse" style="color:var(--dash-accent);"></i> {{ warehouse.name }} <span class="inv-code">{{ warehouse.code }}</span>{% if warehouse.is_default %} <span class="tag tag-orange">Par défaut</span>{% endif %}{% if not warehouse.is_active %} <span class="status-badge st-cancelled">Inactif</span>{% endif %}</h1>
+        <div class="inv-meta">
+            <span><i class="fa-solid fa-location-dot"></i>{{ warehouse.city|default:"—" }}</span>
+            <span><i class="fa-solid fa-user-tie"></i>{% if warehouse.manager %}{{ warehouse.manager.display_name }}{% else %}Aucun responsable{% endif %}</span>
+            <span><i class="fa-solid fa-store"></i>{{ warehouse.store.name }}</span>
+        </div>
+        {% else %}
         <h1><i class="fa-solid fa-boxes-stacked" style="color:var(--dash-accent);"></i> Mouvements de stock</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">{{ total_movements }} mouvement{{ total_movements|pluralize:"s" }} au total</p>
+        <div class="inv-meta"><span>Tous les entrepôts</span></div>
+        {% endif %}
+    </div>
+    <div class="inv-head-actions">
+        {% if warehouses %}
+        <select class="inv-select" onchange="window.location.search = this.value ? '?warehouse=' + this.value : ''" aria-label="Entrepôt">
+            <option value="">Tous les entrepôts</option>
+            {% for w in warehouses %}
+            <option value="{{ w.pk }}" {% if warehouse and warehouse.pk == w.pk %}selected{% endif %}>{{ w.name }} ({{ w.code }})</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+        {% if warehouse %}
+        <button type="button" class="btn btn-sm" style="background:var(--dash-green);color:#fff;" onclick="openAdjustModal('in')"><i class="fa-solid fa-arrow-down"></i> Entrée</button>
+        <button type="button" class="btn btn-sm" style="background:var(--dash-red);color:#fff;" onclick="openAdjustModal('out')"><i class="fa-solid fa-arrow-up"></i> Sortie</button>
+        <a href="{% url 'dashboard:transfers' %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-right-left"></i> Transfert</a>
+        {% endif %}
     </div>
 </div>
 
-{% if product_stats %}
-<!-- ═══ Résumé par produit ═══ -->
-<div class="dash-card" style="margin-bottom:20px;">
-    <div style="padding:14px 18px;border-bottom:1px solid var(--dash-border);">
-        <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-chart-bar" style="color:var(--dash-accent);"></i> Résumé par produit</h3>
+<!-- ═══ Stats ═══ -->
+<div class="inv-stats">
+    {% if tab == 'stock' %}
+    <div class="inv-stat">
+        <div><div class="lbl">Produits</div><div class="val">{{ stock_stats.products }}</div><div class="sub">Référencés ici</div></div>
+        <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-box"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">Unités en stock</div><div class="val">{{ stock_stats.units|intcomma }}</div><div class="sub">Tous produits</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-cubes"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">Stock bas</div><div class="val" style="color:var(--dash-yellow);">{{ stock_stats.low }}</div><div class="sub">Sous le seuil</div></div>
+        <div class="ic" style="background:rgba(247,144,9,.1);color:var(--dash-yellow);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">Ruptures</div><div class="val" style="color:var(--dash-red);">{{ stock_stats.out }}</div><div class="sub">Stock à zéro</div></div>
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-ban"></i></div>
+    </div>
+    {% else %}
+    <div class="inv-stat">
+        <div><div class="lbl">Entrées</div><div class="val" style="color:var(--dash-green);">+{{ stats.entries|intcomma }}</div><div class="sub">Unités reçues</div></div>
+        <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-arrow-down"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">Sorties</div><div class="val" style="color:var(--dash-red);">-{{ stats.exits|intcomma }}</div><div class="sub">Unités sorties</div></div>
+        <div class="ic" style="background:rgba(240,68,56,.1);color:var(--dash-red);"><i class="fa-solid fa-arrow-up"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">Solde net</div><div class="val">{% if stats.net > 0 %}+{% endif %}{{ stats.net|intcomma }}</div><div class="sub">Entrées − sorties</div></div>
+        <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-scale-balanced"></i></div>
+    </div>
+    <div class="inv-stat">
+        <div><div class="lbl">Mouvements</div><div class="val">{{ stats.count|intcomma }}</div><div class="sub">{% if type_filter or date_from or date_to or search_query %}Selon les filtres{% else %}Au total{% endif %}</div></div>
+        <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-clock-rotate-left"></i></div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ═══ Onglets ═══ -->
+{% if warehouse %}
+<div class="inv-tabs">
+    <a href="?warehouse={{ warehouse.pk }}" class="btn btn-sm {% if tab != 'stock' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i> Mouvements ({{ stats.count }})</a>
+    <a href="?warehouse={{ warehouse.pk }}&tab=stock" class="btn btn-sm {% if tab == 'stock' %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-cubes"></i> Stock actuel ({{ stock_stats.products }}){% if stock_stats.low or stock_stats.out %} <span style="background:var(--dash-red);color:#fff;border-radius:50px;padding:0 6px;font-size:10px;margin-left:2px;">{{ stock_stats.low|add:stock_stats.out }}</span>{% endif %}</a>
+</div>
+{% endif %}
+
+{% if tab == 'stock' %}
+<!-- ═══ Stock actuel ═══ -->
+<div class="dash-card">
+    <div class="inv-toolbar">
+        <div class="inv-toolbar-row">
+            <h3 style="margin:0;font-size:15px;"><i class="fa-solid fa-cubes" style="color:var(--dash-accent);"></i> Stock de l'entrepôt</h3>
+            <form method="get" class="inv-fields">
+                <input type="hidden" name="warehouse" value="{{ warehouse.pk }}">
+                <input type="hidden" name="tab" value="stock">
+                <div class="inv-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un produit...">
+                </div>
+            </form>
+        </div>
     </div>
     <div class="dash-table-responsive">
     <table class="dash-table">
-        <thead><tr><th>Produit</th><th>Ventes</th><th>Entrées</th><th>Sorties</th><th>Stock actuel</th></tr></thead>
+        <thead><tr><th>Produit</th><th>Quantité</th><th>Seuil d'alerte</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead>
         <tbody>
-            {% for ps in product_stats %}
+            {% for s in stocks %}
             <tr>
-                <td style="font-weight:600;">{{ ps.product.name|truncatechars:35 }}</td>
-                <td style="color:var(--dash-green);font-weight:700;">{{ ps.sales }}</td>
-                <td style="color:var(--dash-blue);font-weight:600;">+{{ ps.entries }}</td>
-                <td style="color:var(--dash-red);font-weight:600;">-{{ ps.exits }}</td>
-                <td style="font-weight:800;">{{ ps.current_stock }}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="inv-avatar">{{ s.product.name|slice:":2"|upper }}</div>
+                        <div style="font-weight:600;color:var(--dash-text);">{{ s.product.name|truncatechars:40 }}</div>
+                    </div>
+                </td>
+                <td style="font-weight:800;font-size:14px;">{{ s.quantity|intcomma }}</td>
+                <td style="color:var(--dash-text3);">{{ s.product.low_stock_threshold }}</td>
+                <td>
+                    {% if s.quantity == 0 %}<span class="status-badge st-cancelled">Rupture</span>
+                    {% elif s.quantity <= s.product.low_stock_threshold %}<span class="status-badge st-pending">Stock bas</span>
+                    {% else %}<span class="status-badge st-delivered">En stock</span>{% endif %}
+                </td>
+                <td style="text-align:right;white-space:nowrap;">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="openAdjustModal('in', {{ s.product.pk }})" title="Entrée"><i class="fa-solid fa-plus"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="openAdjustModal('out', {{ s.product.pk }})" title="Sortie"><i class="fa-solid fa-minus"></i></button>
+                    <a href="?warehouse={{ warehouse.pk }}&q={{ s.product.name|urlencode }}" class="btn btn-sm btn-outline" title="Historique"><i class="fa-solid fa-clock-rotate-left"></i></a>
+                </td>
             </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;padding:3rem;">
+                <div style="font-size:36px;opacity:.25;margin-bottom:10px;"><i class="fa-solid fa-cubes"></i></div>
+                <div style="color:var(--dash-text3);">{% if search_query %}Aucun produit trouvé pour « {{ search_query }} »{% else %}Aucun produit dans cet entrepôt{% endif %}</div>
+            </td></tr>
             {% endfor %}
         </tbody>
     </table>
     </div>
 </div>
-{% endif %}
 
+{% else %}
+<!-- ═══ Mouvements ═══ -->
 <div class="dash-card">
-    <!-- Filtres style transferts -->
-    <div class="mv-toolbar">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <div style="position:relative;">
-                <button type="button" class="btn btn-outline btn-sm" onclick="toggleInvFilterMenu(event)">
-                    <i class="fa-solid fa-filter"></i> Filtres {% if type_filter or date_from or date_to %}<span style="background:var(--dash-accent);color:#fff;border-radius:50%;width:8px;height:8px;display:inline-block;margin-left:4px;"></span>{% endif %}
-                </button>
-                <div id="invFilterMenu" style="display:none;position:fixed;background:#fff;border:1px solid var(--dash-border);border-radius:8px;box-shadow:var(--dash-shadow-lg);min-width:220px;z-index:1500;padding:10px;">
-                    <div style="font-size:10px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;padding:6px 10px;">Type de mouvement</div>
-                    <a href="?{% if warehouse %}warehouse={{ warehouse.pk }}{% endif %}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if not type_filter %}background:var(--dash-bg);font-weight:600;{% endif %}">Tous</a>
-                    {% for code, label in type_choices %}
-                    <a href="?type={{ code }}{% if warehouse %}&warehouse={{ warehouse.pk }}{% endif %}" style="display:block;padding:8px 10px;font-size:13px;border-radius:6px;text-decoration:none;color:var(--dash-text2);{% if type_filter == code %}background:var(--dash-bg);font-weight:600;{% endif %}">{{ label }}</a>
-                    {% endfor %}
-                    <div style="border-top:1px solid var(--dash-border);margin-top:6px;padding-top:8px;">
-                        <button type="button" onclick="document.getElementById('invFilterMenu').style.display='none';document.getElementById('invDateModal').classList.add('open');" style="width:100%;padding:8px 10px;font-size:13px;border:none;background:none;text-align:left;cursor:pointer;color:var(--dash-accent);font-weight:600;border-radius:6px;"><i class="fa-solid fa-calendar"></i> Filtrer par date...</button>
-                    </div>
-                </div>
+    <form method="get" class="inv-toolbar" id="invFilters">
+        {% if warehouse_param %}<input type="hidden" name="warehouse" value="{{ warehouse_param }}">{% endif %}
+        <div class="inv-toolbar-row">
+            <div class="inv-chips">
+                <label class="inv-chip {% if not type_filter %}active{% endif %}"><input type="radio" name="type" value="" {% if not type_filter %}checked{% endif %} onchange="this.form.submit()"> Tous</label>
+                {% for code, label in type_choices %}
+                <label class="inv-chip {% if type_filter == code %}active{% endif %}"><input type="radio" name="type" value="{{ code }}" {% if type_filter == code %}checked{% endif %} onchange="this.form.submit()"> {{ label }}</label>
+                {% endfor %}
             </div>
-            {% if type_filter or date_from or date_to %}
-            <a href="?{% if warehouse %}warehouse={{ warehouse.pk }}{% endif %}" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser</a>
+            <div class="inv-fields">
+                <a href="{% url 'dashboard:movements_pdf' %}?{{ base_query }}" class="btn btn-sm" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-file-pdf"></i> PDF</a>
+                <a href="{% url 'dashboard:movements_excel' %}?{{ base_query }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
+            </div>
+        </div>
+        <div class="inv-toolbar-row">
+            <div class="inv-fields">
+                <div class="inv-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="Produit, référence, motif...">
+                </div>
+                <label for="invFrom">Du</label>
+                <input type="date" id="invFrom" name="from" value="{{ date_from }}" onchange="this.form.submit()">
+                <label for="invTo">Au</label>
+                <input type="date" id="invTo" name="to" value="{{ date_to }}" onchange="this.form.submit()">
+            </div>
+            {% if type_filter or date_from or date_to or search_query %}
+            <a href="?{% if warehouse_param %}warehouse={{ warehouse_param }}{% endif %}" class="btn btn-outline btn-sm" style="color:var(--dash-red);border-color:var(--dash-red);"><i class="fa-solid fa-xmark"></i> Réinitialiser les filtres</a>
             {% endif %}
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <form method="get" style="position:relative;">
-                {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
-                {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
-                {% if date_from %}<input type="hidden" name="from" value="{{ date_from }}">{% endif %}
-                {% if date_to %}<input type="hidden" name="to" value="{{ date_to }}">{% endif %}
-                <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dash-text3);font-size:12px;"></i>
-                <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher un produit..." style="padding:8px 12px 8px 34px;border:1.5px solid var(--dash-border);border-radius:6px;font-size:13px;font-family:inherit;width:220px;">
-            </form>
-            <a href="{% url 'dashboard:movements_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-file-pdf"></i> PDF</a>
-            <a href="{% url 'dashboard:movements_excel' %}?{{ request.GET.urlencode }}" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
-        </div>
-    </div>
+    </form>
 
-    <!-- Tableau des mouvements -->
     <div class="dash-table-responsive">
     <table class="dash-table">
         <thead>
-            <tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Avant</th><th>Après</th><th>Référence</th><th style="text-align:right;">Action</th></tr>
+            <tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Stock</th>{% if not warehouse %}<th>Entrepôt</th>{% endif %}<th>Référence</th><th style="text-align:right;">Action</th></tr>
         </thead>
         <tbody>
             {% for m in movements %}
             <tr>
-                <td style="font-size:12px;color:var(--dash-text3);">{{ m.created_at|date:"d/m/Y H:i" }}</td>
-                <td style="font-weight:600;">{{ m.product.name|truncatechars:30 }}</td>
-                <td><span class="tag {% if m.quantity > 0 %}tag-green{% else %}tag-orange{% endif %}">{{ m.get_movement_type_display }}</span></td>
+                <td style="font-size:12px;color:var(--dash-text3);white-space:nowrap;">{{ m.created_at|date:"d/m/Y" }}<div>{{ m.created_at|date:"H:i" }}</div></td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="inv-avatar">{{ m.product.name|slice:":2"|upper }}</div>
+                        <div>
+                            <div style="font-weight:600;color:var(--dash-text);">{{ m.product.name|truncatechars:30 }}</div>
+                            <div style="font-size:11px;color:var(--dash-text3);">{% if m.created_by %}par {{ m.created_by.display_name }}{% else %}Automatique{% endif %}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="mt mt-{{ m.movement_type }}">
+                        {% if m.movement_type == 'in' %}<i class="fa-solid fa-arrow-down"></i>{% elif m.movement_type == 'out' %}<i class="fa-solid fa-arrow-up"></i>{% elif m.movement_type == 'adjustment' %}<i class="fa-solid fa-sliders"></i>{% elif m.movement_type == 'sale' %}<i class="fa-solid fa-cart-shopping"></i>{% elif m.movement_type == 'pos' %}<i class="fa-solid fa-cash-register"></i>{% else %}<i class="fa-solid fa-rotate-left"></i>{% endif %}
+                        {{ m.get_movement_type_display }}
+                    </span>
+                </td>
                 <td class="{% if m.quantity > 0 %}mv-in{% else %}mv-out{% endif %}">{% if m.quantity > 0 %}+{% endif %}{{ m.quantity }}</td>
-                <td>{{ m.stock_before }}</td>
-                <td style="font-weight:700;">{{ m.stock_after }}</td>
+                <td style="white-space:nowrap;"><span style="color:var(--dash-text3);">{{ m.stock_before }}</span> <i class="fa-solid fa-arrow-right" style="font-size:10px;color:var(--dash-text3);"></i> <strong>{{ m.stock_after }}</strong></td>
+                {% if not warehouse %}<td style="font-size:12px;">{% if m.warehouse %}<a href="?warehouse={{ m.warehouse.pk }}" style="color:var(--dash-text2);">{{ m.warehouse.code }}</a>{% else %}—{% endif %}</td>{% endif %}
                 <td style="font-size:12px;color:var(--dash-text3);">{{ m.reference|default:'—' }}</td>
                 <td style="text-align:right;">
-                    <button class="btn btn-sm btn-outline" onclick='openDetailModal({{ m.id }})'><i class="fa-solid fa-eye"></i> Détail</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="openDetailModal({{ m.id }})"><i class="fa-solid fa-eye"></i> Détail</button>
                 </td>
             </tr>
             {% empty %}
@@ -123,111 +271,151 @@
         </tbody>
     </table>
     </div>
-    <div style="padding:14px 18px;border-top:1px solid var(--dash-border);font-size:12px;color:var(--dash-text3);">
-        Affichage des {{ movements|length }} derniers mouvements
-    </div>
-</div>
-
-<!-- ═══ Modale filtre par date ═══ -->
-<div class="dmodal" id="invDateModal">
-    <div class="dmodal-box" style="max-width:400px;">
-        <div class="dmodal-head">
-            <h3><i class="fa-solid fa-calendar" style="color:var(--dash-accent);"></i> Filtrer par date</h3>
-            <button type="button" class="dmodal-close" onclick="document.getElementById('invDateModal').classList.remove('open')"><i class="fa-solid fa-xmark"></i></button>
+    <div class="inv-pager">
+        <span>{% if page_obj.paginator.count %}{{ page_obj.start_index }}–{{ page_obj.end_index }} sur {{ page_obj.paginator.count }} mouvement{{ page_obj.paginator.count|pluralize:"s" }}{% else %}0 mouvement{% endif %}</span>
+        {% if page_obj.has_other_pages %}
+        <div class="pages">
+            {% if page_obj.has_previous %}<a href="?{{ base_query }}&page={{ page_obj.previous_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-left"></i></a>{% endif %}
+            <span class="btn btn-sm btn-outline" style="pointer-events:none;">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}<a href="?{{ base_query }}&page={{ page_obj.next_page_number }}" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
         </div>
-        <form method="get">
-            {% if warehouse %}<input type="hidden" name="warehouse" value="{{ warehouse.pk }}">{% endif %}
-            {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
-            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-            <div class="dmodal-body">
-                <div class="form-group"><label>Du</label><input type="date" name="from" class="form-control" value="{{ date_from }}"></div>
-                <div class="form-group"><label>Au</label><input type="date" name="to" class="form-control" value="{{ date_to }}"></div>
-            </div>
-            <div class="dmodal-foot">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('invDateModal').classList.remove('open')">Annuler</button>
-                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Appliquer</button>
-            </div>
-        </form>
+        {% endif %}
     </div>
 </div>
+{% endif %}
 
 <!-- ═══ Modale Détail ═══ -->
 <div class="dmodal" id="detailModal">
     <div class="dmodal-box">
         <div class="dmodal-head">
             <h3><i class="fa-solid fa-circle-info" style="color:var(--dash-accent);"></i> Détail du mouvement</h3>
-            <button type="button" class="dmodal-close" onclick="closeDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="dmodal-close" onclick="closeModal('detailModal')"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="dmodal-body" id="detailBody"></div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--dash-border);">
+        <div class="dmodal-foot">
             <a href="#" id="btnPdf" class="btn btn-sm" style="background:var(--dash-red);color:#fff;"><i class="fa-solid fa-file-pdf"></i> PDF</a>
             <a href="#" id="btnExcel" class="btn btn-sm" style="background:var(--dash-green);color:#fff;"><i class="fa-solid fa-file-excel"></i> Excel</a>
         </div>
     </div>
 </div>
 
-<script>
-// Toggle du menu filtres
-function toggleInvFilterMenu(e) {
-    e.stopPropagation();
-    var menu = document.getElementById('invFilterMenu');
-    if (menu.style.display === 'block') { menu.style.display = 'none'; return; }
-    var rect = e.currentTarget.getBoundingClientRect();
-    menu.style.top = (rect.bottom + 6) + 'px';
-    menu.style.left = rect.left + 'px';
-    menu.style.display = 'block';
-}
-document.addEventListener('click', function(e) {
-    var menu = document.getElementById('invFilterMenu');
-    if (menu && menu.style.display === 'block' && !menu.contains(e.target)) menu.style.display = 'none';
-});
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        document.getElementById('invFilterMenu').style.display = 'none';
-        document.getElementById('invDateModal').classList.remove('open');
-    }
-});
+{% if warehouse %}
+<!-- ═══ Modale Entrée / Sortie ═══ -->
+<div class="dmodal" id="adjustModal">
+    <div class="dmodal-box">
+        <div class="dmodal-head">
+            <h3><i class="fa-solid fa-boxes-stacked" style="color:var(--dash-accent);"></i> Mouvement de stock — {{ warehouse.code }}</h3>
+            <button type="button" class="dmodal-close" onclick="closeModal('adjustModal')"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form method="post" id="adjustForm">
+            {% csrf_token %}
+            <input type="hidden" name="warehouse" value="{{ warehouse.pk }}">
+            <div class="dmodal-body">
+                <div class="form-group">
+                    <div class="adj-types">
+                        <label id="adjLblIn"><input type="radio" name="movement_type" value="in" onchange="syncAdjustType()"> <i class="fa-solid fa-arrow-down"></i> Entrée</label>
+                        <label id="adjLblOut"><input type="radio" name="movement_type" value="out" onchange="syncAdjustType()"> <i class="fa-solid fa-arrow-up"></i> Sortie</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Produit *</label>
+                    <select id="adjProduct" class="form-control" required>
+                        <option value="">— Choisir un produit —</option>
+                        {% for p in products %}<option value="{{ p.pk }}">{{ p.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantité *</label>
+                    <input type="number" name="quantity" class="form-control" min="1" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Motif</label>
+                    <input type="text" name="reason" class="form-control" placeholder="Ex : réception fournisseur, casse, inventaire...">
+                </div>
+            </div>
+            <div class="dmodal-foot">
+                <button type="button" class="btn btn-outline" onclick="closeModal('adjustModal')">Annuler</button>
+                <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 
+<script>
 var MOVEMENTS = {
 {% for m in movements %}
 {{ m.id }}: {
-    date: "{{ m.created_at|date:'d/m/Y H:i' }}",
+    date: "{{ m.created_at|date:'d/m/Y H:i'|escapejs }}",
     product: "{{ m.product.name|escapejs }}",
-    type: "{{ m.get_movement_type_display }}",
-    quantity: "{{ m.quantity }}",
+    type: "{{ m.get_movement_type_display|escapejs }}",
+    quantity: {{ m.quantity }},
     before: {{ m.stock_before }},
     after: {{ m.stock_after }},
-    reason: "{{ m.reason|escapejs|default:'—' }}",
-    reference: "{{ m.reference|escapejs|default:'—' }}",
+    warehouse: "{% if m.warehouse %}{{ m.warehouse.name|escapejs }} ({{ m.warehouse.code|escapejs }}){% else %}—{% endif %}",
+    reason: "{{ m.reason|default:'—'|escapejs }}",
+    reference: "{{ m.reference|default:'—'|escapejs }}",
     by: "{% if m.created_by %}{{ m.created_by.display_name|escapejs }}{% else %}—{% endif %}"
 }{% if not forloop.last %},{% endif %}
 {% endfor %}
 };
+var URL_PDF = "{% url 'dashboard:movement_pdf' 0 %}";
+var URL_EXCEL = "{% url 'dashboard:movement_excel' 0 %}";
+var URL_ADJUST = "{% url 'dashboard:stock_adjust' 0 %}";
 
-var URL_PDF = "{% url 'dashboard:movement_pdf' 0 %}".replace('/0/', '/{id}/');
-var URL_EXCEL = "{% url 'dashboard:movement_excel' 0 %}".replace('/0/', '/{id}/');
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+// Construit le détail avec textContent : aucune donnée n'est interprétée comme du HTML
 function openDetailModal(id) {
     var m = MOVEMENTS[id];
     if (!m) return;
-    document.getElementById('btnPdf').href = URL_PDF.replace('{id}', id);
-    document.getElementById('btnExcel').href = URL_EXCEL.replace('{id}', id);
-    var qtyClass = m.quantity > 0 ? 'mv-in' : 'mv-out';
-    var qtyLabel = (m.quantity > 0 ? '+' : '') + m.quantity;
-    document.getElementById('detailBody').innerHTML =
-        '<div class="detail-row"><span class="k">Produit</span><span class="v">' + m.product + '</span></div>' +
-        '<div class="detail-row"><span class="k">Type</span><span class="v">' + m.type + '</span></div>' +
-        '<div class="detail-row"><span class="k">Quantité</span><span class="v ' + qtyClass + '">' + qtyLabel + '</span></div>' +
-        '<div class="detail-row"><span class="k">Stock avant</span><span class="v">' + m.before + '</span></div>' +
-        '<div class="detail-row"><span class="k">Stock après</span><span class="v">' + m.after + '</span></div>' +
-        '<div class="detail-row"><span class="k">Motif</span><span class="v">' + m.reason + '</span></div>' +
-        '<div class="detail-row"><span class="k">Référence</span><span class="v">' + m.reference + '</span></div>' +
-        '<div class="detail-row"><span class="k">Effectué par</span><span class="v">' + m.by + '</span></div>' +
-        '<div class="detail-row"><span class="k">Date</span><span class="v">' + m.date + '</span></div>';
+    document.getElementById('btnPdf').href = URL_PDF.replace('/0/', '/' + id + '/');
+    document.getElementById('btnExcel').href = URL_EXCEL.replace('/0/', '/' + id + '/');
+    var rows = [
+        ['Produit', m.product], ['Type', m.type],
+        ['Quantité', (m.quantity > 0 ? '+' : '') + m.quantity, m.quantity > 0 ? 'mv-in' : 'mv-out'],
+        ['Stock avant', m.before], ['Stock après', m.after], ['Entrepôt', m.warehouse],
+        ['Motif', m.reason], ['Référence', m.reference], ['Effectué par', m.by], ['Date', m.date]
+    ];
+    var body = document.getElementById('detailBody');
+    body.textContent = '';
+    rows.forEach(function(r) {
+        var row = document.createElement('div'); row.className = 'detail-row';
+        var k = document.createElement('span'); k.className = 'k'; k.textContent = r[0];
+        var v = document.createElement('span'); v.className = 'v' + (r[2] ? ' ' + r[2] : ''); v.textContent = r[1];
+        row.appendChild(k); row.appendChild(v); body.appendChild(row);
+    });
     document.getElementById('detailModal').classList.add('open');
 }
-function closeDetailModal() { document.getElementById('detailModal').classList.remove('open'); }
-document.getElementById('detailModal').addEventListener('click', function(e) { if (e.target === this) closeDetailModal(); });
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDetailModal(); });
+
+function syncAdjustType() {
+    var form = document.getElementById('adjustForm');
+    var t = form.querySelector('input[name=movement_type]:checked').value;
+    document.getElementById('adjLblIn').className = t === 'in' ? 'on-in' : '';
+    document.getElementById('adjLblOut').className = t === 'out' ? 'on-out' : '';
+}
+function openAdjustModal(type, productId) {
+    var form = document.getElementById('adjustForm');
+    if (!form) return;
+    form.querySelector('input[name=movement_type][value=' + type + ']').checked = true;
+    syncAdjustType();
+    document.getElementById('adjProduct').value = productId || '';
+    document.getElementById('adjustModal').classList.add('open');
+}
+var adjustForm = document.getElementById('adjustForm');
+if (adjustForm) {
+    adjustForm.addEventListener('submit', function(e) {
+        var pid = document.getElementById('adjProduct').value;
+        if (!pid) { e.preventDefault(); return; }
+        this.action = URL_ADJUST.replace('/0/', '/' + pid + '/');
+    });
+}
+
+document.querySelectorAll('.dmodal').forEach(function(modal) {
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.querySelectorAll('.dmodal.open').forEach(function(m) { m.classList.remove('open'); });
+});
 </script>
 {% endblock %}

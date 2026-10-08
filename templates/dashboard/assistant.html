@@ -1,125 +1,243 @@
-{% extends 'dashboard/base.html' %}
+{% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Assistant IA{% endblock %}
 {% block dash %}
 <style>
-.ai-container { max-width: 760px; margin: 0 auto; }
-.ai-hero { text-align: center; padding: 24px 0 20px; }
-.ai-hero .icon { width: 60px; height: 60px; border-radius: 18px; background: linear-gradient(135deg, var(--dash-accent), #ff8533); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 12px; }
-.ai-hero h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
-.ai-hero p { font-size: 13px; color: var(--dash-text3); }
-
-/* Briefing */
-.ai-briefing { margin-bottom: 24px; }
-.ai-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
-.ai-stat { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 8px; padding: 12px; text-align: center; }
-.ai-stat .v { font-weight: 800; font-size: 16px; }
-.ai-stat .l { font-size: 10px; color: var(--dash-text3); }
-.ai-alert { display: flex; align-items: center; gap: 12px; background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; text-decoration: none; color: inherit; transition: var(--dash-transition); }
-.ai-alert:hover { border-color: var(--dash-accent); }
-.ai-alert .ic { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
-.ai-alert .t { font-weight: 700; font-size: 13px; }
-.ai-alert .d { font-size: 11px; color: var(--dash-text3); }
-.ai-sugg { background: rgba(255,106,0,.05); border: 1px solid rgba(255,106,0,.15); border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--dash-text2); margin-bottom: 8px; }
-.ai-sugg i { color: var(--dash-accent); margin-right: 6px; }
-
-/* Suggestions */
-.ai-suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
-.ai-suggestion { padding: 8px 16px; border: 1.5px solid var(--dash-border); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--dash-text2); background: var(--dash-card); cursor: pointer; transition: var(--dash-transition); }
-.ai-suggestion:hover { border-color: var(--dash-accent); color: var(--dash-accent); background: rgba(255,106,0,.05); }
-
-/* Réponse */
-.ai-answer { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: var(--dash-shadow); }
-.ai-answer .q { font-size: 13px; color: var(--dash-text3); margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--dash-border); }
-.ai-answer .a { font-size: 14px; line-height: 1.8; color: var(--dash-text); white-space: pre-wrap; }
-.ai-answer .a strong { color: var(--dash-accent); }
-
-/* Formulaire */
-.ai-form { display: flex; gap: 10px; }
-.ai-form input { flex: 1; padding: 14px 18px; border: 1.5px solid var(--dash-border); border-radius: 12px; font-size: 14px; font-family: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
-.ai-form input:focus { border-color: var(--dash-accent); box-shadow: 0 0 0 3px rgba(255,106,0,.1); }
-.ai-form button { padding: 14px 24px; background: var(--dash-accent); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background .2s; }
-.ai-form button:hover { background: #e55f00; }
+.as-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.as-head h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.as-meta { font-size: 12px; color: var(--dash-text3); margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; }
+.as-meta i { margin-right: 4px; }
+.as-badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 50px; font-size: 11px; font-weight: 700; }
+.as-badge.ai { background: rgba(122,90,248,.1); color: var(--dash-purple); }
+.as-badge.simple { background: rgba(247,144,9,.1); color: var(--dash-yellow); }
+.as-grid { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 16px; align-items: start; }
+.as-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); }
+.as-card-head { padding: 12px 16px; border-bottom: 1px solid var(--dash-border); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.as-card-head h3 { margin: 0; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.as-card-head h3 i { color: var(--dash-accent); }
+.as-chat { display: flex; flex-direction: column; height: calc(100vh - 210px); min-height: 480px; }
+.as-thread { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.as-msg { display: flex; gap: 10px; max-width: 100%; }
+.as-msg.user { justify-content: flex-end; }
+.as-avatar { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; background: linear-gradient(135deg, var(--dash-accent), var(--dash-accent-light)); color: #fff; }
+.as-bubble { padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.65; color: var(--dash-text); max-width: 85%; overflow-wrap: anywhere; }
+.as-msg.user .as-bubble { background: rgba(255,106,0,.08); border: 1px solid rgba(255,106,0,.18); white-space: pre-wrap; }
+.as-msg.assistant .as-bubble { background: var(--dash-bg); border: 1px solid var(--dash-border); }
+.as-bubble p { margin: 0 0 8px; } .as-bubble p:last-child { margin-bottom: 0; }
+.as-bubble ul, .as-bubble ol { margin: 4px 0 8px; padding-left: 20px; } .as-bubble li { margin-bottom: 3px; }
+.as-bubble h3, .as-bubble h4, .as-bubble h5, .as-bubble h6 { margin: 10px 0 6px; font-size: 13px; color: var(--dash-text); }
+.as-bubble strong { color: var(--dash-text); font-weight: 700; }
+.as-bubble code { background: var(--dash-card); border: 1px solid var(--dash-border); border-radius: 4px; padding: 0 4px; font-size: 12px; }
+.md-table { overflow-x: auto; margin: 6px 0 10px; }
+.md-table table { border-collapse: collapse; font-size: 12px; min-width: 100%; background: var(--dash-card); }
+.md-table th, .md-table td { border: 1px solid var(--dash-border); padding: 6px 9px; text-align: left; white-space: nowrap; }
+.md-table th { background: var(--dash-bg); font-weight: 700; color: var(--dash-text2); }
+.as-tools { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.as-tool { font-size: 10px; font-weight: 600; color: var(--dash-text3); background: var(--dash-card); border: 1px solid var(--dash-border); border-radius: 50px; padding: 1px 8px; }
+.as-tool i { margin-right: 3px; }
+.as-typing { display: none; align-items: center; gap: 10px; font-size: 12px; color: var(--dash-text3); padding: 0 18px 12px; }
+.as-typing .dots span { display: inline-block; width: 6px; height: 6px; margin-right: 3px; border-radius: 50%; background: var(--dash-accent); animation: asblink 1.2s infinite both; }
+.as-typing .dots span:nth-child(2) { animation-delay: .2s; } .as-typing .dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes asblink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+.as-empty { margin: auto; text-align: center; max-width: 520px; color: var(--dash-text3); font-size: 13px; }
+.as-empty .ic { width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; background: rgba(255,106,0,.1); color: var(--dash-accent); }
+.as-empty h2 { font-size: 16px; color: var(--dash-text); margin: 0 0 6px; }
+.as-sugg { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+.as-chip { padding: 7px 12px; border: 1.5px solid var(--dash-border); border-radius: 50px; font-size: 12px; font-weight: 600; color: var(--dash-text2); background: var(--dash-card); cursor: pointer; font-family: inherit; transition: var(--dash-transition); text-align: left; }
+.as-chip:hover { border-color: var(--dash-accent); color: var(--dash-accent); }
+.as-form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--dash-border); }
+.as-form textarea { flex: 1; resize: none; min-height: 44px; max-height: 160px; padding: 11px 14px; border: 1.5px solid var(--dash-border); border-radius: 8px; font-size: 13px; font-family: inherit; line-height: 1.5; }
+.as-form textarea:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.as-error { margin: 0 18px 10px; padding: 10px 12px; border-radius: 6px; font-size: 12px; background: rgba(240,68,56,.08); border: 1px solid rgba(240,68,56,.3); color: var(--dash-red); display: none; }
+.as-side { display: flex; flex-direction: column; gap: 16px; }
+.as-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--dash-border); }
+.as-kpi { background: var(--dash-card); padding: 12px 14px; }
+.as-kpi .v { font-size: 16px; font-weight: 800; color: var(--dash-text); }
+.as-kpi .l { font-size: 11px; color: var(--dash-text3); margin-top: 2px; }
+.as-alert { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-top: 1px solid var(--dash-border); text-decoration: none; color: inherit; }
+.as-alert:hover { background: var(--dash-bg); }
+.as-alert i { margin-top: 2px; width: 14px; text-align: center; }
+.as-alert .t { font-size: 12px; font-weight: 700; color: var(--dash-text); }
+.as-alert .d { font-size: 11px; color: var(--dash-text3); margin-top: 1px; }
+.as-conv { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-top: 1px solid var(--dash-border); font-size: 12px; }
+.as-conv a { flex: 1; min-width: 0; color: var(--dash-text2); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.as-conv.active a { color: var(--dash-accent); font-weight: 700; }
+.as-conv .when { color: var(--dash-text3); font-size: 11px; flex-shrink: 0; }
+.as-conv button { background: none; border: none; color: var(--dash-text3); cursor: pointer; padding: 2px 4px; }
+.as-conv button:hover { color: var(--dash-red); }
+.as-note { padding: 12px 14px; font-size: 12px; color: var(--dash-text2); line-height: 1.6; }
+@media (max-width: 1000px) { .as-grid { grid-template-columns: 1fr; } .as-chat { height: auto; min-height: 520px; } }
 </style>
 
-<div class="ai-container">
-    <div class="ai-hero">
-        <div class="icon"><i class="fa-solid fa-robot"></i></div>
-        <h1>Assistant AfriMarket</h1>
-        <p>Analyse votre boutique et répond à vos questions</p>
-    </div>
-
-    {% if briefing and not answer %}
-    <!-- Briefing du jour -->
-    <div class="ai-briefing">
-        <div class="ai-stats">
-            <div class="ai-stat">
-                <div class="v" style="color:var(--dash-green);">{{ briefing.stats.week_revenue|floatformat:0 }} F</div>
-                <div class="l">Revenus 7 jours</div>
-            </div>
-            <div class="ai-stat">
-                <div class="v">{{ briefing.stats.week_orders }}</div>
-                <div class="l">Commandes 7 jours</div>
-            </div>
-            <div class="ai-stat">
-                <div class="v">{{ briefing.stats.total_products }}</div>
-                <div class="l">Produits actifs</div>
-            </div>
-            <div class="ai-stat">
-                <div class="v">{{ briefing.stats.total_customers }}</div>
-                <div class="l">Clients</div>
-            </div>
+<div class="as-head">
+    <div>
+        <h1><i class="fa-solid fa-robot" style="color:var(--dash-accent);"></i> Assistant IA</h1>
+        <div class="as-meta">
+            {% if ai_enabled %}
+            <span class="as-badge ai"><i class="fa-solid fa-wand-magic-sparkles"></i> Claude — analyse vos vraies données</span>
+            <span><i class="fa-solid fa-lock"></i>Lecture seule, limitée à votre boutique et à vos droits</span>
+            {% else %}
+            <span class="as-badge simple"><i class="fa-solid fa-circle-info"></i> Mode simple (mots-clés)</span>
+            <span>Ajoutez une clé ANTHROPIC_API_KEY pour activer l'IA</span>
+            {% endif %}
         </div>
-
-        {% if briefing.alerts %}
-        <div style="font-size:12px;font-weight:700;color:var(--dash-text3);text-transform:uppercase;margin-bottom:8px;"><i class="fa-solid fa-bell"></i> Alertes</div>
-        {% for alert in briefing.alerts %}
-        <a href="{{ alert.url }}" class="ai-alert">
-            <div class="ic" style="background:rgba(255,106,0,.1);color:{{ alert.color }};"><i class="fa-solid {{ alert.icon }}"></i></div>
-            <div>
-                <div class="t">{{ alert.title }}</div>
-                <div class="d">{{ alert.detail }}</div>
-            </div>
-            <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:var(--dash-text3);font-size:12px;"></i>
-        </a>
-        {% endfor %}
-        {% endif %}
-
-        {% for sugg in briefing.suggestions %}
-        <div class="ai-sugg"><i class="fa-solid fa-lightbulb"></i> {{ sugg }}</div>
-        {% endfor %}
     </div>
-    {% endif %}
-
-    {% if not answer %}
-    <div class="ai-suggestions">
-        {% for s in suggestions %}
-        <button type="button" class="ai-suggestion" onclick="askSuggestion(this)">{{ s }}</button>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if answer %}
-    <div class="ai-answer">
-        <div class="q"><i class="fa-solid fa-user" style="color:var(--dash-accent);"></i> {{ question }}</div>
-        <div class="a" id="answerText">{{ answer }}</div>
-    </div>
-    {% endif %}
-
-    <form method="post" class="ai-form">
-        {% csrf_token %}
-        <input type="text" name="question" id="questionInput" placeholder="Posez votre question... Ex : ventes du jour, état du stock, comment ajouter un produit" value="{{ question }}" autofocus>
-        <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
-    </form>
+    <a href="?new=1" class="btn btn-sm btn-orange"><i class="fa-solid fa-plus"></i> Nouvelle conversation</a>
 </div>
 
+<div class="as-grid">
+    <!-- ═══ Conversation ═══ -->
+    <div class="as-card as-chat">
+        <div class="as-thread" id="asThread" aria-live="polite">
+            {% for m in transcript %}
+            <div class="as-msg {{ m.role }}">
+                {% if m.role == 'assistant' %}<div class="as-avatar"><i class="fa-solid fa-robot"></i></div>{% endif %}
+                <div class="as-bubble">
+                    {% if m.role == 'assistant' %}{{ m.html }}{% if m.tools %}<div class="as-tools">{% for t in m.tools %}<span class="as-tool"><i class="fa-solid fa-database"></i>{{ t }}</span>{% endfor %}</div>{% endif %}{% else %}{{ m.text }}{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="as-empty" id="asEmpty">
+                <div class="ic"><i class="fa-solid fa-robot"></i></div>
+                <h2>Que voulez-vous savoir sur votre boutique ?</h2>
+                <div>{% if ai_enabled %}Posez votre question librement : l'assistant consulte vos ventes, votre stock, vos commandes, vos clients, vos factures et votre comptabilité pour vous répondre.{% else %}Questions courtes conseillées : « ventes du jour », « état du stock », « commandes en attente ».{% endif %}</div>
+                <div class="as-sugg">
+                    {% for s in suggestions %}<button type="button" class="as-chip" onclick="askSuggestion(this)">{{ s }}</button>{% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="as-typing" id="asTyping"><span class="dots"><span></span><span></span><span></span></span> L'assistant analyse vos données…</div>
+        <div class="as-error" id="asError"></div>
+        <form class="as-form" id="asForm">
+            <textarea id="asInput" placeholder="Ex : Compare mes ventes de septembre et d'octobre, par entrepôt" aria-label="Votre question" maxlength="4000" required></textarea>
+            <button type="submit" class="btn btn-orange" id="asSend" aria-label="Envoyer"><i class="fa-solid fa-paper-plane"></i></button>
+        </form>
+    </div>
+
+    <!-- ═══ Colonne : briefing + historique ═══ -->
+    <div class="as-side">
+        {% if briefing %}
+        <div class="as-card">
+            <div class="as-card-head"><h3><i class="fa-solid fa-gauge-high"></i> Briefing des 7 derniers jours</h3></div>
+            <div class="as-kpis">
+                <div class="as-kpi"><div class="v" style="color:var(--dash-green);">{{ briefing.stats.week_revenue|floatformat:0|intcomma }} F</div><div class="l">Revenus</div></div>
+                <div class="as-kpi"><div class="v">{{ briefing.stats.week_orders }}</div><div class="l">Commandes</div></div>
+                <div class="as-kpi"><div class="v">{{ briefing.stats.total_products }}</div><div class="l">Produits actifs</div></div>
+                <div class="as-kpi"><div class="v">{{ briefing.stats.total_customers }}</div><div class="l">Clients</div></div>
+            </div>
+            {% for alert in briefing.alerts %}
+            <a href="{{ alert.url }}" class="as-alert">
+                <i class="fa-solid {{ alert.icon }}" style="color:{{ alert.color }};"></i>
+                <div><div class="t">{{ alert.title }}</div><div class="d">{{ alert.detail }}</div></div>
+            </a>
+            {% empty %}
+            <div class="as-note"><i class="fa-solid fa-circle-check" style="color:var(--dash-green);"></i> Aucune alerte en cours.</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if ai_enabled %}
+        <div class="as-card">
+            <div class="as-card-head"><h3><i class="fa-solid fa-clock-rotate-left"></i> Conversations</h3></div>
+            {% for c in conversations %}
+            <div class="as-conv {% if current and c.pk == current.pk %}active{% endif %}">
+                <a href="?c={{ c.pk }}" title="{{ c }}">{{ c }}</a>
+                <span class="when">{{ c.updated_at|date:"d/m" }}</span>
+                <form method="post" action="{% url 'dashboard:assistant_delete' c.pk %}" onsubmit="return confirm('Supprimer cette conversation ?');" style="margin:0;">
+                    {% csrf_token %}<button type="submit" title="Supprimer" aria-label="Supprimer la conversation"><i class="fa-solid fa-trash-can"></i></button>
+                </form>
+            </div>
+            {% empty %}
+            <div class="as-note">Vos conversations apparaîtront ici.</div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="as-card">
+            <div class="as-card-head"><h3><i class="fa-solid fa-key"></i> Activer l'IA</h3></div>
+            <div class="as-note">Définissez la variable <code>ANTHROPIC_API_KEY</code> avant de démarrer Django (clé créée sur console.anthropic.com). L'assistant comprendra alors n'importe quelle question et analysera vos données réelles.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-function askSuggestion(btn) {
-    document.getElementById('questionInput').value = btn.textContent;
-    btn.closest('.ai-container').querySelector('form').submit();
-}
-var el = document.getElementById('answerText');
-if (el) {
-    el.innerHTML = el.innerHTML.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-}
+(function() {
+    var AS = {
+        url: "{% url 'dashboard:assistant_ask' %}",
+        csrf: "{{ csrf_token }}",
+        conversation: "{% if current %}{{ current.pk }}{% endif %}",
+    };
+    var thread = document.getElementById('asThread');
+    var input = document.getElementById('asInput');
+    var form = document.getElementById('asForm');
+    var send = document.getElementById('asSend');
+    var typing = document.getElementById('asTyping');
+    var errorBox = document.getElementById('asError');
+    thread.scrollTop = thread.scrollHeight;
+
+    function addMessage(role, content, isHtml, tools) {
+        var empty = document.getElementById('asEmpty'); if (empty) empty.remove();
+        var row = document.createElement('div');
+        row.className = 'as-msg ' + role;
+        if (role === 'assistant') {
+            var av = document.createElement('div'); av.className = 'as-avatar';
+            av.innerHTML = '<i class="fa-solid fa-robot"></i>'; row.appendChild(av);
+        }
+        var bubble = document.createElement('div'); bubble.className = 'as-bubble';
+        // La réponse est déjà convertie en HTML sûr côté serveur (tout est échappé) ; la question reste du texte
+        if (isHtml) { bubble.innerHTML = content; } else { bubble.textContent = content; }
+        if (tools && tools.length) {
+            var box = document.createElement('div'); box.className = 'as-tools';
+            tools.forEach(function(t) {
+                var chip = document.createElement('span'); chip.className = 'as-tool';
+                chip.innerHTML = '<i class="fa-solid fa-database"></i>';
+                chip.appendChild(document.createTextNode(t)); box.appendChild(chip);
+            });
+            bubble.appendChild(box);
+        }
+        row.appendChild(bubble); thread.appendChild(row);
+        thread.scrollTop = thread.scrollHeight;
+    }
+
+    function setBusy(busy) {
+        send.disabled = busy; input.disabled = busy;
+        typing.style.display = busy ? 'flex' : 'none';
+        if (busy) thread.scrollTop = thread.scrollHeight;
+    }
+
+    function askQuestion(question) {
+        question = question.trim();
+        if (!question) return;
+        errorBox.style.display = 'none';
+        addMessage('user', question, false);
+        input.value = '';
+        setBusy(true);
+        var body = new FormData();
+        body.append('question', question);
+        if (AS.conversation) body.append('conversation', AS.conversation);
+        fetch(AS.url, { method: 'POST', body: body, headers: { 'X-CSRFToken': AS.csrf }, credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                setBusy(false);
+                if (data.conversation) {
+                    var first = !AS.conversation;
+                    AS.conversation = String(data.conversation);
+                    if (first) history.replaceState(null, '', '?c=' + AS.conversation);
+                }
+                if (!data.ok) { errorBox.textContent = data.error || 'Erreur.'; errorBox.style.display = 'block'; return; }
+                addMessage('assistant', data.html, true, data.tools);
+                input.focus();
+            })
+            .catch(function() { setBusy(false); errorBox.textContent = 'Erreur réseau : réessayez.'; errorBox.style.display = 'block'; });
+    }
+
+    form.addEventListener('submit', function(e) { e.preventDefault(); askQuestion(input.value); });
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); askQuestion(input.value); }
+    });
+    window.askSuggestion = function(btn) { askQuestion(btn.textContent); };
+})();
 </script>
 {% endblock %}

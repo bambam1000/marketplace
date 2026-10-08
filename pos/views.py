@@ -51,27 +51,47 @@ def pos_dashboard(request):
 
 @login_required
 def open_session(request):
-    """Ouvrir une session de caisse"""
-    if request.method == 'POST':
-        store = get_object_or_404(Store, owner=request.user)
+    """Ouvrir une session de caisse dans un entrepôt (le stock vendu en sortira)"""
+    from decimal import InvalidOperation
+    from django.contrib import messages
+    store = get_object_or_404(Store, owner=request.user)
+    warehouses = store.warehouses.filter(is_active=True).order_by('-is_default', 'name')
 
+    if request.method == 'POST':
         # Vérifier qu'il n'y a pas déjà une session ouverte
         existing = POSSession.objects.filter(store=store, status='open').first()
         if existing:
             return redirect('pos:interface')
 
-        opening_cash = request.POST.get('opening_cash', 0)
+        try:
+            opening_cash = Decimal(str(request.POST.get('opening_cash') or 0))
+        except InvalidOperation:
+            opening_cash = Decimal('-1')
+        if opening_cash < 0:
+            messages.error(request, 'Fond de caisse invalide.')
+            return redirect('pos:open_session')
 
-        session = POSSession.objects.create(
+        warehouse = None
+        warehouse_id = request.POST.get('warehouse')
+        if warehouse_id:
+            warehouse = warehouses.filter(pk=warehouse_id).first()
+            if warehouse is None:
+                messages.error(request, 'Entrepôt invalide.')
+                return redirect('pos:open_session')
+        else:
+            warehouse = warehouses.filter(is_default=True).first()
+
+        POSSession.objects.create(
             store=store,
             cashier=request.user,
-            opening_cash=Decimal(str(opening_cash))
+            warehouse=warehouse,
+            opening_cash=opening_cash,
         )
 
         # Rediriger vers l'interface de caisse
         return redirect('pos:interface')
 
-    return render(request, 'pos/open_session.html')
+    return render(request, 'pos/open_session.html', {'warehouses': warehouses})
 
 
 @login_required
@@ -118,7 +138,8 @@ def pos_interface(request):
         current_sale = POSSale.objects.create(
             session=session,
             store=store,
-            cashier=request.user
+            cashier=request.user,
+            warehouse=session.warehouse,
         )
 
     # Produits pour boutons rapides

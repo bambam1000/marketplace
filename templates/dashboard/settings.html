@@ -172,6 +172,14 @@
                     <input type="checkbox" name="email_account" {% if notif_prefs.email_account %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
                     <span><i class="fa-solid fa-user" style="color:var(--dash-accent);width:16px;"></i> Compte</span>
                 </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="email_marketing" {% if notif_prefs.email_marketing %}checked{% endif %} style="accent-color:var(--dash-accent);width:16px;height:16px;">
+                    <span><i class="fa-solid fa-bullhorn" style="color:var(--dash-accent);width:16px;"></i> Offres et promotions des boutiques</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer;padding:8px 0;">
+                    <input type="checkbox" name="whatsapp_orders" {% if notif_prefs.whatsapp_orders %}checked{% endif %} style="accent-color:#25D366;width:16px;height:16px;">
+                    <span><i class="fa-brands fa-whatsapp" style="color:#25D366;width:16px;"></i> WhatsApp : suivi de mes commandes et factures</span>
+                </label>
             </div>
             <button type="submit" class="btn btn-orange" style="margin-top:16px;"><i class="fa-solid fa-check"></i> Enregistrer</button>
         </div>

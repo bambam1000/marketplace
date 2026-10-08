@@ -4,6 +4,7 @@ import uuid
 
 
 class Order(models.Model):
+    DIRECT_SALE_ADDRESS = 'Vente directe'  # adresse posée sur les ventes au comptoir du dashboard
     STATUS_CHOICES = [
         ('pending', 'En attente'),
         ('confirmed', 'Confirmée'),
@@ -53,6 +54,11 @@ class Order(models.Model):
         super().save(*args, **kwargs)
 
     @property
+    def is_direct_sale(self):
+        """Vente au comptoir saisie depuis le dashboard (et non commande en ligne)."""
+        return self.shipping_address == self.DIRECT_SALE_ADDRESS
+
+    @property
     def status_color(self):
         colors = {
             'pending': 'orange', 'confirmed': 'blue', 'processing': 'purple',
@@ -73,8 +79,15 @@ class OrderItem(models.Model):
     warehouse = models.ForeignKey('inventory.Warehouse', on_delete=models.SET_NULL, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=12, decimal_places=0)
+    # Prix d'achat unitaire figé à la vente : changer le prix d'achat du produit ne réécrit pas l'historique
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     color = models.CharField(max_length=50, blank=True)
     size = models.CharField(max_length=50, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.unit_cost is None and self.product_id:
+            self.unit_cost = self.product.cost_price
+        super().save(*args, **kwargs)
 
     @property
     def subtotal(self):

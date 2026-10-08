@@ -1,0 +1,76 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Conversations WhatsApp{% endblock %}
+{% block dash %}
+<style>
+.wi-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.wi-head h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.wi-head p { margin: 6px 0 0; font-size: 13px; color: var(--dash-text3); }
+.wi-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.wi-card { background: var(--dash-card); border: 1px solid var(--dash-card-border); border-radius: 6px; box-shadow: var(--dash-shadow); }
+.wi-toolbar { padding: 14px 18px; border-bottom: 1px solid var(--dash-border); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+.wi-search { position: relative; }
+.wi-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dash-text3); font-size: 12px; }
+.wi-search input { padding: 9px 14px 9px 34px; border: 1.5px solid var(--dash-border); border-radius: 6px; font-size: 13px; width: 260px; font-family: inherit; }
+.wi-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.wi-row { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--dash-border); text-decoration: none; color: inherit; transition: var(--dash-transition); }
+.wi-row:hover { background: var(--dash-bg); }
+.wi-row:last-child { border-bottom: none; }
+.wi-avatar { width: 42px; height: 42px; border-radius: 50%; background: rgba(37,211,102,.12); color: #128C7E; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.wi-main { flex: 1; min-width: 0; }
+.wi-name { font-weight: 700; font-size: 14px; color: var(--dash-text); display: flex; align-items: center; gap: 8px; }
+.wi-preview { font-size: 12px; color: var(--dash-text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+.wi-side { text-align: right; flex-shrink: 0; }
+.wi-time { font-size: 11px; color: var(--dash-text3); }
+.wi-badge { display: inline-block; margin-top: 4px; min-width: 20px; padding: 1px 7px; border-radius: 50px; background: #25D366; color: #fff; font-size: 11px; font-weight: 700; text-align: center; }
+.wi-tag { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 50px; background: rgba(46,144,250,.1); color: var(--dash-blue); }
+.wi-empty { text-align: center; padding: 3.5rem 1rem; color: var(--dash-text3); }
+.wi-empty .ic { font-size: 40px; opacity: .3; margin-bottom: 10px; }
+@media (max-width: 700px) { .wi-search input { width: 100%; } }
+</style>
+
+<div class="wi-head">
+    <div>
+        <h1><i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> Conversations WhatsApp{% if is_platform %} — AfriMarket{% endif %}</h1>
+        <p>Messages reçus sur {% if instance.phone %}+{{ instance.phone }}{% else %}votre numéro WhatsApp{% endif %}. Répondez directement d'ici.{% if unread_total %} <strong style="color:#128C7E;">{{ unread_total }} non lu{{ unread_total|pluralize:"s" }}</strong>{% endif %}</p>
+    </div>
+    <div class="wi-actions">
+        {% if is_admin %}
+        <a href="{% url 'whatsapp:inbox' %}" class="btn btn-sm {% if not is_platform %}btn-orange{% else %}btn-outline{% endif %}">Ma boutique</a>
+        <a href="{% url 'whatsapp:inbox' %}?scope=platform" class="btn btn-sm {% if is_platform %}btn-orange{% else %}btn-outline{% endif %}">AfriMarket</a>
+        {% endif %}
+        <a href="{% url 'whatsapp:settings' %}{% if scope %}?scope={{ scope }}{% endif %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-gear"></i> Connexion</a>
+    </div>
+</div>
+
+<div class="wi-card">
+    <div class="wi-toolbar">
+        <form method="get" class="wi-search">
+            {% if scope %}<input type="hidden" name="scope" value="{{ scope }}">{% endif %}
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Nom ou numéro..." aria-label="Rechercher une conversation">
+        </form>
+        {% if instance and not instance.is_connected %}<span class="status-badge st-cancelled">Numéro déconnecté</span>{% endif %}
+    </div>
+    {% for c in chats %}
+    <a href="{% url 'whatsapp:chat' c.pk %}" class="wi-row">
+        <div class="wi-avatar">{{ c.display_name|slice:":2"|upper }}</div>
+        <div class="wi-main">
+            <div class="wi-name">{{ c.display_name }}{% if c.customer %} <span class="wi-tag">Client</span>{% endif %}</div>
+            <div class="wi-preview">{{ c.last_preview }}</div>
+        </div>
+        <div class="wi-side">
+            <div class="wi-time">{{ c.last_message_at|date:"d/m H:i" }}</div>
+            {% if c.unread_count %}<span class="wi-badge">{{ c.unread_count }}</span>{% endif %}
+        </div>
+    </a>
+    {% empty %}
+    <div class="wi-empty">
+        <div class="ic"><i class="fa-brands fa-whatsapp"></i></div>
+        {% if not instance %}Connectez d'abord votre WhatsApp pour recevoir les messages de vos clients.
+        <div style="margin-top:14px;"><a href="{% url 'whatsapp:settings' %}{% if scope %}?scope={{ scope }}{% endif %}" class="btn btn-orange btn-sm">Connecter WhatsApp</a></div>
+        {% elif search_query %}Aucune conversation ne correspond à « {{ search_query }} ».
+        {% else %}Aucune conversation pour l'instant. Les messages de vos clients apparaîtront ici.{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
