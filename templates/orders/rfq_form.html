@@ -1,14 +1,186 @@
 {% extends 'base.html' %}
 {% block title %}Demande de devis{% endblock %}
+{% block extra_css %}
+<style>
+.rq { max-width: 1080px; margin: 0 auto; padding: 1.5rem; }
+.rq-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+.rq-head h1 { font-size: 28px; display: flex; align-items: center; gap: 12px; }
+.rq-head h1 .ic { width: 46px; height: 46px; border-radius: 14px; background: var(--orange-light); color: var(--orange); display: inline-flex; align-items: center; justify-content: center; font-size: 19px; }
+.rq-head p { color: var(--text2); font-size: 14px; margin-top: 6px; max-width: 560px; line-height: 1.6; }
+.rq-mine { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--white); font-size: 13px; font-weight: 600; color: var(--text2); }
+.rq-mine:hover { border-color: var(--orange); color: var(--orange); }
+.rq-mine b { background: var(--orange); color: #fff; border-radius: 50px; padding: 0 7px; font-size: 11px; }
+.rq-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.rq-card { background: var(--white); border: 1px solid var(--border2); border-radius: 14px; box-shadow: 0 1px 3px rgba(16,24,40,.05); }
+.rq-form { padding: 24px; }
+.rq-section { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin: 4px 0 12px; display: flex; align-items: center; gap: 8px; }
+.rq-section::after { content: ''; flex: 1; height: 1px; background: var(--border2); }
+.rq-field { margin-bottom: 16px; }
+.rq-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+.rq-field label small { font-weight: 500; color: var(--text3); }
+.rq-field .form-control { width: 100%; padding: 11px 13px; font-size: 14px; border-radius: 10px; border: 1.5px solid var(--border); font-family: var(--font); background: #fff; }
+.rq-field .form-control:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,106,0,.12); }
+.rq-field.err .form-control { border-color: var(--red); background: var(--red-bg); }
+.rq-err { font-size: 12px; color: var(--red); margin-top: 5px; display: flex; gap: 6px; align-items: flex-start; }
+.rq-help { font-size: 12px; color: var(--text3); margin-top: 5px; display: flex; justify-content: space-between; gap: 8px; }
+.rq-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.rq-qty { display: grid; grid-template-columns: minmax(0, 1fr) 130px; gap: 8px; }
+.rq-price { position: relative; }
+.rq-price span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--text3); font-weight: 600; pointer-events: none; }
+.rq-price .form-control { padding-right: 76px; }
+.rq-submit { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-top: 8px; }
+.rq-submit p { font-size: 12.5px; color: var(--text3); display: flex; gap: 7px; align-items: center; }
+.rq-submit .btn { padding: 13px 24px; font-size: 15px; }
+.rq-login { display: flex; gap: 12px; align-items: center; background: var(--orange-light); border: 1px solid #fcd5b5; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; color: var(--text2); }
+.rq-login i { color: var(--orange); font-size: 18px; }
+.rq-login a { color: var(--orange); font-weight: 700; }
+.rq-side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 140px; }
+.rq-side .rq-card { padding: 20px; }
+.rq-side h3 { font-size: 15px; margin-bottom: 14px; display: flex; gap: 8px; align-items: center; }
+.rq-side h3 i { color: var(--orange); }
+.rq-steps { display: flex; flex-direction: column; gap: 14px; }
+.rq-step { display: flex; gap: 12px; }
+.rq-step b { width: 28px; height: 28px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.rq-step div { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.rq-step strong { display: block; color: var(--text); font-size: 13.5px; }
+.rq-tips { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.rq-tips li { display: flex; gap: 9px; font-size: 13px; color: var(--text2); line-height: 1.5; }
+.rq-tips li i { color: var(--green); margin-top: 3px; font-size: 12px; }
+@media (max-width: 900px) {
+    .rq { padding: 1rem 14px; }
+    .rq-grid { grid-template-columns: 1fr; }
+    .rq-side { position: static; }
+    .rq-head h1 { font-size: 22px; }
+}
+@media (max-width: 560px) {
+    .rq-form { padding: 18px 16px; }
+    .rq-row { grid-template-columns: 1fr; gap: 0; }
+    .rq-qty { grid-template-columns: minmax(0, 1fr) 110px; }
+    .rq-field .form-control { font-size: 16px; }
+    .rq-submit .btn { width: 100%; justify-content: center; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div style="max-width:700px;margin:0 auto;padding:1.5rem;">
-<div style="text-align:center;margin-bottom:2rem;"><h2 style="font-size:20px;">📋 Demande de devis (RFQ)</h2><p style="color:var(--text2);font-size:13px;">Décrivez le produit que vous recherchez et recevez des offres de vendeurs.</p></div>
-<form method="post" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">{% csrf_token %}
-<div class="form-group"><label>Nom du produit recherché *</label><input type="text" name="product_name" class="form-control" placeholder="Ex: T-shirts en coton personnalisés" required></div>
-<div class="form-row"><div class="form-group"><label>Catégorie</label><select name="category" class="form-control"><option value="">— Choisir —</option>{% for cat in categories %}<option value="{{ cat.pk }}">{{ cat.name }}</option>{% endfor %}</select></div><div class="form-group"><label>Quantité souhaitée *</label><input type="number" name="quantity" class="form-control" placeholder="100" required></div></div>
-<div class="form-row"><div class="form-group"><label>Prix cible (FCFA / unité)</label><input type="number" name="target_price" class="form-control" placeholder="5000"></div><div class="form-group"><label>Unité</label><select name="unit" class="form-control"><option>pièce</option><option>kg</option><option>lot</option><option>carton</option><option>palette</option></select></div></div>
-<div class="form-group"><label>Description détaillée *</label><textarea name="description" class="form-control" rows="5" placeholder="Décrivez vos besoins en détail : matériaux, dimensions, couleurs, personnalisation..." required></textarea></div>
-<button type="submit" class="btn btn-orange btn-lg btn-block">Envoyer la demande</button>
-</form>
+<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Demande de devis</div>
+<div class="rq">
+    <div class="rq-head">
+        <div>
+            <h1><span class="ic"><i class="fa-solid fa-file-signature"></i></span> Demande de devis</h1>
+            <p>Décrivez le produit que vous cherchez, en quantité : les boutiques concernées vous envoient leurs offres, vous comparez et choisissez.</p>
+        </div>
+        {% if user.is_authenticated %}<a href="{% url 'orders:my_rfqs' %}" class="rq-mine"><i class="fa-solid fa-list-check"></i> Mes demandes {% if my_count %}<b>{{ my_count }}</b>{% endif %}</a>{% endif %}
+    </div>
+
+    <div class="rq-grid">
+        <form method="post" class="rq-card rq-form" novalidate data-auth="{% if user.is_authenticated %}1{% else %}0{% endif %}">{% csrf_token %}
+            {% if not user.is_authenticated %}
+            <div class="rq-login"><i class="fa-solid fa-circle-info"></i><span>Vous pouvez préparer votre demande ; il faudra <a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">vous connecter</a> pour l'envoyer. Pas de compte ? <a href="{% url 'accounts:register' %}">Inscription gratuite</a>.</span></div>
+            {% endif %}
+
+            <div class="rq-section">Le produit</div>
+            <div class="rq-field {% if errors.product_name %}err{% endif %}">
+                <label for="rqName">Produit recherché *</label>
+                <input type="text" id="rqName" name="product_name" class="form-control" value="{{ values.product_name }}" maxlength="{{ limits.name.1 }}" placeholder="Ex : T-shirts en coton personnalisés avec logo" required autofocus>
+                {% if errors.product_name %}<div class="rq-err"><i class="fa-solid fa-circle-exclamation"></i> {{ errors.product_name }}</div>{% endif %}
+            </div>
+            <div class="rq-field {% if errors.category %}err{% endif %}">
+                <label for="rqCat">Catégorie <small>(conseillé : votre demande est envoyée aux boutiques de cette catégorie)</small></label>
+                <select id="rqCat" name="category" class="form-control">
+                    <option value="">Je ne sais pas / autre</option>
+                    {% for cat in categories %}<option value="{{ cat.pk }}" {% if values.category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>{% endfor %}
+                </select>
+                {% if errors.category %}<div class="rq-err"><i class="fa-solid fa-circle-exclamation"></i> {{ errors.category }}</div>{% endif %}
+            </div>
+
+            <div class="rq-section">Quantité et budget</div>
+            <div class="rq-row">
+                <div class="rq-field {% if errors.quantity %}err{% endif %}">
+                    <label for="rqQty">Quantité souhaitée *</label>
+                    <div class="rq-qty">
+                        <input type="number" id="rqQty" name="quantity" class="form-control" value="{{ values.quantity }}" min="1" step="1" inputmode="numeric" placeholder="100" required>
+                        <select name="unit" class="form-control" aria-label="Unité">{% for u in units %}<option value="{{ u }}" {% if values.unit == u %}selected{% endif %}>{{ u }}</option>{% endfor %}</select>
+                    </div>
+                    {% if errors.quantity %}<div class="rq-err"><i class="fa-solid fa-circle-exclamation"></i> {{ errors.quantity }}</div>{% endif %}
+                </div>
+                <div class="rq-field {% if errors.target_price %}err{% endif %}">
+                    <label for="rqPrice">Prix cible <small>(facultatif)</small></label>
+                    <div class="rq-price">
+                        <input type="number" id="rqPrice" name="target_price" class="form-control" value="{{ values.target_price }}" min="1" step="1" inputmode="numeric" placeholder="5000">
+                        <span id="rqPer">FCFA / {{ values.unit|default:"pièce" }}</span>
+                    </div>
+                    {% if errors.target_price %}<div class="rq-err"><i class="fa-solid fa-circle-exclamation"></i> {{ errors.target_price }}</div>{% else %}<div class="rq-help"><span id="rqTotal">Prix par unité que vous visez.</span></div>{% endif %}
+                </div>
+            </div>
+
+            <div class="rq-section">Votre besoin</div>
+            <div class="rq-field {% if errors.description %}err{% endif %}">
+                <label for="rqDesc">Description détaillée *</label>
+                <textarea id="rqDesc" name="description" class="form-control" rows="6" maxlength="{{ limits.description.1 }}" placeholder="Matériaux, dimensions, couleurs, personnalisation, délai souhaité, ville de livraison…" required>{{ values.description }}</textarea>
+                {% if errors.description %}<div class="rq-err"><i class="fa-solid fa-circle-exclamation"></i> {{ errors.description }}</div>{% endif %}
+                <div class="rq-help"><span>Plus votre description est précise, plus les offres seront justes.</span><span id="rqCount">0 / {{ limits.description.1 }}</span></div>
+            </div>
+
+            <div class="rq-submit">
+                <p><i class="fa-solid fa-lock"></i> Les vendeurs voient votre nom, jamais votre e-mail ni votre téléphone.</p>
+                <button type="submit" class="btn btn-orange" id="rqSend">{% if user.is_authenticated %}<i class="fa-solid fa-paper-plane"></i> Envoyer la demande{% else %}<i class="fa-solid fa-right-to-bracket"></i> Se connecter et envoyer{% endif %}</button>
+            </div>
+        </form>
+
+        <aside class="rq-side">
+            <div class="rq-card">
+                <h3><i class="fa-solid fa-route"></i> Comment ça marche</h3>
+                <div class="rq-steps">
+                    <div class="rq-step"><b>1</b><div><strong>Vous décrivez votre besoin</strong>Produit, quantité et, si vous le souhaitez, votre prix cible.</div></div>
+                    <div class="rq-step"><b>2</b><div><strong>Les boutiques répondent</strong>Chaque offre précise le prix, le délai et les conditions de paiement.</div></div>
+                    <div class="rq-step"><b>3</b><div><strong>Vous choisissez</strong>Vous comparez les offres dans « Mes demandes » et acceptez la meilleure.</div></div>
+                </div>
+            </div>
+            <div class="rq-card">
+                <h3><i class="fa-solid fa-lightbulb"></i> Pour de bonnes offres</h3>
+                <ul class="rq-tips">
+                    <li><i class="fa-solid fa-check"></i> Choisissez la bonne catégorie pour toucher les bonnes boutiques.</li>
+                    <li><i class="fa-solid fa-check"></i> Donnez les caractéristiques importantes (taille, matière, modèle).</li>
+                    <li><i class="fa-solid fa-check"></i> Indiquez votre délai et votre ville de livraison.</li>
+                    <li><i class="fa-solid fa-check"></i> Un prix cible réaliste aide les vendeurs à se positionner.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+    var desc = document.getElementById('rqDesc'), count = document.getElementById('rqCount');
+    var qty = document.getElementById('rqQty'), price = document.getElementById('rqPrice'), unit = document.querySelector('[name=unit]');
+    var per = document.getElementById('rqPer'), total = document.getElementById('rqTotal'), form = document.querySelector('.rq-form'), send = document.getElementById('rqSend');
+    var fmt = function(n) { return Math.round(n).toLocaleString('fr-FR').replace(/[  ]/g, ' '); };
+    function upd() {
+        if (count) count.textContent = desc.value.length + ' / ' + desc.maxLength;
+        if (per) per.textContent = 'FCFA / ' + unit.value;
+        if (total) {
+            var q = parseInt(qty.value, 10), p = parseInt(price.value, 10);
+            total.textContent = q > 0 && p > 0 ? 'Budget total estimé : ' + fmt(q * p) + ' FCFA' : 'Prix par unité que vous visez.';
+        }
+    }
+    [desc, qty, price, unit].forEach(function(el) { if (el) el.addEventListener('input', upd); });
+    upd();
+    /* Brouillon : un visiteur non connecté retrouve sa saisie après la connexion */
+    var KEY = 'comptoir_rfq_draft', fields = ['product_name', 'category', 'quantity', 'unit', 'target_price', 'description'];
+    var store = { get: function() { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { return null; } },
+                  set: function(v) { try { sessionStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} },
+                  clear: function() { try { sessionStorage.removeItem(KEY); } catch (e) {} } };
+    var draft = store.get();
+    if (draft && form.dataset.auth === '1' && !form.product_name.value && !desc.value) {
+        fields.forEach(function(f) { if (draft[f] != null && form[f]) form[f].value = draft[f]; });
+        store.clear(); upd();
+    }
+    form.addEventListener('submit', function() {
+        if (form.dataset.auth !== '1') { var d = {}; fields.forEach(function(f) { d[f] = form[f].value; }); store.set(d); }
+        else store.clear();
+        send.disabled = true; send.style.opacity = '.7';
+    });
+})();
+</script>
 {% endblock %}

@@ -18,7 +18,12 @@ def login_view(request):
         user = authenticate(request, username=request.POST.get('username'), password=request.POST.get('password'))
         if user:
             login(request, user)
-            return redirect(request.GET.get('next', 'home'))
+            # Retour à la page demandée, seulement si elle appartient à ce site
+            from django.utils.http import url_has_allowed_host_and_scheme
+            nxt = request.POST.get('next') or request.GET.get('next', '')
+            if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+                return redirect(nxt)
+            return redirect('home')
         messages.error(request, 'Identifiants invalides.')
     return render(request, 'accounts/login.html')
 

@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.urls import reverse
 from django.db.models import Count, Q
 from .models import Order, RFQ, Quote
 from catalog.models import Category
@@ -20,40 +21,122 @@ def order_detail(request, order_number):
         order = get_object_or_404(Order, order_number=order_number, buyer=request.user)
     return render(request, 'orders/detail.html', {'order': order})
 
+@login_required
 def order_success(request, order_number):
-    order = get_object_or_404(Order, order_number=order_number)
+    """Confirmation de commande : visible seulement par l'acheteur (ou un administrateur)."""
+    if request.user.role == 'admin' or request.user.is_superuser:
+        order = get_object_or_404(Order, order_number=order_number)
+    else:
+        order = get_object_or_404(Order, order_number=order_number, buyer=request.user)
     return render(request, 'orders/success.html', {'order': order})
 
-def create_rfq(request):
-    categories = Category.objects.filter(parent__isnull=True)
-    if request.method == 'POST':
-        # Vérifier si l'utilisateur est connecté pour soumettre
-        if not request.user.is_authenticated:
-            messages.error(request, 'Vous devez être connecté pour soumettre une demande de devis.')
-            return redirect('accounts:login')
+RFQ_UNITS = ['pièce', 'kg', 'tonne', 'sac', 'carton', 'lot', 'palette', 'litre', 'mètre', 'boîte']
+RFQ_LIMITS = {'name': (3, 200), 'description': (10, 3000), 'quantity': (1, 10_000_000), 'price': (1, 1_000_000_000)}
 
-        rfq = RFQ.objects.create(
-            buyer=request.user,
-            product_name=request.POST.get('product_name'),
-            category_id=request.POST.get('category') or None,
-            description=request.POST.get('description'),
-            quantity=int(request.POST.get('quantity', 1)),
-            target_price=request.POST.get('target_price') or None,
-            unit=request.POST.get('unit', 'pièce'),
-        )
-        # Notifier tous les vendeurs de la nouvelle demande
-        from messaging.utils import notify
-        from accounts.models import User as U
-        for seller in U.objects.filter(role='seller', is_active=True):
-            notify(
-                seller, 'rfq',
-                'Nouvelle demande de devis',
-                f'{request.user.display_name} recherche : {rfq.product_name} ({rfq.quantity} {rfq.unit}).',
-                url=f'/dashboard/devis/{rfq.pk}/',
-            )
-        messages.success(request, 'Votre demande de devis a été envoyée !')
-        return redirect('orders:my_rfqs')
-    return render(request, 'orders/rfq_form.html', {'categories': categories})
+
+def _rfq_categories():
+    """Catégories proposées : celles qui ont des produits en ligne (directement ou dans leurs sous-catégories)."""
+    from django.db.models import F
+    return (Category.objects.filter(parent__isnull=True, is_active=True)
+            .annotate(direct=Count('products', filter=Q(products__is_active=True), distinct=True),
+                      nested=Count('children__products', filter=Q(children__products__is_active=True), distinct=True))
+            .annotate(total=F('direct') + F('nested')).filter(total__gt=0).order_by('order', 'name'))
+
+
+def _clean_rfq(data):
+    """Valide le formulaire. Retourne (valeurs nettoyées, erreurs par champ)."""
+    errors, clean = {}, {}
+    name = ' '.join(data.get('product_name', '').split())
+    lo, hi = RFQ_LIMITS['name']
+    if not lo <= len(name) <= hi:
+        errors['product_name'] = f'Indiquez le produit recherché ({lo} à {hi} caractères).'
+    clean['product_name'] = name
+
+    raw_qty = data.get('quantity', '').strip().replace(' ', '')
+    lo, hi = RFQ_LIMITS['quantity']
+    if not raw_qty.isdigit() or not lo <= int(raw_qty) <= hi:
+        errors['quantity'] = 'Indiquez une quantité entière supérieure à 0.'
+    else:
+        clean['quantity'] = int(raw_qty)
+
+    unit = data.get('unit', 'pièce')
+    clean['unit'] = unit if unit in RFQ_UNITS else 'pièce'
+
+    raw_price = data.get('target_price', '').strip().replace(' ', '')
+    clean['target_price'] = None
+    if raw_price:
+        lo, hi = RFQ_LIMITS['price']
+        if not raw_price.isdigit() or not lo <= int(raw_price) <= hi:
+            errors['target_price'] = 'Le prix cible doit être un montant positif en FCFA (ou laissez vide).'
+        else:
+            clean['target_price'] = int(raw_price)
+
+    clean['category'] = None
+    raw_cat = data.get('category', '')
+    if raw_cat:
+        cat = Category.objects.filter(pk=raw_cat, is_active=True).first() if raw_cat.isdigit() else None
+        if cat is None:
+            errors['category'] = 'Catégorie inconnue.'
+        clean['category'] = cat
+
+    description = data.get('description', '').strip()
+    lo, hi = RFQ_LIMITS['description']
+    if not lo <= len(description) <= hi:
+        errors['description'] = f'Décrivez votre besoin ({lo} à {hi} caractères) : matériaux, dimensions, délai, lieu de livraison…'
+    clean['description'] = description
+    return clean, errors
+
+
+def _notify_rfq(rfq):
+    """Prévient les boutiques concernées (celles qui vendent dans la catégorie, sinon toutes) et leurs employés."""
+    from messaging.utils import notify_store
+    from store.models import Store
+    stores = Store.objects.filter(is_active=True, owner__is_active=True).exclude(owner=rfq.buyer)
+    if rfq.category_id:
+        in_category = stores.filter(Q(products__category=rfq.category) | Q(products__category__parent=rfq.category),
+                                    products__is_active=True).distinct()
+        if in_category.exists():
+            stores = in_category
+    title = 'Nouvelle demande de devis'
+    text = f'{rfq.buyer.display_name} recherche : {rfq.product_name} ({rfq.quantity} {rfq.unit}).'
+    if rfq.target_price:
+        text += f' Prix cible : {int(rfq.target_price):,} FCFA / {rfq.unit}.'.replace(',', ' ')
+    sent = 0
+    for store in stores.select_related('owner'):
+        sent += len(notify_store(store, 'orders.view', 'rfq', title, text, url=f'/dashboard/devis/{rfq.pk}/'))
+    return sent
+
+
+def create_rfq(request):
+    """Demande de devis : le formulaire est visible par tous ; il faut être connecté pour l'envoyer."""
+    from datetime import timedelta
+    from django.utils import timezone
+    values = {'product_name': request.GET.get('produit', '')[:200], 'quantity': request.GET.get('quantite', '')[:12],
+              'unit': 'pièce', 'target_price': '', 'category': request.GET.get('categorie', ''), 'description': ''}
+    errors = {}
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            messages.info(request, 'Connectez-vous pour envoyer votre demande de devis.')
+            return redirect(f"{reverse('accounts:login')}?next={request.path}")
+        values = {k: request.POST.get(k, '') for k in values}
+        clean, errors = _clean_rfq(request.POST)
+        if not errors:
+            recent = RFQ.objects.filter(buyer=request.user, product_name__iexact=clean['product_name'],
+                                        quantity=clean['quantity'], created_at__gte=timezone.now() - timedelta(minutes=2)).first()
+            if recent:
+                messages.info(request, 'Cette demande a déjà été envoyée.')
+                return redirect('orders:my_rfqs')
+            rfq = RFQ.objects.create(buyer=request.user, **clean)
+            sent = _notify_rfq(rfq)
+            messages.success(request, 'Votre demande de devis a été envoyée'
+                             + (f' à {sent} vendeur{"s" if sent > 1 else ""} concerné{"s" if sent > 1 else ""}.' if sent else '.'))
+            return redirect('orders:my_rfqs')
+        messages.error(request, 'Vérifiez les champs signalés.')
+    return render(request, 'orders/rfq_form.html', {
+        'categories': _rfq_categories(), 'units': RFQ_UNITS, 'values': values, 'errors': errors,
+        'limits': RFQ_LIMITS,
+        'my_count': RFQ.objects.filter(buyer=request.user).count() if request.user.is_authenticated else 0,
+    })
 
 # Liste des RFQ pour les vendeurs
 def rfq_list(request):
