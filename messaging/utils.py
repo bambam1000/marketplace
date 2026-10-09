@@ -44,6 +44,23 @@ def notify(user, notif_type, title, message, url='', send_email=False, email_sub
     return notif
 
 
+def store_recipients(store, permission):
+    """Propriétaire de la boutique + employés actifs ayant la permission (ex. 'orders.view')."""
+    from store.models import StoreMember
+    users = {store.owner_id: store.owner}
+    if permission:
+        for m in StoreMember.objects.filter(store=store, is_active=True, user__is_active=True).select_related('user', 'role'):
+            if m.has_permission(permission):
+                users.setdefault(m.user_id, m.user)
+    return list(users.values())
+
+
+def notify_store(store, permission, notif_type, title, message, url='', send_email=False, email_subject=None):
+    """Notifie toute l'équipe concernée d'une boutique (propriétaire + employés autorisés)."""
+    return [notify(u, notif_type, title, message, url=url, send_email=send_email, email_subject=email_subject)
+            for u in store_recipients(store, permission)]
+
+
 def send_new_message_notification(message):
     """
     Envoie une notification par email lorsqu'un nouveau message est reçu

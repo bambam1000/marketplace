@@ -49,7 +49,7 @@ def create_rfq(request):
                 seller, 'rfq',
                 'Nouvelle demande de devis',
                 f'{request.user.display_name} recherche : {rfq.product_name} ({rfq.quantity} {rfq.unit}).',
-                url=f'/commandes/devis/{rfq.pk}/',
+                url=f'/dashboard/devis/{rfq.pk}/',
             )
         messages.success(request, 'Votre demande de devis a été envoyée !')
         return redirect('orders:my_rfqs')
@@ -151,7 +151,7 @@ def submit_quote(request, rfq_id):
             rfq.buyer, 'rfq',
             f'Offre reçue pour « {rfq.product_name} »',
             f'{request.user.store.name} vous propose {total_price} FCFA ({price_per_unit} FCFA/{rfq.unit}).',
-            url=f'/commandes/mes-devis/',
+            url='/commandes/rfq/mes-demandes/',
             send_email=True,
         )
         messages.success(request, 'Votre devis a été soumis avec succès !')
@@ -182,12 +182,12 @@ def accept_quote(request, quote_id):
     Quote.objects.filter(rfq=quote.rfq).exclude(pk=quote_id).update(status='rejected')
 
     # Notifier le vendeur
-    from messaging.utils import notify
-    notify(
-        quote.seller, 'rfq',
-        'Votre devis a été accepté !',
+    from messaging.utils import notify_store
+    notify_store(
+        quote.store, 'orders.view', 'rfq',
+        'Votre devis a été accepté',
         f'{quote.rfq.buyer.display_name} a accepté votre offre de {quote.total_price} FCFA pour « {quote.rfq.product_name} ».',
-        url=f'/dashboard/devis/',
+        url=f'/dashboard/devis/{quote.rfq_id}/',
         send_email=True,
     )
     messages.success(request, f'Vous avez accepté le devis de {quote.store.name}. Le vendeur va vous contacter.')

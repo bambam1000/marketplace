@@ -131,9 +131,9 @@ class Product(models.Model):
         if update_global and quantity < 0 and self.low_stock_threshold:
             if before > self.low_stock_threshold and self.stock <= self.low_stock_threshold:
                 try:
-                    from messaging.utils import notify
-                    notify(
-                        self.store.owner, 'stock',
+                    from messaging.utils import notify_store
+                    notify_store(
+                        self.store, 'stock.view', 'stock',
                         f'Stock faible : {self.name}',
                         f'Il ne reste que {self.stock} unité(s) de « {self.name} » (seuil : {self.low_stock_threshold}). Pensez à réapprovisionner.',
                         url='/dashboard/produits/',

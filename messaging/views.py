@@ -122,36 +122,175 @@ def get_new_messages(request, conversation_id):
 
 
 # ========== NOTIFICATIONS ==========
+def _safe_internal_url(url):
+    """Lien interne d'une notification, seulement s'il mène à une page existante du site."""
+    from django.urls import Resolver404, resolve
+    from django.utils import translation
+    if not url or not url.startswith('/') or url.startswith('//'):
+        return None
+    path = url.split('?')[0].split('#')[0]
+    lang = translation.get_language() or 'fr'
+    candidates = [path] if path.startswith(f'/{lang}/') or path.startswith('/static/') else [f'/{lang}{path}', path]
+    for candidate in candidates:
+        try:
+            resolve(candidate)
+            return url
+        except Resolver404:
+            continue
+    return None
+
+
+def _day_group(dt):
+    from datetime import timedelta
+    from django.utils import timezone
+    d = timezone.localtime(dt).date()
+    today = timezone.localdate()
+    if d == today:
+        return "Aujourd'hui"
+    if d == today - timedelta(days=1):
+        return 'Hier'
+    if d > today - timedelta(days=7):
+        return 'Cette semaine'
+    if d > today - timedelta(days=31):
+        return 'Ce mois-ci'
+    return 'Plus ancien'
+
+
+def notification_center(request, layout=None):
+    """Centre de notifications (site et tableau de bord) : filtres, regroupement par jour, pagination."""
+    from django.core.paginator import Paginator
+    from django.db.models import Count, Q
+    base = Notification.objects.filter(user=request.user)
+    counts = dict(base.values_list('notif_type').annotate(n=Count('id')))
+    unread_by_type = dict(base.filter(is_read=False).values_list('notif_type').annotate(n=Count('id')))
+    current_type = request.GET.get('type', '')
+    only_unread = request.GET.get('filtre') == 'non-lues'
+    qs = base
+    if current_type in counts:
+        qs = qs.filter(notif_type=current_type)
+    else:
+        current_type = ''
+    if only_unread:
+        qs = qs.filter(is_read=False)
+    page = Paginator(qs, 25).get_page(request.GET.get('page'))
+    groups = []
+    for n in page.object_list:
+        label = _day_group(n.created_at)
+        if not groups or groups[-1][0] != label:
+            groups.append((label, []))
+        groups[-1][1].append(n)
+    labels = dict(Notification.TYPE_CHOICES)
+    types = [(code, labels.get(code, code), counts[code], unread_by_type.get(code, 0),
+              Notification.STYLES.get(code, Notification.STYLES['system']))
+             for code, _ in Notification.TYPE_CHOICES if code in counts]
+    query = request.GET.copy()
+    query.pop('page', None)
+    return render(request, 'messaging/notifications.html', {
+        'layout': layout or _layout(request.user), 'page': page, 'groups': groups, 'types': types,
+        'current_type': current_type, 'only_unread': only_unread, 'querystring': query.urlencode(),
+        'total': sum(counts.values()), 'total_unread': sum(unread_by_type.values()),
+        'read_count': sum(counts.values()) - sum(unread_by_type.values()),
+        'prefs': _prefs_rows(request.user),
+    })
+
+
+def _prefs_rows(user):
+    from .models import NotificationPreference
+    prefs, _ = NotificationPreference.objects.get_or_create(user=user)
+    return [{'field': f, 'label': label, 'help': help_text, 'on': getattr(prefs, f), 'email': f.startswith('email_')}
+            for f, label, help_text, sellers_only in NotificationPreference.FIELDS if user.is_seller or not sellers_only]
+
+
+def _notif_json(request, extra=None):
+    data = {'unread': Notification.objects.filter(user=request.user, is_read=False).count()}
+    data.update(extra or {})
+    return JsonResponse(data)
+
+
+@login_required
+def notification_preferences(request):
+    """Enregistre les préférences de notification (cases cochées = activé)."""
+    from .models import NotificationPreference
+    if request.method == 'POST':
+        prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+        for field, _label, _help, sellers_only in NotificationPreference.FIELDS:
+            if sellers_only and not request.user.is_seller:
+                continue
+            setattr(prefs, field, field in request.POST)
+        prefs.save()
+        flash.success(request, 'Préférences de notification enregistrées.')
+    return redirect(request.POST.get('next') or 'messaging:notifications')
+
+
 @login_required
 def notifications_list(request):
-    """Centre de notifications"""
-    notifs = Notification.objects.filter(user=request.user)
-    # Marquer comme lues à l'affichage de la page
-    notifs.filter(is_read=False).update(is_read=True)
-    return render(request, 'messaging/notifications.html', {'notifications': notifs[:100]})
+    return notification_center(request)
 
 
 @login_required
 def notification_mark_read(request, pk):
-    """Marque une notification comme lue et redirige vers sa cible"""
+    """Ouvre une notification : la marque comme lue puis redirige vers sa page (si elle existe encore)."""
     notif = get_object_or_404(Notification, pk=pk, user=request.user)
-    notif.is_read = True
-    notif.save(update_fields=['is_read'])
-    if notif.url:
-        # Vérifier que l'objet lié existe encore (évite les 404)
-        import re
-        m = re.search(r'/commandes/([A-Z0-9-]+)/', notif.url)
-        if m:
-            from orders.models import Order
-            if not Order.objects.filter(order_number=m.group(1)).exists():
-                return redirect('messaging:notifications')
-        return redirect(notif.url)
-    return redirect('messaging:notifications')
+    if not notif.is_read:
+        notif.is_read = True
+        notif.save(update_fields=['is_read'])
+    target = _safe_internal_url(notif.url)
+    if target is None:
+        if notif.url:
+            flash.info(request, "La page liée à cette notification n'existe plus.")
+        return redirect('messaging:notifications')
+    return redirect(target)
+
+
+@login_required
+def notification_action(request, pk):
+    """POST action=read|unread|delete sur une notification."""
+    if request.method != 'POST':
+        return redirect('messaging:notifications')
+    notif = get_object_or_404(Notification, pk=pk, user=request.user)
+    action = request.POST.get('action')
+    if action == 'delete':
+        notif.delete()
+    elif action in ('read', 'unread'):
+        notif.is_read = action == 'read'
+        notif.save(update_fields=['is_read'])
+    if _wants_json(request):
+        return _notif_json(request, {'ok': True, 'action': action})
+    return redirect(request.POST.get('next') or 'messaging:notifications')
 
 
 @login_required
 def notifications_mark_all_read(request):
     """Marque toutes les notifications comme lues"""
     if request.method == 'POST':
-        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-    return redirect(request.META.get('HTTP_REFERER', 'messaging:notifications'))
+        n = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        if _wants_json(request):
+            return _notif_json(request, {'ok': True, 'marked': n})
+        if n:
+            flash.success(request, f'{n} notification{"s" if n > 1 else ""} marquée{"s" if n > 1 else ""} comme lue{"s" if n > 1 else ""}.')
+    from urllib.parse import urlparse
+    referer = urlparse(request.META.get('HTTP_REFERER', ''))
+    same_site = not referer.netloc or referer.netloc == request.get_host()
+    back = referer.path + (f'?{referer.query}' if referer.query else '') if same_site else ''
+    return redirect(back if _safe_internal_url(back) else 'messaging:notifications')
+
+
+@login_required
+def notifications_delete_read(request):
+    """Supprime les notifications déjà lues."""
+    if request.method == 'POST':
+        n, _ = Notification.objects.filter(user=request.user, is_read=True).delete()
+        flash.success(request, f'{n} notification{"s" if n > 1 else ""} lue{"s" if n > 1 else ""} supprimée{"s" if n > 1 else ""}.')
+    return redirect('messaging:notifications')
+
+
+@login_required
+def notifications_feed(request):
+    """Cloche en direct : nombre de non lues et dernières notifications."""
+    from django.urls import reverse
+    latest = Notification.objects.filter(user=request.user)[:8]
+    return _notif_json(request, {'items': [{
+        'id': n.pk, 'title': n.title, 'message': n.message[:140], 'icon': n.icon, 'color': n.color,
+        'read': n.is_read, 'ago': n.ago,
+        'url': reverse('messaging:notification_read', args=[n.pk]),
+    } for n in latest]})

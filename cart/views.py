@@ -276,11 +276,12 @@ def checkout(request):
             send_email=True,
             email_subject=f'Confirmation de commande {order.order_number} — Comptoir',
         )
-        for st in store_totals.keys():
-            notify(
-                st.owner, 'order',
+        from messaging.utils import notify_store
+        for st, st_total in store_totals.items():
+            notify_store(
+                st, 'orders.view', 'order',
                 f'Nouvelle commande {order.order_number}',
-                f'{request.user.display_name} a commandé pour {order.total_amount:.0f} FCFA.',
+                f'{request.user.display_name} a commandé pour {int(st_total):,} FCFA dans votre boutique.'.replace(',', ' '),
                 url=f'/dashboard/commandes/{order.order_number}/',
                 send_email=True,
             )

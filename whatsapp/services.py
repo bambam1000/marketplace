@@ -366,9 +366,9 @@ def handle_incoming(instance, data):
         queue_message(instance, number, 'optout', chat=chat, body=(
             'C\'est noté : vous recevrez à nouveau le suivi de vos commandes sur WhatsApp. Envoyez STOP pour arrêter.'))
     elif instance.store_id:
-        from messaging.utils import notify
-        notify(instance.store.owner, 'system', f'Nouveau message WhatsApp de {chat.display_name}', text[:200],
-               url=reverse('whatsapp:chat', args=[chat.pk]))
+        from messaging.utils import notify_store
+        notify_store(instance.store, 'orders.manage', 'message', f'Nouveau message WhatsApp de {chat.display_name}', text[:200],
+                     url=reverse('whatsapp:chat', args=[chat.pk]))
     return msg
 
 

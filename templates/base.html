@@ -105,7 +105,7 @@
 <a href="{% url 'messaging:notifications' %}" class="header-icon m-hide">
 <i class="fa-regular fa-bell"></i>
 <span class="header-icon-label">Notifs</span>
-{% if unread_notifications_count > 0 %}<span class="badge">{{ unread_notifications_count }}</span>{% endif %}
+<span class="badge js-notif-count" {% if not unread_notifications_count %}style="display:none;"{% endif %}>{{ unread_notifications_count }}</span>
 </a>
 {% endif %}
 <a href="{% url 'catalog:wishlist' %}" class="header-icon m-hide">
@@ -385,6 +385,38 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 {% if user.is_authenticated %}
+/* Cloche en direct : compteur et dernières notifications, toutes les 30 s (en pause si l'onglet est caché) */
+(function() {
+  var FEED = "{% url 'messaging:notifications_feed' %}", list = document.getElementById('notifList');
+  function badges(n) {
+    document.querySelectorAll('.js-notif-count').forEach(function(b) { b.textContent = n; b.style.display = n > 0 ? '' : 'none'; });
+  }
+  function render(items) {
+    if (!list) return;
+    list.textContent = '';
+    if (!items.length) { var e = document.createElement('div'); e.className = 'tb-empty'; e.innerHTML = '<i class="fa-regular fa-bell"></i>'; e.appendChild(document.createTextNode('Aucune notification')); list.appendChild(e); return; }
+    items.forEach(function(n) {
+      var a = document.createElement('a'); a.href = n.url; a.className = 'tb-notif' + (n.read ? '' : ' unread');
+      var ic = document.createElement('span'); ic.className = 'tb-notif-ic'; ic.style.background = n.color + '1a'; ic.style.color = n.color;
+      var i = document.createElement('i'); i.className = 'fa-solid ' + n.icon; ic.appendChild(i);
+      var main = document.createElement('span'); main.className = 'tb-notif-main';
+      [['t', n.title], ['d', n.message], ['w', n.ago]].forEach(function(p) { var s = document.createElement('span'); s.className = p[0]; s.textContent = p[1]; main.appendChild(s); });
+      a.appendChild(ic); a.appendChild(main);
+      if (!n.read) { var dot = document.createElement('span'); dot.className = 'tb-dot'; a.appendChild(dot); }
+      list.appendChild(a);
+    });
+  }
+  function poll() {
+    if (document.hidden) return;
+    fetch(FEED, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) { if (d) { badges(d.unread); render(d.items); } })
+      .catch(function() {});
+  }
+  setInterval(poll, 30000);
+  document.addEventListener('visibilitychange', function() { if (!document.hidden) poll(); });
+})();
+
 // Mise à jour du compteur de messages non lus en temps réel
 function updateUnreadCountMain() {
   fetch('/messages/api/unread-count/')

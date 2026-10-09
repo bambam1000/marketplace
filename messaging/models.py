@@ -40,8 +40,19 @@ class Notification(models.Model):
         ('stock', 'Stock'),
         ('payment', 'Paiement'),
         ('account', 'Compte'),
+        ('message', 'Messages'),
         ('system', 'Système'),
     ]
+    STYLES = {
+        'order': ('fa-box', '#ff6a00'),
+        'rfq': ('fa-file-signature', '#7a5af8'),
+        'invoice': ('fa-file-invoice', '#2e90fa'),
+        'stock': ('fa-boxes-stacked', '#f79009'),
+        'payment': ('fa-money-bill-wave', '#12b76a'),
+        'account': ('fa-user', '#475467'),
+        'message': ('fa-comments', '#25a35a'),
+        'system': ('fa-bell', '#667085'),
+    }
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
     notif_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='system')
@@ -53,21 +64,36 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', 'is_read', '-created_at'], name='notif_user_unread_idx')]
 
     def __str__(self):
         return f"{self.user.username} — {self.title}"
 
     @property
     def icon(self):
-        return {
-            'order': 'fa-box',
-            'rfq': 'fa-file-invoice',
-            'invoice': 'fa-receipt',
-            'stock': 'fa-boxes-stacked',
-            'payment': 'fa-money-bill-wave',
-            'account': 'fa-user',
-            'system': 'fa-bell',
-        }.get(self.notif_type, 'fa-bell')
+        return self.STYLES.get(self.notif_type, self.STYLES['system'])[0]
+
+    @property
+    def ago(self):
+        """Temps écoulé court, en français : « à l'instant », « il y a 5 min », « hier »…"""
+        from django.utils import timezone
+        seconds = (timezone.now() - self.created_at).total_seconds()
+        if seconds < 60:
+            return "à l'instant"
+        if seconds < 3600:
+            return f'il y a {int(seconds // 60)} min'
+        if seconds < 86400:
+            return f'il y a {int(seconds // 3600)} h'
+        days = (timezone.localdate() - timezone.localtime(self.created_at).date()).days
+        if days == 1:
+            return 'hier'
+        if days < 7:
+            return f'il y a {days} jours'
+        return timezone.localtime(self.created_at).strftime('le %d/%m/%Y')
+
+    @property
+    def color(self):
+        return self.STYLES.get(self.notif_type, self.STYLES['system'])[1]
 
 
 class NotificationPreference(models.Model):
@@ -87,6 +113,19 @@ class NotificationPreference(models.Model):
 
     def __str__(self):
         return f"Préférences notif — {self.user.username}"
+
+    # Réglages proposés à l'utilisateur : (champ, libellé, explication, pour les vendeurs seulement)
+    FIELDS = [
+        ('internal_enabled', 'Dans la cloche', 'Afficher les notifications sur le site et dans le tableau de bord', False),
+        ('email_order', 'Commandes', 'Nouvelles commandes et suivi de vos commandes', False),
+        ('email_rfq', 'Devis', 'Demandes de devis et offres reçues', False),
+        ('email_invoice', 'Factures', 'Factures envoyées ou reçues', False),
+        ('email_payment', 'Paiements', 'Confirmations de paiement et versements', False),
+        ('email_account', 'Compte', 'Sécurité et informations de votre compte', False),
+        ('email_stock', 'Alertes de stock', 'Produits qui passent sous leur seuil de stock', True),
+        ('email_marketing', 'Offres des boutiques', 'Promotions envoyées par les boutiques où vous avez acheté', False),
+        ('whatsapp_orders', 'WhatsApp', 'Confirmation et suivi de commande sur WhatsApp', False),
+    ]
 
     def allows_email(self, notif_type):
         return {

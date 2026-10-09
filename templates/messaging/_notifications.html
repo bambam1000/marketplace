@@ -1,0 +1,220 @@
+<style>
+.nt { --nt-orange: #ff6a00; --nt-soft: #fff4ec; --nt-text: #101828; --nt-text2: #475467; --nt-text3: #98a2b3; --nt-border: #eaecf0; --nt-bg: #f6f7f9; color: var(--nt-text); }
+.nt-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+.nt-head h1 { font-size: 24px; margin: 0; display: flex; align-items: center; gap: 10px; font-family: inherit; font-weight: 800; }
+.nt-head h1 i { color: var(--nt-orange); }
+.nt-head p { margin: 4px 0 0; font-size: 13px; color: var(--nt-text3); }
+.nt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.nt-actions form { margin: 0; }
+.nt-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--nt-border); background: #fff; font: 600 13px inherit; font-family: inherit; color: var(--nt-text2); cursor: pointer; text-decoration: none; }
+.nt-btn:hover { border-color: var(--nt-orange); color: var(--nt-orange); }
+.nt-btn.primary { background: var(--nt-orange); border-color: var(--nt-orange); color: #fff; }
+.nt-btn.primary:hover { color: #fff; filter: brightness(1.05); }
+.nt-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.nt-card { background: #fff; border: 1px solid var(--nt-border); border-radius: 12px; box-shadow: 0 1px 3px rgba(16,24,40,.05); overflow: hidden; }
+.nt-tabs { display: flex; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--nt-border); overflow-x: auto; scrollbar-width: none; }
+.nt-tabs::-webkit-scrollbar { display: none; }
+.nt-tabs a { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 50px; font-size: 13px; font-weight: 600; color: var(--nt-text2); text-decoration: none; }
+.nt-tabs a.on { background: var(--nt-soft); color: var(--nt-orange); }
+.nt-tabs a b { font-size: 11px; background: var(--nt-orange); color: #fff; border-radius: 50px; padding: 0 7px; line-height: 18px; }
+.nt-tabs .nt-type-chip { display: none; }
+.nt-group { padding: 12px 18px 6px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--nt-text3); background: var(--nt-bg); border-bottom: 1px solid var(--nt-border); }
+.nt-item { display: flex; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #f2f4f7; position: relative; transition: background .15s; }
+.nt-item:last-child { border-bottom: none; }
+.nt-item:hover { background: #fafbfc; }
+.nt-item.unread { background: #fffaf5; }
+.nt-item.unread::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--nt-orange); }
+.nt-ic { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.nt-main { flex: 1; min-width: 0; text-decoration: none; color: inherit; }
+.nt-title { font-size: 14px; font-weight: 600; line-height: 1.35; }
+.nt-item.unread .nt-title { font-weight: 800; }
+.nt-msg { font-size: 13px; color: var(--nt-text2); margin-top: 3px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.nt-meta { font-size: 11.5px; color: var(--nt-text3); margin-top: 5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.nt-meta .tag { font-weight: 700; }
+.nt-tools { display: flex; gap: 4px; align-items: flex-start; flex-shrink: 0; opacity: .35; transition: opacity .15s; }
+.nt-item:hover .nt-tools, .nt-item:focus-within .nt-tools { opacity: 1; }
+.nt-tools form { margin: 0; }
+.nt-tools button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; background: none; color: var(--nt-text2); cursor: pointer; font-size: 13px; }
+.nt-tools button:hover { background: #fff; border-color: var(--nt-border); color: var(--nt-orange); }
+.nt-tools button.del:hover { color: #d92d20; }
+.nt-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--nt-orange); margin-top: 6px; flex-shrink: 0; }
+.nt-item:not(.unread) .nt-dot { visibility: hidden; }
+.nt-empty { text-align: center; padding: 3.5rem 1.5rem; color: var(--nt-text3); font-size: 13.5px; line-height: 1.6; }
+.nt-empty i { font-size: 38px; opacity: .25; display: block; margin-bottom: 12px; }
+.nt-empty b { display: block; color: var(--nt-text); font-size: 16px; margin-bottom: 4px; }
+.nt-pages { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 14px; border-top: 1px solid var(--nt-border); font-size: 13px; color: var(--nt-text3); }
+.nt-side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 84px; }
+.nt-side h3 { font-size: 14px; margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--nt-border); display: flex; align-items: center; gap: 8px; font-family: inherit; font-weight: 700; }
+.nt-side h3 i { color: var(--nt-orange); }
+.nt-types a { display: flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; color: var(--nt-text2); text-decoration: none; }
+.nt-types a:hover { background: var(--nt-bg); }
+.nt-types a.on { background: var(--nt-soft); color: var(--nt-text); font-weight: 700; }
+.nt-types a .ic { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.nt-types a .n { margin-left: auto; font-size: 12px; color: var(--nt-text3); }
+.nt-types a .u { background: var(--nt-orange); color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 50px; padding: 0 6px; line-height: 17px; }
+.nt-prefs form { padding: 6px 16px 16px; margin: 0; }
+.nt-prefs .grp { font-size: 11px; font-weight: 700; color: var(--nt-text3); text-transform: uppercase; letter-spacing: .05em; margin: 12px 0 4px; }
+.nt-switch { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; cursor: pointer; }
+.nt-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.nt-switch .sw { width: 34px; height: 20px; border-radius: 50px; background: #d0d5dd; position: relative; flex-shrink: 0; transition: background .2s; margin-top: 1px; }
+.nt-switch .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.nt-switch input:checked + .sw { background: var(--nt-orange); }
+.nt-switch input:checked + .sw::after { transform: translateX(14px); }
+.nt-switch input:focus-visible + .sw { outline: 2px solid var(--nt-orange); outline-offset: 2px; }
+.nt-switch b { display: block; font-size: 13px; }
+.nt-switch small { display: block; font-size: 11.5px; color: var(--nt-text3); line-height: 1.4; }
+.nt-prefs .nt-btn { width: 100%; justify-content: center; margin-top: 10px; }
+@media (max-width: 1000px) {
+    .nt-layout { grid-template-columns: 1fr; }
+    .nt-side { position: static; }
+    .nt-types-card { display: none; }
+    .nt-tabs .nt-type-chip { display: inline-flex; }
+}
+@media (max-width: 600px) {
+    .nt-head h1 { font-size: 20px; }
+    .nt-actions, .nt-actions form, .nt-actions .nt-btn { width: 100%; justify-content: center; }
+    .nt-item { padding: 12px 14px; gap: 10px; }
+    .nt-ic { width: 36px; height: 36px; }
+    .nt-tools { opacity: 1; flex-direction: column; }
+    .nt-tools button { width: 30px; height: 30px; }
+}
+</style>
+
+<div class="nt">
+    <div class="nt-head">
+        <div>
+            <h1><i class="fa-regular fa-bell"></i> Notifications</h1>
+            <p>{% if total %}<span id="ntUnreadText">{{ total_unread }} non lue{{ total_unread|pluralize }}</span> sur {{ total }}{% else %}Vous êtes à jour.{% endif %}</p>
+        </div>
+        <div class="nt-actions">
+            {% if total_unread %}
+            <form method="post" action="{% url 'messaging:notifications_read_all' %}">{% csrf_token %}
+                <button type="submit" class="nt-btn primary"><i class="fa-solid fa-check-double"></i> Tout marquer comme lu</button>
+            </form>
+            {% endif %}
+            {% if read_count %}
+            <form method="post" action="{% url 'messaging:notifications_delete_read' %}" onsubmit="return confirm('Supprimer les {{ read_count }} notification{{ read_count|pluralize }} déjà lue{{ read_count|pluralize }} ?')">{% csrf_token %}
+                <button type="submit" class="nt-btn"><i class="fa-regular fa-trash-can"></i> Supprimer les lues</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="nt-layout">
+        <div class="nt-card">
+            <nav class="nt-tabs" aria-label="Filtrer les notifications">
+                <a href="?{% if current_type %}type={{ current_type }}{% endif %}" class="{% if not only_unread %}on{% endif %}">Toutes</a>
+                <a href="?filtre=non-lues{% if current_type %}&type={{ current_type }}{% endif %}" class="{% if only_unread %}on{% endif %}">Non lues {% if total_unread %}<b>{{ total_unread }}</b>{% endif %}</a>
+                {% for code, label, n, u, style in types %}
+                <a href="?type={{ code }}{% if only_unread %}&filtre=non-lues{% endif %}" class="nt-type-chip {% if code == current_type %}on{% endif %}"><i class="fa-solid {{ style.0 }}" style="color:{{ style.1 }};"></i> {{ label }}</a>
+                {% endfor %}
+                {% if current_type %}<a href="?{% if only_unread %}filtre=non-lues{% endif %}" style="margin-left:auto;"><i class="fa-solid fa-xmark"></i> Tous les types</a>{% endif %}
+            </nav>
+
+            {% for label, items in groups %}
+            <div class="nt-group">{{ label }}</div>
+            {% for n in items %}
+            <div class="nt-item {% if not n.is_read %}unread{% endif %}" data-id="{{ n.pk }}">
+                <span class="nt-dot" aria-hidden="true"></span>
+                <span class="nt-ic" style="background:{{ n.color }}1a;color:{{ n.color }};"><i class="fa-solid {{ n.icon }}"></i></span>
+                <a href="{% url 'messaging:notification_read' n.pk %}" class="nt-main">
+                    <div class="nt-title">{{ n.title }}</div>
+                    <div class="nt-msg">{{ n.message }}</div>
+                    <div class="nt-meta"><span class="tag" style="color:{{ n.color }};">{{ n.get_notif_type_display }}</span><span>·</span><span title="{{ n.created_at|date:'d/m/Y à H:i' }}">{{ n.ago }}</span></div>
+                </a>
+                <div class="nt-tools">
+                    <form method="post" action="{% url 'messaging:notification_action' n.pk %}">{% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" name="action" value="{% if n.is_read %}unread{% else %}read{% endif %}" class="tog" title="{% if n.is_read %}Marquer comme non lue{% else %}Marquer comme lue{% endif %}" aria-label="{% if n.is_read %}Marquer comme non lue{% else %}Marquer comme lue{% endif %}"><i class="fa-{% if n.is_read %}solid fa-envelope{% else %}regular fa-envelope-open{% endif %}"></i></button>
+                    </form>
+                    <form method="post" action="{% url 'messaging:notification_action' n.pk %}">{% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" name="action" value="delete" class="del" title="Supprimer" aria-label="Supprimer"><i class="fa-regular fa-trash-can"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            {% empty %}
+            <div class="nt-empty">
+                <i class="fa-regular fa-bell"></i>
+                {% if only_unread or current_type %}<b>Rien ici</b>Aucune notification ne correspond à ce filtre.
+                {% else %}<b>Aucune notification</b>Vous serez prévenu ici des commandes, devis, paiements, messages et alertes de stock.{% endif %}
+            </div>
+            {% endfor %}
+
+            {% if page.has_other_pages %}
+            <div class="nt-pages">
+                {% if page.has_previous %}<a class="nt-btn" href="?{{ querystring }}&page={{ page.previous_page_number }}"><i class="fa-solid fa-chevron-left"></i> Plus récentes</a>{% endif %}
+                <span>Page {{ page.number }} / {{ page.paginator.num_pages }}</span>
+                {% if page.has_next %}<a class="nt-btn" href="?{{ querystring }}&page={{ page.next_page_number }}">Plus anciennes <i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <aside class="nt-side">
+            {% if types %}
+            <div class="nt-card nt-types-card">
+                <h3><i class="fa-solid fa-filter"></i> Par type</h3>
+                <div class="nt-types">
+                    <a href="?{% if only_unread %}filtre=non-lues{% endif %}" class="{% if not current_type %}on{% endif %}"><span class="ic" style="background:#f2f4f7;color:#475467;"><i class="fa-solid fa-layer-group"></i></span> Tous les types <span class="n">{{ total }}</span></a>
+                    {% for code, label, n, u, style in types %}
+                    <a href="?type={{ code }}{% if only_unread %}&filtre=non-lues{% endif %}" class="{% if code == current_type %}on{% endif %}"><span class="ic" style="background:{{ style.1 }}1a;color:{{ style.1 }};"><i class="fa-solid {{ style.0 }}"></i></span> {{ label }} {% if u %}<span class="u" title="non lues">{{ u }}</span>{% endif %}<span class="n" {% if u %}style="margin-left:6px;"{% endif %}>{{ n }}</span></a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            <div class="nt-card nt-prefs" id="preferences">
+                <h3><i class="fa-solid fa-sliders"></i> Préférences</h3>
+                <form method="post" action="{% url 'messaging:notification_preferences' %}">{% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}#preferences">
+                    <div class="grp">Sur le site</div>
+                    {% for p in prefs %}{% if p.field == 'internal_enabled' %}
+                    <label class="nt-switch"><input type="checkbox" name="{{ p.field }}" {% if p.on %}checked{% endif %}><span class="sw"></span><span><b>{{ p.label }}</b><small>{{ p.help }}</small></span></label>
+                    {% endif %}{% endfor %}
+                    <div class="grp">Par e-mail</div>
+                    {% for p in prefs %}{% if p.email %}
+                    <label class="nt-switch"><input type="checkbox" name="{{ p.field }}" {% if p.on %}checked{% endif %}><span class="sw"></span><span><b>{{ p.label }}</b><small>{{ p.help }}</small></span></label>
+                    {% endif %}{% endfor %}
+                    <div class="grp">WhatsApp</div>
+                    {% for p in prefs %}{% if p.field == 'whatsapp_orders' %}
+                    <label class="nt-switch"><input type="checkbox" name="{{ p.field }}" {% if p.on %}checked{% endif %}><span class="sw"></span><span><b>Commandes</b><small>{{ p.help }}</small></span></label>
+                    {% endif %}{% endfor %}
+                    <button type="submit" class="nt-btn primary"><i class="fa-solid fa-check"></i> Enregistrer</button>
+                </form>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+(function() {
+    /* Actions sans rechargement (le formulaire reste la solution de repli) */
+    var csrf = (document.querySelector('.nt [name=csrfmiddlewaretoken]') || {}).value;
+    function setBadges(n) {
+        document.querySelectorAll('#notifBadge, .js-notif-count').forEach(function(b) { if (n > 0) { b.textContent = n; b.style.display = ''; } else { b.style.display = 'none'; } });
+        var t = document.getElementById('ntUnreadText'); if (t) t.textContent = n + ' non lue' + (n > 1 ? 's' : '');
+    }
+    document.querySelectorAll('.nt-tools form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            var btn = e.submitter || form.querySelector('button');
+            var action = btn.value, item = form.closest('.nt-item');
+            if (!window.fetch || !csrf) return;
+            e.preventDefault();
+            var body = new FormData(); body.append('action', action); body.append('csrfmiddlewaretoken', csrf);
+            fetch(form.action, { method: 'POST', body: body, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+                .then(function(d) {
+                    setBadges(d.unread);
+                    if (action === 'delete') { item.style.transition = 'opacity .2s'; item.style.opacity = '0'; setTimeout(function() { item.remove(); }, 200); return; }
+                    var read = action === 'read';
+                    item.classList.toggle('unread', !read);
+                    btn.value = read ? 'unread' : 'read';
+                    btn.title = read ? 'Marquer comme non lue' : 'Marquer comme lue';
+                    btn.setAttribute('aria-label', btn.title);
+                    btn.innerHTML = read ? '<i class="fa-solid fa-envelope"></i>' : '<i class="fa-regular fa-envelope-open"></i>';
+                })
+                .catch(function() { var h = document.createElement('input'); h.type = 'hidden'; h.name = 'action'; h.value = action; form.appendChild(h); form.submit(); });
+        });
+    });
+})();
+</script>

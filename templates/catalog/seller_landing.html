@@ -7,214 +7,343 @@
 <title>Vendre sur Comptoir — Boutique en ligne, caisse, stock et marketing</title>
 <meta name="description" content="Ouvrez votre boutique sur Comptoir : vente en ligne, caisse pour le magasin, stock par entrepôt, factures, équipe et marketing dans un seul tableau de bord.">
 <meta name="theme-color" content="#ff6a00">
+<meta property="og:title" content="Vendre sur Comptoir">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/brand/og-image.png' %}">
 <link rel="icon" type="image/svg+xml" href="{% static 'images/brand/favicon.svg' %}">
 <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/pwa/favicon-32.png' %}">
 <link rel="stylesheet" href="{% static 'css/brand.css' %}?v=2">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-:root { --orange: #ff6a00; --orange-dark: #e55f00; --orange-soft: #fff4ec; --text1: #101828; --text2: #475467; --text3: #98a2b3; --bg: #fff; --bg-soft: #fcf3ea; --border: #eaecf0; --green: #12b76a; --violet: #7a5af8; --blue: #2e90fa; --amber: #f79009; }
-html { scroll-behavior: smooth; scroll-padding-top: 76px; }
-body { font-family: 'Inter', sans-serif; color: var(--text1); background: var(--bg); -webkit-font-smoothing: antialiased; }
+:root {
+    --orange: #ff6a00; --orange-2: #ff8a3d; --orange-dark: #e55f00; --orange-soft: #fff4ec; --orange-line: #fbd5b5;
+    --ink: #0b1220; --ink-2: #1d2939; --text1: #101828; --text2: #475467; --text3: #98a2b3;
+    --border: #eaecf0; --soft: #f8fafc; --warm: #fff8f1;
+    --green: #12b76a; --violet: #7a5af8; --blue: #2e90fa; --amber: #f79009;
+    --display: 'Inter Tight', 'Inter', sans-serif;
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.05); --shadow: 0 12px 32px rgba(16,24,40,.08); --shadow-lg: 0 30px 70px rgba(16,24,40,.14);
+}
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body { font-family: 'Inter', sans-serif; color: var(--text1); background: #fff; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 a { color: inherit; }
-.container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+.container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
 
-/* ── Navigation ── */
-.lp-nav { position: sticky; top: 0; background: rgba(255,255,255,.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); z-index: 100; }
-.lp-nav-inner { display: flex; align-items: center; justify-content: space-between; height: 66px; gap: 16px; }
-.lp-logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; color: var(--text1); text-decoration: none; }
-.lp-logo img { width: 34px; height: 34px; border-radius: 9px; }
-.lp-logo small { font-size: 11px; font-weight: 700; color: var(--orange); background: var(--orange-soft); padding: 3px 8px; border-radius: 50px; }
-.lp-links { display: flex; gap: 26px; align-items: center; }
-.lp-links a { font-size: 14px; font-weight: 500; color: var(--text2); text-decoration: none; transition: color .2s; }
-.lp-links a:hover { color: var(--orange); }
-.lp-nav-actions { display: flex; gap: 10px; align-items: center; }
-.lp-burger { display: none; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--border); background: #fff; font-size: 18px; color: var(--text1); }
-.lp-mobile { display: none; border-top: 1px solid var(--border); background: #fff; padding: 10px 24px 18px; }
-.lp-mobile.open { display: block; }
-.lp-mobile a { display: block; padding: 12px 4px; font-size: 15px; font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--border); }
-.lp-mobile .btn { margin-top: 14px; width: 100%; justify-content: center; border-bottom: none; }
-.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; transition: all .2s; white-space: nowrap; }
-.btn-orange { background: var(--orange); color: #fff; }
-.btn-orange:hover { background: var(--orange-dark); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,106,0,.25); }
-.btn-outline { background: transparent; color: var(--orange); border: 1.5px solid var(--orange); }
-.btn-outline:hover { background: var(--orange); color: #fff; }
+/* ── Boutons ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 12px 22px; border-radius: 12px; font-size: 14.5px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; font-family: inherit; transition: transform .2s, box-shadow .2s, background .2s, color .2s; white-space: nowrap; }
+.btn-orange { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; box-shadow: 0 8px 22px rgba(255,106,0,.28); }
+.btn-orange:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(255,106,0,.36); }
+.btn-light { background: #fff; color: var(--text1); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.btn-light:hover { border-color: var(--orange-line); color: var(--orange); transform: translateY(-2px); }
 .btn-ghost { background: transparent; color: var(--text1); }
 .btn-ghost:hover { color: var(--orange); }
-.btn-white { background: #fff; color: var(--orange); }
-.btn-white:hover { background: #fff7f0; }
-.btn-lg { padding: 14px 26px; font-size: 15px; }
+.btn-white { background: #fff; color: var(--orange-dark); }
+.btn-white:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0,0,0,.18); }
+.btn-outline-white { background: rgba(255,255,255,.08); color: #fff; border: 1.5px solid rgba(255,255,255,.45); }
+.btn-outline-white:hover { background: rgba(255,255,255,.16); }
+.btn-lg { padding: 15px 26px; font-size: 15.5px; border-radius: 14px; }
 
-/* ── Hero ── */
-.lp-hero { padding: 64px 0 56px; background: linear-gradient(180deg, #fde9d6 0%, #fff7ef 100%); position: relative; overflow: hidden; }
-.lp-hero::before { content: ''; position: absolute; width: 520px; height: 520px; border-radius: 50%; background: rgba(255,106,0,.07); top: -170px; right: -150px; }
-.hero-slide { display: none !important; }
-.hero-slide.active { display: grid !important; animation: fadeSlide .5s ease; }
-@keyframes fadeSlide { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
-.lp-hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 44px; align-items: center; position: relative; }
-.lp-eyebrow { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #fbd5b5; color: var(--orange); font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 50px; margin-bottom: 18px; }
-.lp-hero h1 { font-size: 46px; font-weight: 900; line-height: 1.12; margin-bottom: 18px; letter-spacing: -.02em; }
-.lp-hero h1 span { color: var(--orange); }
-.lp-hero p { font-size: 16.5px; color: var(--text2); line-height: 1.7; margin-bottom: 28px; max-width: 520px; }
-.lp-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-.lp-hero-visual { display: flex; justify-content: center; }
-.visual-box { width: 100%; max-width: 440px; height: 320px; border-radius: 24px; box-shadow: 0 30px 60px rgba(255,106,0,.22); position: relative; background-size: cover; background-position: center; }
-.float-card { position: absolute; background: #fff; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.12); padding: 11px 14px; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; color: var(--text1); }
-.float-card small { display: block; font-weight: 500; color: var(--text3); font-size: 11px; }
-.float-card .fic { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-.fc1 { top: 26px; left: -30px; } .fc2 { bottom: 34px; right: -26px; }
-.hero-dots { display: flex; justify-content: center; gap: 8px; margin-top: 34px; }
-.hero-dot { width: 10px; height: 10px; border-radius: 50%; background: #f1d9c4; cursor: pointer; transition: all .2s; border: none; }
-.hero-dot.active { background: var(--orange); width: 28px; border-radius: 5px; }
-.lp-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 30px; }
-.lp-pills span { display: inline-flex; align-items: center; gap: 7px; background: #fff; border: 1px solid var(--border); border-radius: 50px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--text2); }
-.lp-pills i { color: var(--orange); }
+/* ── Navigation ── */
+.lp-nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,.82); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s, box-shadow .2s; }
+.lp-nav.scrolled { border-bottom-color: var(--border); box-shadow: 0 4px 20px rgba(16,24,40,.05); }
+.lp-nav-inner { display: flex; align-items: center; justify-content: space-between; height: 70px; gap: 16px; }
+.lp-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.lp-logo small { font-size: 11px; font-weight: 700; color: var(--orange); background: var(--orange-soft); padding: 4px 9px; border-radius: 50px; }
+.lp-links { display: flex; gap: 4px; align-items: center; }
+.lp-links a { white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--text2); text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: color .2s, background .2s; }
+.lp-links a:hover { color: var(--text1); background: var(--soft); }
+.lp-nav-actions { display: flex; gap: 8px; align-items: center; }
+.lp-burger { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: #fff; font-size: 18px; color: var(--text1); }
+.lp-mobile { display: none; border-top: 1px solid var(--border); background: #fff; padding: 8px 24px 18px; }
+.lp-mobile.open { display: block; }
+.lp-mobile a:not(.btn) { display: block; padding: 13px 4px; font-size: 15px; font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--border); }
+.lp-mobile .btn { width: 100%; margin-top: 12px; }
+
+/* ── Accroche ── */
+.hero { position: relative; overflow: hidden; padding: 72px 0 40px; background: radial-gradient(1200px 520px at 85% -10%, #ffe2c9 0%, transparent 60%), radial-gradient(800px 420px at -10% 20%, #fff0e3 0%, transparent 60%), linear-gradient(180deg, #fffaf5 0%, #fff 100%); }
+.hero::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,106,0,.13) 1px, transparent 1px); background-size: 22px 22px; mask-image: linear-gradient(180deg, rgba(0,0,0,.55), transparent 70%); -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.55), transparent 70%); pointer-events: none; }
+.hero-grid { position: relative; display: grid; grid-template-columns: 1.02fr 1fr; gap: 56px; align-items: center; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--orange-line); color: var(--orange-dark); font-size: 12.5px; font-weight: 700; padding: 6px 12px 6px 6px; border-radius: 50px; box-shadow: var(--shadow-sm); }
+.eyebrow b { background: var(--orange); color: #fff; border-radius: 50px; padding: 3px 9px; font-size: 11px; }
+.hero h1 { font-size: 58px; line-height: 1.04; font-weight: 900; margin: 20px 0 20px; }
+.hero h1 .hl { background: linear-gradient(120deg, var(--orange), #ff9a52); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p.lead { font-size: 18px; color: var(--text2); line-height: 1.7; max-width: 540px; }
+.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 30px; }
+.hero-proof { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 28px; }
+.hero-proof span { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text2); font-weight: 500; }
+.hero-proof i { width: 22px; height: 22px; border-radius: 50%; background: rgba(18,183,106,.12); color: var(--green); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; }
+
+/* Aperçu du tableau de bord (illustration en HTML, sans données réelles) */
+.mock { position: relative; }
+.mock-win { background: #fff; border-radius: 18px; box-shadow: var(--shadow-lg); border: 1px solid rgba(16,24,40,.06); overflow: hidden; transform: perspective(1600px) rotateY(-6deg) rotateX(2deg); transition: transform .6s ease; }
+.mock:hover .mock-win { transform: perspective(1600px) rotateY(-2deg) rotateX(1deg); }
+.mock-bar { display: flex; align-items: center; gap: 6px; padding: 11px 14px; background: #f7f8fa; border-bottom: 1px solid var(--border); }
+.mock-bar > i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+.mock-bar .url { margin-left: 10px; flex: 1; height: 22px; border-radius: 6px; background: #fff; border: 1px solid var(--border); font-size: 11px; color: var(--text3); display: flex; align-items: center; padding: 0 10px; gap: 6px; }
+.mock-body { display: grid; grid-template-columns: 54px 1fr; min-height: 330px; }
+.mock-side { background: #fbfbfc; border-right: 1px solid var(--border); padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.mock-side .ic { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--text3); }
+.mock-side .ic.on { background: var(--orange); color: #fff; box-shadow: 0 6px 14px rgba(255,106,0,.3); }
+.mock-main { padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.mock-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mock-kpi { border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+.mock-kpi .l { font-size: 10px; color: var(--text3); font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.mock-kpi .v { height: 12px; border-radius: 6px; margin-top: 8px; background: linear-gradient(90deg, #eef0f3, #f6f7f9); }
+.mock-kpi .t { height: 6px; width: 50%; border-radius: 6px; margin-top: 6px; background: rgba(18,183,106,.25); }
+.mock-chart { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px 4px; }
+.mock-chart .l { font-size: 10px; color: var(--text3); font-weight: 600; }
+.mock-chart svg { display: block; width: 100%; height: 92px; }
+.mock-list { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.mock-row { display: grid; grid-template-columns: 26px 1fr auto; gap: 9px; align-items: center; padding: 8px 10px; border-bottom: 1px solid #f2f4f7; font-size: 10.5px; }
+.mock-row:last-child { border-bottom: none; }
+.mock-row .av { width: 26px; height: 26px; border-radius: 8px; background: var(--orange-soft); color: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 11px; }
+.mock-row .ln { display: block; height: 7px; border-radius: 6px; background: #eef0f3; }
+.mock-row .ln.s { width: 60%; margin-top: 5px; background: #f4f5f7; }
+.pill { font-size: 9.5px; font-weight: 700; padding: 3px 8px; border-radius: 50px; white-space: nowrap; }
+.pill.new { background: rgba(255,106,0,.1); color: var(--orange-dark); }
+.pill.ship { background: rgba(46,144,250,.1); color: var(--blue); }
+.pill.done { background: rgba(18,183,106,.12); color: #047857; }
+.float { position: absolute; background: #fff; border-radius: 14px; box-shadow: var(--shadow); border: 1px solid rgba(16,24,40,.06); padding: 11px 14px; display: flex; align-items: center; gap: 11px; font-size: 12.5px; font-weight: 700; animation: bob 6s ease-in-out infinite; }
+.float small { display: block; font-weight: 500; color: var(--text3); font-size: 11px; margin-top: 1px; }
+.float .fi { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.float.f1 { top: -34px; left: -40px; }
+.float.f2 { bottom: 38px; right: -30px; animation-delay: -3s; }
+.float.f3 { bottom: -22px; left: 40px; animation-delay: -1.5s; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+/* Bandeau des capacités */
+.strip { margin-top: 56px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; position: relative; }
+.strip span { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.85); border: 1px solid var(--border); border-radius: 50px; padding: 9px 15px; font-size: 13px; font-weight: 600; color: var(--text2); box-shadow: var(--shadow-sm); }
+.strip i { color: var(--orange); }
 
 /* ── Sections ── */
-.lp-section { padding: 84px 0; background: #fff; }
-.lp-section.soft { background: var(--bg-soft); }
-.lp-section.dark { background: linear-gradient(160deg, #101828 0%, #1d2939 100%); color: #d0d5dd; }
-.lp-section.dark .lp-section-head h2 { color: #fff; }
-.lp-section.dark .lp-section-head p { color: #98a2b3; }
-.lp-section-head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
-.lp-section-head .tag { display: inline-block; font-size: 12px; font-weight: 800; color: var(--orange); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
-.lp-section-head h2 { font-size: 32px; font-weight: 800; margin-bottom: 12px; letter-spacing: -.02em; }
-.lp-section-head p { font-size: 15.5px; color: var(--text2); line-height: 1.7; }
+.sec { padding: 96px 0; position: relative; }
+.sec.soft { background: var(--soft); }
+.sec.warm { background: linear-gradient(180deg, var(--warm), #fff); }
+.head { text-align: center; max-width: 680px; margin: 0 auto 50px; }
+.tag { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 800; color: var(--orange); text-transform: uppercase; letter-spacing: .09em; margin-bottom: 12px; }
+.tag::before { content: ''; width: 18px; height: 2px; background: var(--orange); border-radius: 2px; }
+.head h2 { font-size: 40px; font-weight: 800; line-height: 1.12; margin-bottom: 14px; }
+.head p { font-size: 16.5px; color: var(--text2); line-height: 1.7; }
 
-/* ── Canaux de vente ── */
-.lp-channels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-.lp-channel { border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; background: #fff; }
-.lp-channel .ic { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 19px; margin-bottom: 14px; }
-.lp-channel h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-.lp-channel p { font-size: 13.5px; color: var(--text2); line-height: 1.6; }
+/* Canaux */
+.channels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.channel { position: relative; border-radius: 20px; padding: 26px 22px; background: #fff; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s; overflow: hidden; }
+.channel::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--c); }
+.channel:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
+.channel .ic { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 21px; margin-bottom: 18px; background: var(--cs); color: var(--c); }
+.channel h3 { font-size: 18px; margin-bottom: 8px; }
+.channel p { font-size: 14px; color: var(--text2); line-height: 1.65; }
 
-/* ── Fonctionnalités par onglets ── */
-.lp-tabs { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 30px; }
-.lp-tab { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 50px; border: 1px solid var(--border); background: #fff; font: 600 14px 'Inter', sans-serif; color: var(--text2); cursor: pointer; transition: all .2s; }
-.lp-tab:hover { border-color: var(--orange); color: var(--orange); }
-.lp-tab.on { background: var(--orange); border-color: var(--orange); color: #fff; }
-.lp-panel { display: none; }
-.lp-panel.on, .no-js .lp-panel { display: block; animation: fadeSlide .35s ease; }
-.lp-panel-head { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
-.lp-panel-head .ic { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-.lp-panel-head h3 { font-size: 21px; font-weight: 800; }
-.lp-panel-head p { font-size: 14px; color: var(--text2); margin-top: 3px; }
-.lp-feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.lp-feat { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: all .25s; }
-.lp-feat:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(16,24,40,.07); border-color: #fbd5b5; }
-.lp-feat i { font-size: 18px; color: var(--orange); }
-.lp-feat h4 { font-size: 15px; font-weight: 700; margin: 10px 0 6px; }
-.lp-feat p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+/* Fonctionnalités */
+.tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 0 auto 36px; padding: 6px; background: #fff; border: 1px solid var(--border); border-radius: 18px; width: fit-content; box-shadow: var(--shadow-sm); }
+.tab { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 13px; border: none; background: transparent; font: 600 14px 'Inter', sans-serif; color: var(--text2); cursor: pointer; transition: background .2s, color .2s; }
+.tab:hover { color: var(--text1); background: var(--soft); }
+.tab.on { background: var(--ink); color: #fff; box-shadow: 0 6px 16px rgba(11,18,32,.18); }
+.tab.on i { color: var(--orange-2); }
+.panel { display: none; }
+.panel.on, .no-js .panel { display: grid; grid-template-columns: 340px 1fr; gap: 28px; align-items: start; animation: rise .45s ease; }
+.no-js .panel { margin-bottom: 28px; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.panel-intro { position: sticky; top: 100px; border-radius: 22px; padding: 30px 26px; color: #fff; background: var(--g); box-shadow: var(--shadow); overflow: hidden; }
+.panel-intro::after { content: ''; position: absolute; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,.1); right: -70px; bottom: -80px; }
+.panel-intro .ic { width: 54px; height: 54px; border-radius: 16px; background: rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; font-size: 23px; margin-bottom: 18px; }
+.panel-intro h3 { font-size: 26px; margin-bottom: 10px; }
+.panel-intro p { font-size: 14.5px; line-height: 1.65; opacity: .92; position: relative; }
+.feats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.feat { display: flex; gap: 14px; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 18px; transition: border-color .2s, box-shadow .2s, transform .2s; }
+.feat:hover { border-color: var(--orange-line); box-shadow: var(--shadow); transform: translateY(-2px); }
+.feat > i { width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--orange-soft); color: var(--orange); }
+.feat h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.feat p { font-size: 13.5px; color: var(--text2); line-height: 1.6; }
 
-/* ── Mise en avant (caisse) ── */
-.lp-split { display: grid; grid-template-columns: 1fr 1fr; gap: 54px; align-items: center; }
-.lp-split-visual { height: 340px; border-radius: 24px; background-size: cover; background-position: center; box-shadow: 0 24px 50px rgba(16,24,40,.12); }
-.lp-split h2 { font-size: 30px; font-weight: 800; margin-bottom: 14px; letter-spacing: -.02em; }
-.lp-split > div > p { font-size: 15px; color: var(--text2); line-height: 1.7; margin-bottom: 20px; }
-.lp-check { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 13px; font-size: 14px; color: var(--text2); line-height: 1.55; }
-.lp-check i { width: 22px; height: 22px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; }
-.lp-check strong { color: var(--text1); }
+/* Caisse (section sombre) */
+.pos { background: radial-gradient(900px 500px at 100% 0%, rgba(255,106,0,.18), transparent 60%), linear-gradient(160deg, var(--ink) 0%, var(--ink-2) 100%); color: #cfd4dc; overflow: hidden; }
+.pos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+.pos h2 { color: #fff; font-size: 40px; font-weight: 800; line-height: 1.12; margin: 6px 0 16px; }
+.pos .tag { color: var(--orange-2); }
+.pos .tag::before { background: var(--orange-2); }
+.pos p.lead { font-size: 16.5px; line-height: 1.7; margin-bottom: 26px; color: #b9c0cc; }
+.checks { display: grid; gap: 14px; }
+.check { display: flex; gap: 14px; align-items: flex-start; }
+.check > i { width: 30px; height: 30px; border-radius: 9px; background: rgba(255,106,0,.16); color: var(--orange-2); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.check b { color: #fff; display: block; font-size: 15px; margin-bottom: 2px; }
+.check span { font-size: 14px; line-height: 1.55; }
+.pos-mock { position: relative; display: flex; justify-content: center; padding-bottom: 30px; }
+.till { width: 100%; max-width: 440px; background: #fff; border-radius: 20px; box-shadow: 0 40px 80px rgba(0,0,0,.35); overflow: hidden; color: var(--text1); }
+.till-top { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; }
+.till-top .live { display: inline-flex; align-items: center; gap: 6px; color: #047857; background: rgba(18,183,106,.1); padding: 3px 9px; border-radius: 50px; font-size: 11px; }
+.till-top .live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.till-body { display: grid; grid-template-columns: 1.2fr 1fr; }
+.till-grid { padding: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; background: #fafbfc; border-right: 1px solid var(--border); }
+.till-grid div { aspect-ratio: 1; border-radius: 10px; background: #fff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 16px; }
+.till-grid div:nth-child(2), .till-grid div:nth-child(5) { border-color: var(--orange-line); color: var(--orange); background: var(--orange-soft); }
+.till-cart { padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 11px; }
+.till-cart .ln { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.till-cart .ln span { height: 7px; border-radius: 6px; background: #eef0f3; flex: 1; }
+.till-cart .ln b { height: 7px; width: 34px; border-radius: 6px; background: #e4e7ec; }
+.till-cart .tot { margin-top: auto; border-top: 1px dashed var(--border); padding-top: 8px; display: flex; justify-content: space-between; font-weight: 800; font-size: 12px; }
+.till-cart .pay { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; border-radius: 10px; text-align: center; padding: 9px; font-weight: 700; }
+.ticket { position: absolute; right: -48px; bottom: -10px; width: 150px; background: #fff; color: var(--text1); border-radius: 10px 10px 0 0; padding: 12px 12px 18px; box-shadow: 0 24px 50px rgba(0,0,0,.35); transform: rotate(5deg); font-size: 9.5px; font-family: 'Courier New', monospace; }
+.ticket::after { content: ''; position: absolute; left: 0; right: 0; bottom: -8px; height: 8px; background: linear-gradient(-45deg, transparent 4px, #fff 0) 0 0 / 8px 8px repeat-x, linear-gradient(45deg, transparent 4px, #fff 0) 0 0 / 8px 8px repeat-x; }
+.ticket .c { text-align: center; font-weight: 700; margin-bottom: 6px; }
+.ticket .r { height: 5px; background: #e4e7ec; border-radius: 3px; margin: 5px 0; }
+.ticket .r.s { width: 60%; }
+.ticket .z { border-top: 1px dashed #98a2b3; margin-top: 7px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 700; }
 
-/* ── Étapes ── */
-.lp-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; counter-reset: step; }
-.lp-step { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px; position: relative; }
-.step-n { width: 38px; height: 38px; border-radius: 50%; background: var(--orange); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-.lp-step h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-.lp-step p { font-size: 13.5px; color: var(--text2); line-height: 1.6; }
+/* Étapes */
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; position: relative; }
+.steps::before { content: ''; position: absolute; top: 31px; left: 12%; right: 12%; height: 2px; background: repeating-linear-gradient(90deg, var(--orange-line) 0 8px, transparent 8px 16px); }
+.step { position: relative; text-align: center; padding: 0 6px; }
+.step .n { width: 62px; height: 62px; margin: 0 auto 18px; border-radius: 20px; background: #fff; border: 1px solid var(--orange-line); box-shadow: 0 10px 24px rgba(255,106,0,.14); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1; }
+.step .n i { font-size: 22px; color: var(--orange); }
+.step .n b { position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.step h3 { font-size: 17px; margin-bottom: 8px; }
+.step p { font-size: 14px; color: var(--text2); line-height: 1.6; }
 
-/* ── Formules ── */
-.lp-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
-.lp-plan { background: #fff; color: var(--text1); border: 1.5px solid var(--border); border-radius: 16px; padding: 28px 24px; position: relative; transition: all .25s; display: flex; flex-direction: column; }
-.lp-plan:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.18); }
-.lp-plan.popular { border-color: var(--orange); box-shadow: 0 16px 40px rgba(255,106,0,.25); }
-.lp-plan .pop-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--orange); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
-.lp-plan h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
-.lp-plan .price { font-size: 30px; font-weight: 900; color: var(--orange); margin: 12px 0 4px; }
-.lp-plan .price small { font-size: 13px; font-weight: 600; color: var(--text3); }
-.lp-plan .year { font-size: 12px; color: var(--text3); margin-bottom: 6px; }
-.lp-plan .plan-desc { font-size: 12.5px; color: var(--text2); margin-bottom: 14px; line-height: 1.5; }
-.lp-plan ul { list-style: none; flex: 1; margin-bottom: 20px; }
-.lp-plan li { font-size: 13px; color: var(--text2); padding: 6px 0; display: flex; gap: 8px; align-items: flex-start; }
-.lp-plan li i { color: var(--orange); font-size: 11px; margin-top: 4px; }
-.lp-plan .btn { justify-content: center; }
-.lp-included { margin-top: 34px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 24px; }
-.lp-included h3 { color: #fff; font-size: 16px; margin-bottom: 14px; }
-.lp-included ul { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; }
-.lp-included li { font-size: 13.5px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
-.lp-included li i { color: var(--green); margin-top: 4px; font-size: 11px; }
-.lp-fees { margin-top: 18px; font-size: 13.5px; line-height: 1.7; color: #98a2b3; text-align: center; }
-.lp-fees strong { color: #fff; }
+/* Formules */
+.plans-head { display: flex; flex-direction: column; align-items: center; gap: 18px; margin-bottom: 38px; }
+.billing { display: inline-flex; background: #fff; border: 1px solid var(--border); border-radius: 50px; padding: 5px; gap: 4px; box-shadow: var(--shadow-sm); }
+.billing button { border: none; background: transparent; padding: 9px 18px; border-radius: 50px; font: 700 13.5px 'Inter', sans-serif; color: var(--text2); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
+.billing button.on { background: var(--ink); color: #fff; }
+.billing button em { font-style: normal; font-size: 11px; background: rgba(18,183,106,.14); color: #047857; padding: 2px 8px; border-radius: 50px; }
+.billing button.on em { background: rgba(255,255,255,.16); color: #a6f4c5; }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; align-items: stretch; }
+.plan { position: relative; background: #fff; border: 1px solid var(--border); border-radius: 22px; padding: 30px 24px 24px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: transform .25s, box-shadow .25s; }
+.plan:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
+.plan.popular { background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%); color: #fff; border-color: transparent; box-shadow: 0 30px 60px rgba(11,18,32,.28); }
+.plan .badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; font-size: 11px; font-weight: 800; padding: 5px 14px; border-radius: 50px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; box-shadow: 0 8px 18px rgba(255,106,0,.35); }
+.plan h3 { font-size: 20px; }
+.plan .desc { font-size: 13px; color: var(--text2); margin-top: 6px; line-height: 1.5; }
+.plan.popular .desc { color: #b9c0cc; }
+.price { margin: 18px 0 2px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.price b { font-family: var(--display); font-size: 36px; font-weight: 900; letter-spacing: -.03em; }
+.price small { font-size: 13px; color: var(--text3); font-weight: 600; }
+.plan.popular .price small { color: #98a2b3; }
+.price-note { font-size: 12.5px; color: var(--text3); min-height: 18px; }
+.price-note .save { color: #047857; font-weight: 700; }
+.plan.popular .price-note .save { color: #6ce9a6; }
+.plan ul { list-style: none; margin: 20px 0 24px; padding-top: 18px; border-top: 1px solid var(--border); display: grid; gap: 10px; flex: 1; align-content: start; }
+.plan.popular ul { border-top-color: rgba(255,255,255,.12); }
+.plan li { font-size: 13.5px; display: flex; gap: 10px; align-items: flex-start; color: var(--text2); line-height: 1.45; }
+.plan.popular li { color: #d0d5dd; }
+.plan li i { color: var(--green); font-size: 12px; margin-top: 3px; }
+.plan .btn { width: 100%; }
+.plan:not(.popular) .btn { background: var(--soft); color: var(--text1); border: 1px solid var(--border); box-shadow: none; }
+.plan:not(.popular) .btn:hover { border-color: var(--orange-line); color: var(--orange); }
+.included { margin-top: 30px; border-radius: 22px; padding: 26px 28px; background: #fff; border: 1px solid var(--border); display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
+.included h3 { font-size: 18px; }
+.included h3 + p { font-size: 13.5px; color: var(--text2); margin-top: 6px; line-height: 1.6; }
+.included ul { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px 20px; }
+.included li { font-size: 13.5px; display: flex; gap: 9px; align-items: flex-start; color: var(--text2); }
+.included li i { color: var(--orange); font-size: 12px; margin-top: 3px; }
+.fees { margin-top: 18px; display: flex; gap: 12px; align-items: flex-start; background: var(--orange-soft); border: 1px solid var(--orange-line); border-radius: 16px; padding: 16px 18px; font-size: 14px; color: var(--text2); line-height: 1.6; }
+.fees i { color: var(--orange); margin-top: 3px; }
+.fees b { color: var(--text1); }
 
-/* ── FAQ ── */
-.lp-faq { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-.lp-faq details { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 0 20px; transition: border-color .2s; }
-.lp-faq details[open] { border-color: #fbd5b5; box-shadow: 0 10px 28px rgba(16,24,40,.05); }
-.lp-faq summary { list-style: none; cursor: pointer; padding: 18px 0; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
-.lp-faq summary::-webkit-details-marker { display: none; }
-.lp-faq summary i { color: var(--orange); transition: transform .2s; flex-shrink: 0; }
-.lp-faq details[open] summary i { transform: rotate(45deg); }
-.lp-faq details p { font-size: 14px; color: var(--text2); line-height: 1.7; padding-bottom: 18px; }
+/* Questions */
+.faq { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; align-items: start; }
+.faq details { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 0 20px; transition: border-color .2s, box-shadow .2s; }
+.faq details[open] { border-color: var(--orange-line); box-shadow: var(--shadow); }
+.faq summary { list-style: none; cursor: pointer; padding: 19px 0; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary i { width: 28px; height: 28px; border-radius: 50%; background: var(--soft); color: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 12px; transition: transform .25s, background .2s; flex-shrink: 0; }
+.faq details[open] summary i { transform: rotate(45deg); background: var(--orange-soft); }
+.faq details p { font-size: 14.5px; color: var(--text2); line-height: 1.7; padding-bottom: 20px; }
 
-/* ── Appel final ── */
-.lp-cta { background: linear-gradient(135deg, var(--orange), #ff8a3d); border-radius: 24px; padding: 54px 40px; text-align: center; color: #fff; position: relative; overflow: hidden; }
-.lp-cta::after { content: ''; position: absolute; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,255,255,.08); right: -80px; bottom: -120px; }
-.lp-cta h2 { font-size: 30px; font-weight: 800; margin-bottom: 10px; position: relative; }
-.lp-cta p { opacity: .92; margin: 0 auto 26px; font-size: 15.5px; max-width: 560px; line-height: 1.6; position: relative; }
-.lp-cta .lp-hero-actions { justify-content: center; position: relative; }
-.lp-cta .btn-ghost { color: #fff; border: 1.5px solid rgba(255,255,255,.6); }
-.lp-cta .btn-ghost:hover { background: rgba(255,255,255,.12); color: #fff; }
+/* Appel final */
+.cta { position: relative; overflow: hidden; border-radius: 30px; padding: 64px 48px; text-align: center; color: #fff; background: radial-gradient(600px 300px at 0% 0%, rgba(255,255,255,.18), transparent 60%), linear-gradient(135deg, #ff6a00 0%, #ff8a3d 55%, #ffa260 100%); box-shadow: 0 30px 70px rgba(255,106,0,.3); }
+.cta .marks { position: absolute; inset: 0; pointer-events: none; opacity: .16; }
+.cta .marks > span { position: absolute; }
+.cta h2 { font-size: 40px; font-weight: 900; line-height: 1.1; margin-bottom: 14px; position: relative; }
+.cta p { font-size: 17px; opacity: .95; max-width: 580px; margin: 0 auto 30px; line-height: 1.6; position: relative; }
+.cta .hero-cta { justify-content: center; position: relative; margin-top: 0; }
 
-/* ── Pied de page ── */
-.lp-footer { background: var(--text1); color: #98a2b3; padding: 40px 0; }
-.lp-footer-inner { display: flex; justify-content: space-between; align-items: center; font-size: 13px; flex-wrap: wrap; gap: 14px; }
-.lp-footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
-.lp-footer a { color: #98a2b3; text-decoration: none; }
-.lp-footer a:hover { color: #fff; }
+/* Pied de page */
+.foot { background: var(--ink); color: #98a2b3; padding: 46px 0 34px; margin-top: 96px; }
+.foot-inner { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.foot-links { display: flex; gap: 22px; flex-wrap: wrap; font-size: 14px; }
+.foot a { text-decoration: none; }
+.foot a:hover { color: #fff; }
+.foot-bottom { margin-top: 26px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.08); font-size: 13px; }
 
-@media (max-width: 1000px) {
-    .lp-feats { grid-template-columns: 1fr 1fr; }
-    .lp-channels, .lp-steps { grid-template-columns: 1fr 1fr; }
-    .lp-included ul { grid-template-columns: 1fr 1fr; }
+/* Apparition au défilement (seulement si le script tourne) */
+.js .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
+.js .reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    .js .reveal { opacity: 1; transform: none; transition: none; }
+    .float { animation: none; }
+    .mock-win, .mock:hover .mock-win { transform: none; }
+    html { scroll-behavior: auto; }
+}
+
+/* ── Écrans moyens et téléphones ── */
+@media (max-width: 1080px) {
+    .hero h1 { font-size: 46px; }
+    .channels, .steps { grid-template-columns: 1fr 1fr; row-gap: 32px; }
+    .steps::before { display: none; }
+    .panel.on, .no-js .panel { grid-template-columns: 1fr; }
+    .panel-intro { position: relative; top: auto; }
+    .included { grid-template-columns: 1fr; }
+    .included ul { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 900px) {
-    .lp-links, .lp-nav-actions .btn-ghost, .lp-nav-actions .btn-orange { display: none; }
+    .lp-links, .lp-nav-actions .btn { display: none; }
     .lp-burger { display: inline-flex; align-items: center; justify-content: center; }
-    .lp-hero { padding: 36px 0 40px; }
-    .lp-hero-grid, .lp-split { grid-template-columns: 1fr; gap: 28px; }
-    .lp-hero h1 { font-size: 32px; }
-    .lp-hero p { font-size: 15px; }
-    .visual-box { height: 230px; }
-    .fc1 { left: 10px; top: 14px; } .fc2 { right: 10px; bottom: 14px; }
-    .lp-section { padding: 56px 0; }
-    .lp-section-head { margin-bottom: 30px; }
-    .lp-section-head h2 { font-size: 25px; }
-    .lp-split-visual { height: 220px; order: -1; }
-    .lp-split h2 { font-size: 24px; }
-    .lp-tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; margin: 0 -24px 24px; padding: 0 24px 4px; scrollbar-width: none; }
-    .lp-tabs::-webkit-scrollbar { display: none; }
-    .lp-tab { flex-shrink: 0; }
-    .lp-cta { padding: 38px 22px; border-radius: 18px; }
-    .lp-cta h2 { font-size: 24px; }
+    .hero { padding: 40px 0 28px; }
+    .hero-grid, .pos-grid { grid-template-columns: 1fr; gap: 44px; }
+    .hero h1 { font-size: 38px; }
+    .hero p.lead { font-size: 16px; }
+    .mock { margin: 10px 8px 24px; }
+    .mock-win, .mock:hover .mock-win { transform: none; }
+    .float.f1 { left: -6px; top: -20px; } .float.f2 { right: -6px; } .float.f3 { display: none; }
+    .strip { margin-top: 36px; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -24px; margin-right: -24px; padding: 0 24px 4px; }
+    .strip::-webkit-scrollbar { display: none; }
+    .strip span { flex-shrink: 0; }
+    .sec { padding: 64px 0; }
+    .head { margin-bottom: 34px; }
+    .head h2, .pos h2 { font-size: 30px; }
+    .tabs { width: auto; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; margin-left: -24px; margin-right: -24px; border-radius: 0; border-left: none; border-right: none; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { flex-shrink: 0; }
+    .faq { grid-template-columns: 1fr; }
+    .ticket { right: 4px; width: 130px; }
+    .cta { padding: 46px 22px; border-radius: 24px; }
+    .cta h2 { font-size: 30px; }
+    .foot { margin-top: 64px; }
 }
 @media (max-width: 600px) {
     .container { padding: 0 16px; }
-    .lp-mobile { padding: 8px 16px 16px; }
-    .lp-hero-actions .btn { flex: 1; justify-content: center; }
-    .lp-feats, .lp-channels, .lp-steps, .lp-included ul { grid-template-columns: 1fr; }
-    .lp-tabs { margin: 0 -16px 20px; padding: 0 16px 4px; }
-    .lp-pills { justify-content: flex-start; }
-    .lp-pills span { font-size: 12px; padding: 7px 11px; }
-    .lp-faq summary { font-size: 14px; }
-    .lp-footer-inner { flex-direction: column; align-items: flex-start; }
+    .lp-mobile { padding: 6px 16px 16px; }
+    .lp-logo small { display: none; }
+    .hero h1 { font-size: 33px; }
+    .hero-cta .btn { flex: 1 1 100%; }
+    .hero-proof { gap: 10px 16px; }
+    .mock-kpis { grid-template-columns: 1fr 1fr; }
+    .mock-kpi:nth-child(3) { display: none; }
+    .mock-body { grid-template-columns: 44px 1fr; min-height: 0; }
+    .channels, .steps, .feats, .included ul { grid-template-columns: 1fr; }
+    .strip, .tabs { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+    .panel-intro { padding: 24px 20px; }
+    .panel-intro h3 { font-size: 22px; }
+    .till-body { grid-template-columns: 1fr; }
+    .till-grid { grid-template-columns: repeat(4, 1fr); border-right: none; border-bottom: 1px solid var(--border); }
+    .till-grid div:nth-child(n+9) { display: none; }
+    .ticket { display: none; }
+    .pos-mock { padding-bottom: 0; }
+    .included { padding: 22px 18px; }
+    .faq summary { font-size: 14.5px; }
+    .foot-inner { flex-direction: column; align-items: flex-start; }
 }
 </style>
 </head>
 <body class="no-js">
 
 <!-- ═══ Navigation ═══ -->
-<nav class="lp-nav">
+<nav class="lp-nav" id="lpNav">
     <div class="container lp-nav-inner">
         <a href="{% url 'home' %}" class="lp-logo" aria-label="Comptoir — accueil">{% include 'includes/logo.html' with size=34 tone='dark' %} <small>Vendeurs</small></a>
         <div class="lp-links">
@@ -231,7 +360,7 @@ a { color: inherit; }
             {% if not user.is_authenticated %}<a href="{% url 'accounts:login' %}" class="btn btn-ghost">Se connecter</a>{% endif %}
             <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange"><i class="fa-solid fa-store"></i> Créer ma boutique</a>
             {% endif %}
-            <button type="button" class="lp-burger" aria-label="Menu" aria-expanded="false" onclick="var m=document.getElementById('lpMobile');m.classList.toggle('open');this.setAttribute('aria-expanded',m.classList.contains('open'))"><i class="fa-solid fa-bars"></i></button>
+            <button type="button" class="lp-burger" aria-label="Menu" aria-expanded="false" aria-controls="lpMobile" id="lpBurger"><i class="fa-solid fa-bars"></i></button>
         </div>
     </div>
     <div class="lp-mobile" id="lpMobile">
@@ -245,240 +374,268 @@ a { color: inherit; }
         <a href="{% url 'dashboard:index' %}" class="btn btn-orange"><i class="fa-solid fa-gauge-high"></i> Mon tableau de bord</a>
         {% else %}
         <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange"><i class="fa-solid fa-store"></i> Créer ma boutique</a>
-        {% if not user.is_authenticated %}<a href="{% url 'accounts:login' %}" class="btn btn-outline">Se connecter</a>{% endif %}
+        {% if not user.is_authenticated %}<a href="{% url 'accounts:login' %}" class="btn btn-light">Se connecter</a>{% endif %}
         {% endif %}
     </div>
 </nav>
 
 <!-- ═══ Accroche ═══ -->
-<section class="lp-hero">
+<header class="hero">
     <div class="container">
-        <div class="lp-hero-grid hero-slide active">
-            <div>
-                <span class="lp-eyebrow"><i class="fa-solid fa-store"></i> Espace vendeurs</span>
-                <h1>Vendez en ligne <span>et en magasin</span> avec un seul outil</h1>
-                <p>Votre boutique sur Comptoir, votre caisse, votre stock, vos factures et votre équipe réunis dans un tableau de bord. Vous gérez tout depuis votre ordinateur ou votre téléphone.</p>
-                <div class="lp-hero-actions">
+        <div class="hero-grid">
+            <div class="reveal">
+                <span class="eyebrow"><b>Vendeurs</b> Boutique, caisse et stock réunis</span>
+                <h1>Vendez en ligne <span class="hl">et en magasin</span>, avec un seul outil</h1>
+                <p class="lead">Votre boutique sur Comptoir, votre caisse, votre stock, vos factures et votre équipe dans un même tableau de bord, sur ordinateur comme sur téléphone.</p>
+                <div class="hero-cta">
                     <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-rocket"></i> Créer ma boutique</a>
-                    <a href="#fonctionnalites" class="btn btn-outline btn-lg">Voir les fonctionnalités</a>
+                    <a href="#fonctionnalites" class="btn btn-light btn-lg"><i class="fa-solid fa-circle-play"></i> Voir les fonctionnalités</a>
+                </div>
+                <div class="hero-proof">
+                    <span><i class="fa-solid fa-check"></i> Mobile Money et carte</span>
+                    <span><i class="fa-solid fa-check"></i> Plusieurs entrepôts</span>
+                    <span><i class="fa-solid fa-check"></i> Employés et droits</span>
                 </div>
             </div>
-            <div class="lp-hero-visual">
-                <div class="visual-box" style="background-image:url('{% static 'images/hero.jpg' %}');">
-                    <div class="float-card fc1"><span class="fic" style="background:rgba(18,183,106,.1);color:var(--green);"><i class="fa-solid fa-bag-shopping"></i></span><div>Nouvelle commande<small>notification instantanée</small></div></div>
-                    <div class="float-card fc2"><span class="fic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-cash-register"></i></span><div>Caisse ouverte<small>stock synchronisé</small></div></div>
+
+            <div class="mock reveal" aria-hidden="true">
+                <div class="mock-win">
+                    <div class="mock-bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="url"><span class="fa-solid fa-lock" style="font-size:9px;"></span> comptoir · tableau de bord</span></div>
+                    <div class="mock-body">
+                        <div class="mock-side">
+                            {% include 'includes/logo.html' with size=28 mark_only=True %}
+                            <span class="ic on"><i class="fa-solid fa-gauge-high"></i></span>
+                            <span class="ic"><i class="fa-solid fa-receipt"></i></span>
+                            <span class="ic"><i class="fa-solid fa-cash-register"></i></span>
+                            <span class="ic"><i class="fa-solid fa-warehouse"></i></span>
+                            <span class="ic"><i class="fa-solid fa-users"></i></span>
+                        </div>
+                        <div class="mock-main">
+                            <div class="mock-kpis">
+                                <div class="mock-kpi"><div class="l"><i class="fa-solid fa-coins" style="color:var(--orange)"></i> Ventes</div><div class="v"></div><div class="t"></div></div>
+                                <div class="mock-kpi"><div class="l"><i class="fa-solid fa-receipt" style="color:var(--blue)"></i> Commandes</div><div class="v"></div><div class="t"></div></div>
+                                <div class="mock-kpi"><div class="l"><i class="fa-solid fa-chart-pie" style="color:var(--green)"></i> Marge</div><div class="v"></div><div class="t"></div></div>
+                            </div>
+                            <div class="mock-chart">
+                                <div class="l">Chiffre d'affaires</div>
+                                <svg viewBox="0 0 300 92" preserveAspectRatio="none">
+                                    <defs><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6a00" stop-opacity=".28"/><stop offset="1" stop-color="#ff6a00" stop-opacity="0"/></linearGradient></defs>
+                                    <path d="M0 70 C25 66 35 52 60 56 S100 72 125 50 S165 30 190 38 S235 22 260 16 S290 12 300 8 L300 92 L0 92 Z" fill="url(#mg)"/>
+                                    <path d="M0 70 C25 66 35 52 60 56 S100 72 125 50 S165 30 190 38 S235 22 260 16 S290 12 300 8" fill="none" stroke="#ff6a00" stroke-width="2.5" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="mock-list">
+                                <div class="mock-row"><span class="av"><i class="fa-solid fa-bag-shopping"></i></span><span><span class="ln"></span><span class="ln s"></span></span><span class="pill new">Nouvelle</span></div>
+                                <div class="mock-row"><span class="av" style="background:rgba(46,144,250,.1);color:var(--blue);"><i class="fa-solid fa-truck"></i></span><span><span class="ln"></span><span class="ln s"></span></span><span class="pill ship">Expédiée</span></div>
+                                <div class="mock-row"><span class="av" style="background:rgba(18,183,106,.1);color:var(--green);"><i class="fa-solid fa-check"></i></span><span><span class="ln"></span><span class="ln s"></span></span><span class="pill done">Livrée</span></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                <div class="float f1"><span class="fi" style="background:rgba(18,183,106,.12);color:var(--green);"><i class="fa-solid fa-bag-shopping"></i></span><div>Nouvelle commande<small>notification instantanée</small></div></div>
+                <div class="float f2"><span class="fi" style="background:rgba(37,211,102,.14);color:#128c4b;"><i class="fa-brands fa-whatsapp"></i></span><div>Client prévenu<small>confirmation WhatsApp</small></div></div>
+                <div class="float f3"><span class="fi" style="background:rgba(247,144,9,.14);color:var(--amber);"><i class="fa-solid fa-bell"></i></span><div>Stock faible<small>alerte automatique</small></div></div>
             </div>
         </div>
-        <div class="lp-hero-grid hero-slide">
-            <div>
-                <span class="lp-eyebrow"><i class="fa-solid fa-warehouse"></i> Stock et entrepôts</span>
-                <h1>Votre <span>stock</span> juste, dans chaque entrepôt</h1>
-                <p>Plusieurs entrepôts ou magasins, transferts entre eux, inventaires, alertes de stock faible et prix d'achat pour connaître votre marge réelle.</p>
-                <div class="lp-hero-actions">
-                    <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-boxes-stacked"></i> Créer ma boutique</a>
-                    <a href="#fonctionnalites" class="btn btn-outline btn-lg">En savoir plus</a>
-                </div>
-            </div>
-            <div class="lp-hero-visual">
-                <div class="visual-box" style="background-image:url('{% static 'images/hero2.jpg' %}');">
-                    <div class="float-card fc1"><span class="fic" style="background:rgba(122,90,248,.1);color:var(--violet);"><i class="fa-solid fa-warehouse"></i></span><div>Plusieurs entrepôts<small>stock suivi séparément</small></div></div>
-                    <div class="float-card fc2"><span class="fic" style="background:rgba(247,144,9,.1);color:var(--amber);"><i class="fa-solid fa-bell"></i></span><div>Stock faible<small>alerte automatique</small></div></div>
-                </div>
-            </div>
-        </div>
-        <div class="lp-hero-grid hero-slide">
-            <div>
-                <span class="lp-eyebrow"><i class="fa-solid fa-bullhorn"></i> Clients et marketing</span>
-                <h1>Faites revenir <span>vos clients</span></h1>
-                <p>Codes promo, campagnes, e-mails, messages WhatsApp, publications Facebook et programme de fidélité, avec les statistiques pour savoir ce qui marche.</p>
-                <div class="lp-hero-actions">
-                    <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-bullhorn"></i> Créer ma boutique</a>
-                    <a href="#formules" class="btn btn-outline btn-lg">Voir les formules</a>
-                </div>
-            </div>
-            <div class="lp-hero-visual">
-                <div class="visual-box" style="background-image:url('{% static 'images/hero3.jpg' %}');">
-                    <div class="float-card fc1"><span class="fic" style="background:rgba(37,211,102,.1);color:#25D366;"><i class="fa-brands fa-whatsapp"></i></span><div>Campagne WhatsApp<small>envoyée à vos clients</small></div></div>
-                    <div class="float-card fc2"><span class="fic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-ticket"></i></span><div>Code promo<small>suivi des utilisations</small></div></div>
-                </div>
-            </div>
-        </div>
-        <div class="hero-dots">
-            <button class="hero-dot active" onclick="goHeroSlide(0)" aria-label="Diapositive 1"></button>
-            <button class="hero-dot" onclick="goHeroSlide(1)" aria-label="Diapositive 2"></button>
-            <button class="hero-dot" onclick="goHeroSlide(2)" aria-label="Diapositive 3"></button>
-        </div>
-        <div class="lp-pills">
+        <div class="strip reveal">
             <span><i class="fa-solid fa-store"></i> Boutique en ligne</span>
             <span><i class="fa-solid fa-cash-register"></i> Caisse en magasin</span>
             <span><i class="fa-solid fa-warehouse"></i> Multi-entrepôts</span>
-            <span><i class="fa-solid fa-file-invoice"></i> Factures</span>
+            <span><i class="fa-solid fa-file-invoice"></i> Factures PDF</span>
             <span><i class="fa-solid fa-users"></i> Équipe et droits</span>
             <span><i class="fa-brands fa-whatsapp"></i> WhatsApp</span>
             <span><i class="fa-solid fa-robot"></i> Assistant IA</span>
         </div>
     </div>
-</section>
+</header>
 
 <!-- ═══ Canaux de vente ═══ -->
-<section class="lp-section">
+<section class="sec">
     <div class="container">
-        <div class="lp-section-head">
+        <div class="head reveal">
             <span class="tag">Vendez partout</span>
             <h2>Toutes vos ventes au même endroit</h2>
-            <p>Qu'elles arrivent par le site, au comptoir, par téléphone ou en gros, vos ventes sortent du même stock et apparaissent dans les mêmes chiffres.</p>
+            <p>Qu'elles arrivent par le site, au comptoir, par téléphone ou en gros, vos ventes sortent du même stock et s'ajoutent aux mêmes chiffres.</p>
         </div>
-        <div class="lp-channels">
-            <div class="lp-channel"><div class="ic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-globe"></i></div><h3>En ligne</h3><p>Votre boutique sur Comptoir : les acheteurs commandent, paient en ligne ou à la livraison, et suivent leur commande.</p></div>
-            <div class="lp-channel"><div class="ic" style="background:rgba(18,183,106,.1);color:var(--green);"><i class="fa-solid fa-cash-register"></i></div><h3>En magasin</h3><p>Une caisse par comptoir, dans chaque entrepôt : encaissement rapide, ticket, monnaie rendue et clôture du tiroir.</p></div>
-            <div class="lp-channel"><div class="ic" style="background:rgba(37,211,102,.12);color:#128c4b;"><i class="fa-brands fa-whatsapp"></i></div><h3>Par téléphone et WhatsApp</h3><p>Enregistrez une vente directe en quelques secondes : le stock et les chiffres sont mis à jour comme pour le site.</p></div>
-            <div class="lp-channel"><div class="ic" style="background:rgba(46,144,250,.1);color:var(--blue);"><i class="fa-solid fa-boxes-packing"></i></div><h3>En gros (B2B)</h3><p>Répondez aux demandes de devis des acheteurs professionnels et fixez une quantité minimum de commande par produit.</p></div>
+        <div class="channels">
+            <div class="channel reveal" style="--c:#ff6a00;--cs:#fff1e6;"><div class="ic"><i class="fa-solid fa-globe"></i></div><h3>En ligne</h3><p>Votre boutique sur Comptoir : les acheteurs commandent, paient en ligne ou à la livraison, et suivent leur commande.</p></div>
+            <div class="channel reveal" style="--c:#12b76a;--cs:#e7f8ef;"><div class="ic"><i class="fa-solid fa-cash-register"></i></div><h3>En magasin</h3><p>Une caisse par comptoir, dans chaque entrepôt : encaissement rapide, ticket, monnaie rendue et clôture du tiroir.</p></div>
+            <div class="channel reveal" style="--c:#128c4b;--cs:#e3f6ea;"><div class="ic"><i class="fa-brands fa-whatsapp"></i></div><h3>Téléphone et WhatsApp</h3><p>Enregistrez une vente directe en quelques secondes : le stock et les chiffres sont mis à jour comme pour le site.</p></div>
+            <div class="channel reveal" style="--c:#2e90fa;--cs:#eaf3ff;"><div class="ic"><i class="fa-solid fa-boxes-packing"></i></div><h3>En gros (B2B)</h3><p>Répondez aux demandes de devis des professionnels et fixez une quantité minimum de commande par produit.</p></div>
         </div>
     </div>
 </section>
 
 <!-- ═══ Fonctionnalités ═══ -->
-<section class="lp-section soft" id="fonctionnalites">
+<section class="sec soft" id="fonctionnalites">
     <div class="container">
-        <div class="lp-section-head">
+        <div class="head reveal">
             <span class="tag">Fonctionnalités</span>
             <h2>Tout ce qu'il faut pour gérer votre commerce</h2>
-            <p>Chaque fonctionnalité est incluse dans votre espace vendeur. Choisissez un thème pour le détail.</p>
+            <p>Chaque fonctionnalité est incluse dans votre espace vendeur. Choisissez un thème pour voir le détail.</p>
         </div>
-        <div class="lp-tabs" role="tablist">
-            <button type="button" class="lp-tab on" data-tab="vendre" role="tab"><i class="fa-solid fa-store"></i> Vendre</button>
-            <button type="button" class="lp-tab" data-tab="stock" role="tab"><i class="fa-solid fa-warehouse"></i> Stock</button>
-            <button type="button" class="lp-tab" data-tab="argent" role="tab"><i class="fa-solid fa-wallet"></i> Argent</button>
-            <button type="button" class="lp-tab" data-tab="clients" role="tab"><i class="fa-solid fa-bullhorn"></i> Clients et marketing</button>
-            <button type="button" class="lp-tab" data-tab="equipe" role="tab"><i class="fa-solid fa-users"></i> Équipe</button>
-            <button type="button" class="lp-tab" data-tab="pilotage" role="tab"><i class="fa-solid fa-gauge-high"></i> Pilotage</button>
+        <div class="tabs" role="tablist">
+            <button type="button" class="tab on" data-tab="vendre" role="tab" aria-selected="true"><i class="fa-solid fa-store"></i> Vendre</button>
+            <button type="button" class="tab" data-tab="stock" role="tab" aria-selected="false"><i class="fa-solid fa-warehouse"></i> Stock</button>
+            <button type="button" class="tab" data-tab="argent" role="tab" aria-selected="false"><i class="fa-solid fa-wallet"></i> Argent</button>
+            <button type="button" class="tab" data-tab="clients" role="tab" aria-selected="false"><i class="fa-solid fa-bullhorn"></i> Clients et marketing</button>
+            <button type="button" class="tab" data-tab="equipe" role="tab" aria-selected="false"><i class="fa-solid fa-users"></i> Équipe</button>
+            <button type="button" class="tab" data-tab="pilotage" role="tab" aria-selected="false"><i class="fa-solid fa-gauge-high"></i> Pilotage</button>
         </div>
 
-        <div class="lp-panel on" id="tab-vendre" role="tabpanel">
-            <div class="lp-panel-head"><span class="ic" style="background:rgba(255,106,0,.1);color:var(--orange);"><i class="fa-solid fa-store"></i></span><div><h3>Vendre</h3><p>Votre vitrine, votre catalogue et vos commandes.</p></div></div>
-            <div class="lp-feats">
-                <div class="lp-feat"><i class="fa-solid fa-shop"></i><h4>Votre boutique</h4><p>Logo, bannière, description, horaires, coordonnées, réseaux sociaux et carte. Plusieurs boutiques sur un même compte.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-tags"></i><h4>Catalogue produits</h4><p>Photos, prix et prix barré, caractéristiques, catégories, quantité minimum de commande, archivage et export.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-receipt"></i><h4>Commandes</h4><p>Chaque commande avec son statut, le détail client et livraison, l'entrepôt d'expédition et l'export.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-phone"></i><h4>Ventes directes</h4><p>Les ventes faites au téléphone ou sur WhatsApp, enregistrées avec le bon stock et le bon moyen de paiement.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-file-signature"></i><h4>Devis (RFQ)</h4><p>Les demandes de devis des acheteurs arrivent dans votre espace : vous envoyez votre offre et votre prix.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-bolt"></i><h4>Ventes flash et avis</h4><p>Mettez des produits en vente flash et laissez vos clients noter et commenter leurs achats.</p></div>
+        <div class="panel on" id="tab-vendre" role="tabpanel">
+            <div class="panel-intro" style="--g:linear-gradient(150deg,#ff6a00,#ff9a52);"><div class="ic"><i class="fa-solid fa-store"></i></div><h3>Vendre</h3><p>Votre vitrine, votre catalogue et toutes vos commandes, qu'elles viennent du site, du téléphone ou des professionnels.</p></div>
+            <div class="feats">
+                <div class="feat"><i class="fa-solid fa-shop"></i><div><h4>Votre boutique</h4><p>Logo, bannière, description, horaires, coordonnées, réseaux sociaux et carte. Plusieurs boutiques sur un même compte.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-tags"></i><div><h4>Catalogue produits</h4><p>Photos, prix et prix barré, caractéristiques, catégories, quantité minimum de commande, archivage et export.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-receipt"></i><div><h4>Commandes</h4><p>Chaque commande avec son statut, le détail client et livraison, l'entrepôt d'expédition et l'export.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-phone"></i><div><h4>Ventes directes</h4><p>Les ventes faites au téléphone ou sur WhatsApp, enregistrées avec le bon stock et le bon moyen de paiement.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-file-signature"></i><div><h4>Devis (RFQ)</h4><p>Les demandes de devis des acheteurs arrivent dans votre espace : vous envoyez votre offre et votre prix.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-bolt"></i><div><h4>Ventes flash et avis</h4><p>Mettez des produits en vente flash et laissez vos clients noter et commenter leurs achats.</p></div></div>
             </div>
         </div>
 
-        <div class="lp-panel" id="tab-stock" role="tabpanel">
-            <div class="lp-panel-head"><span class="ic" style="background:rgba(122,90,248,.1);color:var(--violet);"><i class="fa-solid fa-warehouse"></i></span><div><h3>Stock et entrepôts</h3><p>Un stock juste, où qu'il se trouve.</p></div></div>
-            <div class="lp-feats">
-                <div class="lp-feat"><i class="fa-solid fa-warehouse"></i><h4>Plusieurs entrepôts</h4><p>Un stock par entrepôt ou magasin, avec sa page, ses commandes, ses ventes, ses dépenses et ses employés.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-truck-ramp-box"></i><h4>Réceptions</h4><p>Enregistrez les arrivages de marchandise dans l'entrepôt concerné, avec leur prix d'achat.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-right-left"></i><h4>Transferts</h4><p>Déplacez du stock d'un entrepôt à l'autre, avec un suivi par étapes et des bons en PDF ou Excel.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-clipboard-check"></i><h4>Inventaire et ajustements</h4><p>Corrigez le stock après un comptage ; chaque correction est tracée avec son motif.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-bell"></i><h4>Alertes de stock</h4><p>Un seuil par produit et une notification dès que le stock passe en dessous.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-chart-pie"></i><h4>Prix d'achat et marge</h4><p>Le coût de chaque produit est gardé à la vente : vous connaissez votre marge réelle, produit par produit.</p></div>
+        <div class="panel" id="tab-stock" role="tabpanel">
+            <div class="panel-intro" style="--g:linear-gradient(150deg,#6941c6,#9e77ed);"><div class="ic"><i class="fa-solid fa-warehouse"></i></div><h3>Stock et entrepôts</h3><p>Un stock juste, où qu'il se trouve : par entrepôt ou magasin, avec chaque mouvement tracé.</p></div>
+            <div class="feats">
+                <div class="feat"><i class="fa-solid fa-warehouse"></i><div><h4>Plusieurs entrepôts</h4><p>Un stock par entrepôt ou magasin, avec sa page, ses commandes, ses ventes, ses dépenses et ses employés.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-truck-ramp-box"></i><div><h4>Réceptions</h4><p>Enregistrez les arrivages de marchandise dans l'entrepôt concerné, avec leur prix d'achat.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-right-left"></i><div><h4>Transferts</h4><p>Déplacez du stock d'un entrepôt à l'autre, avec un suivi par étapes et des bons en PDF ou Excel.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-clipboard-check"></i><div><h4>Inventaire et ajustements</h4><p>Corrigez le stock après un comptage ; chaque correction est tracée avec son motif.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-bell"></i><div><h4>Alertes de stock</h4><p>Un seuil par produit et une notification dès que le stock passe en dessous.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-chart-pie"></i><div><h4>Prix d'achat et marge</h4><p>Le coût de chaque produit est gardé à la vente : vous connaissez votre marge réelle, produit par produit.</p></div></div>
             </div>
         </div>
 
-        <div class="lp-panel" id="tab-argent" role="tabpanel">
-            <div class="lp-panel-head"><span class="ic" style="background:rgba(18,183,106,.1);color:var(--green);"><i class="fa-solid fa-wallet"></i></span><div><h3>Argent</h3><p>Encaisser, facturer, suivre et retirer.</p></div></div>
-            <div class="lp-feats">
-                <div class="lp-feat"><i class="fa-solid fa-mobile-screen"></i><h4>Paiements des clients</h4><p>MTN Mobile Money, Orange Money, virement bancaire, carte ou paiement à la livraison selon ce que vous activez.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-wallet"></i><h4>Portefeuille et retraits</h4><p>Vos ventes en ligne créditent votre portefeuille ; vous demandez un retrait vers Mobile Money ou votre banque.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-file-invoice"></i><h4>Factures</h4><p>Factures PDF avec votre logo, la TVA et vos mentions, créées en un clic depuis une commande et envoyées par e-mail.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-calculator"></i><h4>Comptabilité</h4><p>Revenus, coût des marchandises, commissions, dépenses et résultat, pour toute la boutique ou par entrepôt.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-cash-register"></i><h4>Clôture de caisse</h4><p>Comptage des billets, écart calculé automatiquement, journal des entrées et sorties d'espèces, tickets X et Z.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-file-export"></i><h4>Exports</h4><p>Ventes, produits, clients, stock et comptabilité exportables pour votre comptable.</p></div>
+        <div class="panel" id="tab-argent" role="tabpanel">
+            <div class="panel-intro" style="--g:linear-gradient(150deg,#039855,#32d583);"><div class="ic"><i class="fa-solid fa-wallet"></i></div><h3>Argent</h3><p>Encaisser, facturer, suivre et retirer : vos ventes, votre caisse et votre comptabilité au même endroit.</p></div>
+            <div class="feats">
+                <div class="feat"><i class="fa-solid fa-mobile-screen"></i><div><h4>Paiements des clients</h4><p>MTN Mobile Money, Orange Money, virement bancaire, carte ou paiement à la livraison selon ce que vous activez.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-wallet"></i><div><h4>Portefeuille et retraits</h4><p>Vos ventes en ligne créditent votre portefeuille ; vous demandez un retrait vers Mobile Money ou votre banque.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-file-invoice"></i><div><h4>Factures</h4><p>Factures PDF avec votre logo, la TVA et vos mentions, créées en un clic depuis une commande et envoyées par e-mail.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-calculator"></i><div><h4>Comptabilité</h4><p>Revenus, coût des marchandises, commissions, dépenses et résultat, pour toute la boutique ou par entrepôt.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-cash-register"></i><div><h4>Clôture de caisse</h4><p>Comptage des billets, écart calculé automatiquement, journal des entrées et sorties d'espèces, tickets X et Z.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-file-export"></i><div><h4>Exports</h4><p>Ventes, produits, clients, stock et comptabilité exportables pour votre comptable.</p></div></div>
             </div>
         </div>
 
-        <div class="lp-panel" id="tab-clients" role="tabpanel">
-            <div class="lp-panel-head"><span class="ic" style="background:rgba(46,144,250,.1);color:var(--blue);"><i class="fa-solid fa-bullhorn"></i></span><div><h3>Clients et marketing</h3><p>Connaître vos clients et les faire revenir.</p></div></div>
-            <div class="lp-feats">
-                <div class="lp-feat"><i class="fa-solid fa-address-book"></i><h4>Fichier clients</h4><p>Vos clients, leurs achats et leur montant dépensé, avec export.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-ticket"></i><h4>Codes promo et campagnes</h4><p>Réductions en pourcentage ou en montant, dates, limites d'utilisation, et campagnes avec leur page publique.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-envelope-open-text"></i><h4>E-mails</h4><p>Envoyez des e-mails promotionnels à vos clients, avec désinscription en un clic.</p></div>
-                <div class="lp-feat"><i class="fa-brands fa-whatsapp"></i><h4>WhatsApp</h4><p>Connectez votre numéro : confirmations de commande automatiques, campagnes et une boîte de réception pour répondre.</p></div>
-                <div class="lp-feat"><i class="fa-brands fa-facebook"></i><h4>Facebook</h4><p>Préparez vos publications avec vos produits et partagez-les sur votre page.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-gift"></i><h4>Fidélité et boosts</h4><p>Un programme de points pour vos clients, et des boosts pour mettre vos produits en avant sur Comptoir, Facebook ou WhatsApp.</p></div>
+        <div class="panel" id="tab-clients" role="tabpanel">
+            <div class="panel-intro" style="--g:linear-gradient(150deg,#1570ef,#53b1fd);"><div class="ic"><i class="fa-solid fa-bullhorn"></i></div><h3>Clients et marketing</h3><p>Connaître vos clients, les faire revenir et mettre vos produits en avant.</p></div>
+            <div class="feats">
+                <div class="feat"><i class="fa-solid fa-address-book"></i><div><h4>Fichier clients</h4><p>Vos clients, leurs achats et leur montant dépensé, avec export.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-ticket"></i><div><h4>Codes promo et campagnes</h4><p>Réductions en pourcentage ou en montant, dates, limites d'utilisation, et campagnes avec leur page publique.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-envelope-open-text"></i><div><h4>E-mails</h4><p>Envoyez des e-mails promotionnels à vos clients, avec désinscription en un clic.</p></div></div>
+                <div class="feat"><i class="fa-brands fa-whatsapp"></i><div><h4>WhatsApp</h4><p>Connectez votre numéro : confirmations de commande automatiques, campagnes et une boîte de réception pour répondre.</p></div></div>
+                <div class="feat"><i class="fa-brands fa-facebook"></i><div><h4>Facebook</h4><p>Préparez vos publications avec vos produits et partagez-les sur votre page.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-gift"></i><div><h4>Fidélité et boosts</h4><p>Un programme de points pour vos clients, et des boosts pour mettre vos produits en avant sur Comptoir, Facebook ou WhatsApp.</p></div></div>
             </div>
         </div>
 
-        <div class="lp-panel" id="tab-equipe" role="tabpanel">
-            <div class="lp-panel-head"><span class="ic" style="background:rgba(247,144,9,.1);color:var(--amber);"><i class="fa-solid fa-users"></i></span><div><h3>Équipe</h3><p>Chacun accède seulement à ce dont il a besoin.</p></div></div>
-            <div class="lp-feats">
-                <div class="lp-feat"><i class="fa-solid fa-user-plus"></i><h4>Employés</h4><p>Créez un accès pour chaque employé ; il reçoit ses identifiants par e-mail.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-user-shield"></i><h4>Rôles et droits</h4><p>Produits, stock, commandes, ventes, factures, clients, finances, caisse : vous choisissez ce que chaque rôle peut voir ou faire.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-warehouse"></i><h4>Limité à un entrepôt</h4><p>Un employé rattaché à un entrepôt ne voit que le stock, les ventes et les caisses de cet entrepôt.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-cash-register"></i><h4>Caissiers et responsables</h4><p>Le caissier encaisse ; le responsable rembourse, accorde des remises plus fortes et contrôle les écarts.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-money-check-dollar"></i><h4>Paie</h4><p>Bulletins de paie avec salaire, primes et retenues, et suivi des paiements.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-clock-rotate-left"></i><h4>Traçabilité</h4><p>Chaque mouvement de stock, vente et session de caisse indique qui l'a fait et quand.</p></div>
+        <div class="panel" id="tab-equipe" role="tabpanel">
+            <div class="panel-intro" style="--g:linear-gradient(150deg,#dc6803,#fdb022);"><div class="ic"><i class="fa-solid fa-users"></i></div><h3>Équipe</h3><p>Chacun accède seulement à ce dont il a besoin, dans l'entrepôt où il travaille.</p></div>
+            <div class="feats">
+                <div class="feat"><i class="fa-solid fa-user-plus"></i><div><h4>Employés</h4><p>Créez un accès pour chaque employé ; il reçoit ses identifiants par e-mail.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-user-shield"></i><div><h4>Rôles et droits</h4><p>Produits, stock, commandes, ventes, factures, clients, finances, caisse : vous choisissez ce que chaque rôle peut voir ou faire.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-warehouse"></i><div><h4>Limité à un entrepôt</h4><p>Un employé rattaché à un entrepôt ne voit que le stock, les ventes et les caisses de cet entrepôt.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-cash-register"></i><div><h4>Caissiers et responsables</h4><p>Le caissier encaisse ; le responsable rembourse, accorde des remises plus fortes et contrôle les écarts.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-money-check-dollar"></i><div><h4>Paie</h4><p>Bulletins de paie avec salaire, primes et retenues, et suivi des paiements.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-clock-rotate-left"></i><div><h4>Traçabilité</h4><p>Chaque mouvement de stock, vente et session de caisse indique qui l'a fait et quand.</p></div></div>
             </div>
         </div>
 
-        <div class="lp-panel" id="tab-pilotage" role="tabpanel">
-            <div class="lp-panel-head"><span class="ic" style="background:rgba(16,24,40,.06);color:var(--text1);"><i class="fa-solid fa-gauge-high"></i></span><div><h3>Pilotage</h3><p>Savoir où vous en êtes, à tout moment.</p></div></div>
-            <div class="lp-feats">
-                <div class="lp-feat"><i class="fa-solid fa-chart-line"></i><h4>Tableau de bord</h4><p>Chiffre d'affaires, commandes et marge sur la période, comparés à la période précédente, et la liste des choses à faire.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-robot"></i><h4>Assistant IA</h4><p>Posez vos questions en français (« quels produits sont en rupture ? ») : l'assistant lit vos données et vous répond.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-bell"></i><h4>Notifications</h4><p>Nouvelle commande, devis, stock faible, message : dans le tableau de bord, par e-mail et sur WhatsApp.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-comments"></i><h4>Messagerie</h4><p>Échangez avec les acheteurs depuis votre espace, au sujet d'un produit ou d'une commande.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-magnifying-glass"></i><h4>Recherche globale</h4><p>Retrouvez une commande, un produit, un client ou une facture depuis la barre de recherche.</p></div>
-                <div class="lp-feat"><i class="fa-solid fa-mobile-screen-button"></i><h4>Sur téléphone</h4><p>Le tableau de bord s'utilise sur mobile, et Comptoir s'installe sur l'écran d'accueil comme une application.</p></div>
+        <div class="panel" id="tab-pilotage" role="tabpanel">
+            <div class="panel-intro" style="--g:linear-gradient(150deg,#0b1220,#344054);"><div class="ic"><i class="fa-solid fa-gauge-high"></i></div><h3>Pilotage</h3><p>Savoir où vous en êtes à tout moment, et être prévenu de ce qui compte.</p></div>
+            <div class="feats">
+                <div class="feat"><i class="fa-solid fa-chart-line"></i><div><h4>Tableau de bord</h4><p>Chiffre d'affaires, commandes et marge sur la période, comparés à la période précédente, et la liste des choses à faire.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-robot"></i><div><h4>Assistant IA</h4><p>Posez vos questions en français (« quels produits sont en rupture ? ») : l'assistant lit vos données et vous répond.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-bell"></i><div><h4>Notifications</h4><p>Nouvelle commande, devis, stock faible, message : dans le tableau de bord, par e-mail et sur WhatsApp, pour toute l'équipe concernée.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-comments"></i><div><h4>Messagerie</h4><p>Échangez avec les acheteurs depuis votre espace, au sujet d'un produit ou d'une commande.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-magnifying-glass"></i><div><h4>Recherche globale</h4><p>Retrouvez une commande, un produit, un client ou une facture depuis la barre de recherche.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-mobile-screen-button"></i><div><h4>Sur téléphone</h4><p>Le tableau de bord s'utilise sur mobile, et Comptoir s'installe sur l'écran d'accueil comme une application.</p></div></div>
             </div>
         </div>
     </div>
 </section>
 
 <!-- ═══ Caisse ═══ -->
-<section class="lp-section" id="caisse">
-    <div class="container lp-split">
-        <div class="lp-split-visual" style="background-image:url('{% static 'images/solutions.jpg' %}');"></div>
-        <div>
-            <span class="lp-eyebrow"><i class="fa-solid fa-cash-register"></i> Caisse en magasin</span>
+<section class="sec pos" id="caisse">
+    <div class="container pos-grid">
+        <div class="pos-mock reveal" aria-hidden="true">
+            <div class="till">
+                <div class="till-top"><span><i class="fa-solid fa-cash-register" style="color:var(--orange);"></i> Caisse principale</span><span class="live">Ouverte</span></div>
+                <div class="till-body">
+                    <div class="till-grid">
+                        <div><i class="fa-solid fa-shirt"></i></div><div><i class="fa-solid fa-mobile-screen"></i></div><div><i class="fa-solid fa-mug-hot"></i></div>
+                        <div><i class="fa-solid fa-headphones"></i></div><div><i class="fa-solid fa-bag-shopping"></i></div><div><i class="fa-solid fa-spray-can-sparkles"></i></div>
+                        <div><i class="fa-solid fa-shoe-prints"></i></div><div><i class="fa-solid fa-lightbulb"></i></div><div><i class="fa-solid fa-box"></i></div>
+                    </div>
+                    <div class="till-cart">
+                        <div class="ln"><span></span><b></b></div>
+                        <div class="ln"><span style="flex:.7;"></span><b></b></div>
+                        <div class="ln"><span style="flex:.85;"></span><b></b></div>
+                        <div class="tot"><span>Total</span><span>F</span></div>
+                        <div class="pay"><i class="fa-solid fa-check"></i> Encaisser</div>
+                    </div>
+                </div>
+            </div>
+            <div class="ticket"><div class="c">TICKET</div><div class="r"></div><div class="r s"></div><div class="r"></div><div class="r s"></div><div class="z"><span>TOTAL</span><span>F</span></div></div>
+        </div>
+        <div class="reveal">
+            <span class="tag">Caisse en magasin</span>
             <h2>Une vraie caisse pour votre magasin</h2>
-            <p>Chaque entrepôt peut avoir plusieurs caisses. Les ventes du comptoir sortent du bon stock et s'ajoutent à vos chiffres, sans double saisie.</p>
-            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Encaissement rapide</strong> : recherche ou lecteur de code-barres, paniers mis en attente, raccourcis clavier.</div></div>
-            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Paiement mixte</strong> : espèces, Mobile Money et carte sur un même ticket, monnaie calculée.</div></div>
-            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Remboursements</strong> : total ou article par article, avec remise en stock.</div></div>
-            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Fermeture contrôlée</strong> : comptage des billets, écart expliqué, ticket Z imprimable.</div></div>
-            <div class="lp-check"><i class="fa-solid fa-check"></i><div><strong>Rapports</strong> : ventes par caisse, par caissier et par heure, marge, export.</div></div>
+            <p class="lead">Chaque entrepôt peut avoir plusieurs caisses. Les ventes du comptoir sortent du bon stock et s'ajoutent à vos chiffres, sans double saisie.</p>
+            <div class="checks">
+                <div class="check"><i class="fa-solid fa-bolt"></i><div><b>Encaissement rapide</b><span>Recherche ou lecteur de code-barres, paniers mis en attente, raccourcis clavier.</span></div></div>
+                <div class="check"><i class="fa-solid fa-money-bill-transfer"></i><div><b>Paiement mixte</b><span>Espèces, Mobile Money et carte sur un même ticket, monnaie calculée.</span></div></div>
+                <div class="check"><i class="fa-solid fa-rotate-left"></i><div><b>Remboursements</b><span>Total ou article par article, avec remise en stock.</span></div></div>
+                <div class="check"><i class="fa-solid fa-lock"></i><div><b>Fermeture contrôlée</b><span>Comptage des billets, écart expliqué, ticket Z imprimable.</span></div></div>
+                <div class="check"><i class="fa-solid fa-chart-column"></i><div><b>Rapports</b><span>Ventes par caisse, par caissier et par heure, marge, export.</span></div></div>
+            </div>
         </div>
     </div>
 </section>
 
 <!-- ═══ Démarrer ═══ -->
-<section class="lp-section soft" id="demarrer">
+<section class="sec warm" id="demarrer">
     <div class="container">
-        <div class="lp-section-head">
+        <div class="head reveal">
             <span class="tag">Comment ça marche</span>
             <h2>Votre boutique en ligne aujourd'hui</h2>
             <p>Quatre étapes, sans compétence technique.</p>
         </div>
-        <div class="lp-steps">
-            <div class="lp-step"><div class="step-n">1</div><h3>Créez votre compte</h3><p>Le nom de votre boutique et vos coordonnées : votre espace vendeur est prêt, avec un premier entrepôt.</p></div>
-            <div class="lp-step"><div class="step-n">2</div><h3>Choisissez votre formule</h3><p>Selon le nombre de produits et les outils dont vous avez besoin. Vous pourrez en changer plus tard.</p></div>
-            <div class="lp-step"><div class="step-n">3</div><h3>Configurez votre boutique</h3><p>Logo, moyens de paiement, entrepôts, caisses et employés : à votre rythme.</p></div>
-            <div class="lp-step"><div class="step-n">4</div><h3>Publiez et vendez</h3><p>Ajoutez vos produits : ils sont visibles par les acheteurs, et vous vendez aussi en magasin.</p></div>
+        <div class="steps">
+            <div class="step reveal"><div class="n"><i class="fa-solid fa-user-plus"></i><b>1</b></div><h3>Créez votre compte</h3><p>Le nom de votre boutique et vos coordonnées : votre espace vendeur est prêt, avec un premier entrepôt.</p></div>
+            <div class="step reveal"><div class="n"><i class="fa-solid fa-layer-group"></i><b>2</b></div><h3>Choisissez votre formule</h3><p>Selon le nombre de produits et les outils dont vous avez besoin. Vous pourrez en changer plus tard.</p></div>
+            <div class="step reveal"><div class="n"><i class="fa-solid fa-sliders"></i><b>3</b></div><h3>Configurez votre boutique</h3><p>Logo, moyens de paiement, entrepôts, caisses et employés : à votre rythme.</p></div>
+            <div class="step reveal"><div class="n"><i class="fa-solid fa-rocket"></i><b>4</b></div><h3>Publiez et vendez</h3><p>Ajoutez vos produits : ils sont visibles par les acheteurs, et vous vendez aussi en magasin.</p></div>
         </div>
     </div>
 </section>
 
 <!-- ═══ Formules ═══ -->
-<section class="lp-section dark" id="formules">
+<section class="sec soft" id="formules">
     <div class="container">
-        <div class="lp-section-head">
-            <span class="tag">Formules</span>
-            <h2>Des formules selon votre activité</h2>
-            <p>Un abonnement mensuel, sans frais de mise en place. Plus votre formule est élevée, plus la commission sur les ventes en ligne est basse.</p>
+        <div class="plans-head">
+            <div class="head reveal" style="margin-bottom:0;">
+                <span class="tag">Formules</span>
+                <h2>Des formules selon votre activité</h2>
+                <p>Un abonnement, sans frais de mise en place. Plus votre formule est élevée, plus la commission sur les ventes en ligne est basse.</p>
+            </div>
+            {% if plans %}
+            <div class="billing" role="group" aria-label="Période de facturation">
+                <button type="button" class="on" data-billing="month" aria-pressed="true">Mensuel</button>
+                <button type="button" data-billing="year" aria-pressed="false">Annuel <em id="yearSave"></em></button>
+            </div>
+            {% endif %}
         </div>
-        <div class="lp-plans">
+        <div class="plans">
             {% for plan in plans %}
-            <div class="lp-plan {% if plan.is_popular %}popular{% endif %}">
-                {% if plan.is_popular %}<span class="pop-badge">La plus choisie</span>{% endif %}
+            <div class="plan reveal {% if plan.is_popular %}popular{% endif %}" data-month="{{ plan.price_monthly|floatformat:'0u' }}" data-year="{% if plan.price_yearly %}{{ plan.price_yearly|floatformat:'0u' }}{% endif %}">
+                {% if plan.is_popular %}<span class="badge">La plus choisie</span>{% endif %}
                 <h3>{{ plan.name }}</h3>
-                <div class="price">{{ plan.price_monthly|floatformat:0|intcomma }} F <small>/ mois</small></div>
-                {% if plan.price_yearly %}<div class="year">ou {{ plan.price_yearly|floatformat:0|intcomma }} F par an</div>{% endif %}
-                {% if plan.description %}<div class="plan-desc">{{ plan.description|truncatewords:16 }}</div>{% endif %}
+                {% if plan.description %}<div class="desc">{{ plan.description|truncatewords:16 }}</div>{% endif %}
+                <div class="price"><b class="amount">{{ plan.price_monthly|floatformat:0|intcomma }} F</b><small class="per">/ mois</small></div>
+                <div class="price-note">{% if plan.price_yearly %}ou {{ plan.price_yearly|floatformat:0|intcomma }} F par an{% else %}&nbsp;{% endif %}</div>
                 <ul>
                     <li><i class="fa-solid fa-check"></i> Jusqu'à {{ plan.max_products|intcomma }} produits</li>
                     <li><i class="fa-solid fa-check"></i> Commission de {{ plan.commission_rate|floatformat:"-1" }} % sur les ventes en ligne</li>
@@ -490,42 +647,42 @@ a { color: inherit; }
                     {% if plan.can_custom_store %}<li><i class="fa-solid fa-check"></i> Boutique personnalisée</li>{% endif %}
                     {% if plan.can_priority_support %}<li><i class="fa-solid fa-check"></i> Support prioritaire</li>{% endif %}
                 </ul>
-                <a href="{% url 'accounts:register_seller' %}" class="btn {% if plan.is_popular %}btn-orange{% else %}btn-outline{% endif %}">Choisir {{ plan.name }}</a>
+                <a href="{% url 'accounts:register_seller' %}" class="btn {% if plan.is_popular %}btn-orange{% endif %}">Choisir {{ plan.name }}</a>
             </div>
             {% empty %}
-            <div class="lp-plan">
+            <div class="plan">
                 <h3>Formules bientôt disponibles</h3>
-                <div class="plan-desc">Créez votre compte vendeur : les formules vous seront proposées dans votre espace.</div>
-                <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange">Créer ma boutique</a>
+                <div class="desc">Créez votre compte vendeur : les formules vous seront proposées dans votre espace.</div>
+                <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange" style="margin-top:20px;">Créer ma boutique</a>
             </div>
             {% endfor %}
         </div>
-        <div class="lp-included">
-            <h3><i class="fa-solid fa-circle-check" style="color:var(--green);"></i> Inclus dans toutes les formules</h3>
+        <div class="included reveal">
+            <div><h3>Inclus dans toutes les formules</h3><p>Les outils essentiels sont les mêmes pour tous, quelle que soit la taille de votre activité.</p></div>
             <ul>
-                <li><i class="fa-solid fa-check"></i>Boutique en ligne et catalogue</li>
-                <li><i class="fa-solid fa-check"></i>Commandes, ventes directes et devis</li>
-                <li><i class="fa-solid fa-check"></i>Caisse en magasin</li>
-                <li><i class="fa-solid fa-check"></i>Stock multi-entrepôts et transferts</li>
-                <li><i class="fa-solid fa-check"></i>Factures PDF et comptabilité</li>
-                <li><i class="fa-solid fa-check"></i>Employés, rôles et paie</li>
-                <li><i class="fa-solid fa-check"></i>Codes promo et campagnes</li>
-                <li><i class="fa-solid fa-check"></i>Messagerie et notifications</li>
-                <li><i class="fa-solid fa-check"></i>Tableau de bord sur ordinateur et téléphone</li>
+                <li><i class="fa-solid fa-circle-check"></i>Boutique en ligne et catalogue</li>
+                <li><i class="fa-solid fa-circle-check"></i>Commandes, ventes directes et devis</li>
+                <li><i class="fa-solid fa-circle-check"></i>Caisse en magasin</li>
+                <li><i class="fa-solid fa-circle-check"></i>Stock multi-entrepôts et transferts</li>
+                <li><i class="fa-solid fa-circle-check"></i>Factures PDF et comptabilité</li>
+                <li><i class="fa-solid fa-circle-check"></i>Employés, rôles et paie</li>
+                <li><i class="fa-solid fa-circle-check"></i>Codes promo et campagnes</li>
+                <li><i class="fa-solid fa-circle-check"></i>Messagerie et notifications</li>
+                <li><i class="fa-solid fa-circle-check"></i>Ordinateur et téléphone</li>
             </ul>
         </div>
-        <p class="lp-fees"><strong>Commission</strong> : elle ne s'applique qu'aux ventes passées sur le site. Les ventes en caisse et les ventes directes que vous enregistrez n'en ont pas.</p>
+        <div class="fees reveal"><i class="fa-solid fa-circle-info"></i><div><b>Commission</b> : elle ne s'applique qu'aux ventes passées sur le site. Les ventes en caisse et les ventes directes que vous enregistrez n'en ont pas.</div></div>
     </div>
 </section>
 
 <!-- ═══ Questions ═══ -->
-<section class="lp-section" id="faq">
+<section class="sec" id="faq">
     <div class="container">
-        <div class="lp-section-head">
+        <div class="head reveal">
             <span class="tag">Questions fréquentes</span>
             <h2>Vos questions de vendeur</h2>
         </div>
-        <div class="lp-faq">
+        <div class="faq">
             <details open><summary>Comment suis-je payé pour mes ventes en ligne ?<i class="fa-solid fa-plus"></i></summary>
                 <p>Le montant de chaque vente en ligne, commission déduite, est crédité sur votre portefeuille dans votre espace vendeur. Vous demandez ensuite un retrait vers votre compte MTN Mobile Money, Orange Money ou votre compte bancaire.</p></details>
             <details><summary>Quelle commission prend Comptoir ?<i class="fa-solid fa-plus"></i></summary>
@@ -535,7 +692,7 @@ a { color: inherit; }
             <details><summary>Puis-je gérer plusieurs magasins ou entrepôts ?<i class="fa-solid fa-plus"></i></summary>
                 <p>Oui. Chaque entrepôt a son stock, ses caisses, ses commandes, ses dépenses et sa comptabilité, et vous transférez du stock de l'un à l'autre. Vous pouvez aussi avoir plusieurs boutiques sur un même compte.</p></details>
             <details><summary>Mes employés peuvent-ils utiliser le tableau de bord ?<i class="fa-solid fa-plus"></i></summary>
-                <p>Oui. Vous créez un rôle (caissier, magasinier, responsable…), choisissez ses droits et, si besoin, le limitez à un entrepôt. Chaque employé a ses propres identifiants.</p></details>
+                <p>Oui. Vous créez un rôle (caissier, magasinier, responsable…), choisissez ses droits et, si besoin, le limitez à un entrepôt. Chaque employé a ses propres identifiants et reçoit les notifications qui le concernent.</p></details>
             <details><summary>Quels moyens de paiement mes clients peuvent-ils utiliser ?<i class="fa-solid fa-plus"></i></summary>
                 <p>Ceux que vous activez dans votre configuration : MTN Mobile Money, Orange Money, virement bancaire, carte, ou paiement à la livraison. À la caisse : espèces, Mobile Money et carte, éventuellement sur le même ticket.</p></details>
             <details><summary>Puis-je changer de formule ?<i class="fa-solid fa-plus"></i></summary>
@@ -544,65 +701,106 @@ a { color: inherit; }
                 <p>Non. Votre boutique est hébergée sur Comptoir : vous la configurez depuis votre tableau de bord, sur ordinateur ou sur téléphone.</p></details>
             <details><summary>Puis-je utiliser mon propre numéro WhatsApp ?<i class="fa-solid fa-plus"></i></summary>
                 <p>Oui. Vous connectez votre numéro en scannant un QR code : vos clients reçoivent leurs confirmations de commande depuis votre numéro et vous répondez à leurs messages depuis votre espace.</p></details>
+            <details><summary>Mes données sont-elles séparées de celles des autres boutiques ?<i class="fa-solid fa-plus"></i></summary>
+                <p>Oui. Chaque boutique ne voit que ses propres produits, commandes, clients, caisses et chiffres, et vos employés n'accèdent qu'à ce que leur rôle autorise.</p></details>
         </div>
     </div>
 </section>
 
 <!-- ═══ Appel final ═══ -->
-<section class="lp-section soft">
-    <div class="container">
-        <div class="lp-cta">
-            <h2>Prêt à ouvrir votre boutique ?</h2>
-            <p>Créez votre compte vendeur en quelques minutes et découvrez votre espace : boutique, caisse, stock et tableau de bord.</p>
-            <div class="lp-hero-actions">
-                <a href="{% url 'accounts:register_seller' %}" class="btn btn-white btn-lg"><i class="fa-solid fa-store"></i> Créer ma boutique</a>
-                <a href="{% url 'contact' %}" class="btn btn-ghost btn-lg"><i class="fa-solid fa-comments"></i> Poser une question</a>
-            </div>
+<section class="container">
+    <div class="cta reveal">
+        <div class="marks" aria-hidden="true">
+            <span style="left:4%;top:12%;">{% include 'includes/logo.html' with size=70 tone='inverse' mark_only=True %}</span>
+            <span style="right:6%;top:16%;">{% include 'includes/logo.html' with size=46 tone='inverse' mark_only=True %}</span>
+            <span style="right:18%;bottom:8%;">{% include 'includes/logo.html' with size=90 tone='inverse' mark_only=True %}</span>
+            <span style="left:16%;bottom:10%;">{% include 'includes/logo.html' with size=38 tone='inverse' mark_only=True %}</span>
+        </div>
+        <h2>Prêt à ouvrir votre boutique ?</h2>
+        <p>Créez votre compte vendeur en quelques minutes et découvrez votre espace : boutique, caisse, stock et tableau de bord.</p>
+        <div class="hero-cta">
+            <a href="{% url 'accounts:register_seller' %}" class="btn btn-white btn-lg"><i class="fa-solid fa-store"></i> Créer ma boutique</a>
+            <a href="{% url 'contact' %}" class="btn btn-outline-white btn-lg"><i class="fa-solid fa-comments"></i> Poser une question</a>
         </div>
     </div>
 </section>
 
 <!-- ═══ Pied de page ═══ -->
-<footer class="lp-footer">
-    <div class="container lp-footer-inner">
-        <div style="display:flex;align-items:center;gap:12px;">{% include 'includes/logo.html' with size=28 tone='light' %} <span>© 2026</span></div>
-        <div class="lp-footer-links">
-            <a href="{% url 'home' %}">Accueil</a>
-            <a href="{% url 'store:list' %}">Vendeurs</a>
-            <a href="{% url 'faq' %}">FAQ</a>
-            <a href="{% url 'contact' %}">Contact</a>
-            <a href="{% url 'accounts:login' %}">Se connecter</a>
+<footer class="foot">
+    <div class="container">
+        <div class="foot-inner">
+            <a href="{% url 'home' %}" aria-label="Comptoir — accueil">{% include 'includes/logo.html' with size=32 tone='light' %}</a>
+            <div class="foot-links">
+                <a href="{% url 'home' %}">Accueil</a>
+                <a href="{% url 'store:list' %}">Vendeurs</a>
+                <a href="{% url 'about' %}">À propos</a>
+                <a href="{% url 'faq' %}">FAQ</a>
+                <a href="{% url 'contact' %}">Contact</a>
+                <a href="{% url 'accounts:login' %}">Se connecter</a>
+            </div>
         </div>
+        <div class="foot-bottom">© 2026 Comptoir — Conçu et développé par DigiSoft Africa</div>
     </div>
 </footer>
 
 <script>
 document.body.classList.remove('no-js');
+document.documentElement.classList.add('js');
 (function() {
-    var slides = document.querySelectorAll('.hero-slide'), dots = document.querySelectorAll('.hero-dot'), cur = 0, timer;
-    function show(n) {
-        slides[cur].classList.remove('active'); dots[cur].classList.remove('active');
-        cur = (n + slides.length) % slides.length;
-        slides[cur].classList.add('active'); dots[cur].classList.add('active');
-    }
-    window.goHeroSlide = function(n) { show(n); reset(); };
-    function reset() { clearInterval(timer); timer = setInterval(function() { show(cur + 1); }, 6000); }
-    reset();
+    /* Barre de navigation : ombre au défilement, menu mobile */
+    var nav = document.getElementById('lpNav'), burger = document.getElementById('lpBurger'), menu = document.getElementById('lpMobile');
+    var onScroll = function() { nav.classList.toggle('scrolled', window.scrollY > 8); };
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    burger.addEventListener('click', function() { var open = menu.classList.toggle('open'); burger.setAttribute('aria-expanded', open); });
+    menu.querySelectorAll('a').forEach(function(a) { a.addEventListener('click', function() { menu.classList.remove('open'); burger.setAttribute('aria-expanded', 'false'); }); });
 
     /* Onglets des fonctionnalités */
-    var tabs = document.querySelectorAll('.lp-tab');
+    var tabs = document.querySelectorAll('.tab');
     tabs.forEach(function(tab) {
         tab.addEventListener('click', function() {
-            tabs.forEach(function(t) { t.classList.toggle('on', t === tab); t.setAttribute('aria-selected', t === tab); });
-            document.querySelectorAll('.lp-panel').forEach(function(p) { p.classList.toggle('on', p.id === 'tab-' + tab.dataset.tab); });
+            tabs.forEach(function(t) { var on = t === tab; t.classList.toggle('on', on); t.setAttribute('aria-selected', on); });
+            document.querySelectorAll('.panel').forEach(function(p) { p.classList.toggle('on', p.id === 'tab-' + tab.dataset.tab); });
             tab.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
         });
     });
 
-    /* Menu mobile : se ferme après un clic sur un lien */
-    document.querySelectorAll('#lpMobile a').forEach(function(a) {
-        a.addEventListener('click', function() { document.getElementById('lpMobile').classList.remove('open'); });
+    /* Formules : mensuel / annuel, avec l'économie calculée à partir des vrais prix */
+    var fmt = function(n) { return Math.round(n).toLocaleString('fr-FR').replace(/[  ]/g, ' ') + ' F'; };
+    var plans = document.querySelectorAll('.plan[data-month]');
+    var bestSave = 0;
+    plans.forEach(function(p) {
+        var m = parseFloat(p.dataset.month), y = parseFloat(p.dataset.year);
+        if (m && y && m * 12 > y) bestSave = Math.max(bestSave, Math.round((1 - y / (m * 12)) * 100));
     });
+    var saveTag = document.getElementById('yearSave');
+    if (saveTag) { if (bestSave > 0) saveTag.textContent = "jusqu'à −" + bestSave + ' %'; else saveTag.remove(); }
+    function setBilling(mode) {
+        document.querySelectorAll('[data-billing]').forEach(function(b) { var on = b.dataset.billing === mode; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+        plans.forEach(function(p) {
+            var m = parseFloat(p.dataset.month), y = parseFloat(p.dataset.year);
+            var amount = p.querySelector('.amount'), per = p.querySelector('.per'), note = p.querySelector('.price-note');
+            if (mode === 'year' && y) {
+                amount.textContent = fmt(y); per.textContent = '/ an';
+                var save = m * 12 - y;
+                note.innerHTML = 'soit ' + fmt(y / 12) + ' par mois' + (save > 0 ? ' · <span class="save">' + fmt(save) + ' économisés</span>' : '');
+            } else {
+                amount.textContent = fmt(m); per.textContent = '/ mois';
+                note.innerHTML = y ? 'ou ' + fmt(y) + ' par an' : '&nbsp;';
+            }
+        });
+    }
+    document.querySelectorAll('[data-billing]').forEach(function(b) { b.addEventListener('click', function() { setBilling(b.dataset.billing); }); });
+
+    /* Apparition en douceur au défilement */
+    var items = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        var io = new IntersectionObserver(function(entries) {
+            entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+        }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
+        items.forEach(function(el, i) { el.style.transitionDelay = (i % 4) * 70 + 'ms'; io.observe(el); });
+    } else {
+        items.forEach(function(el) { el.classList.add('in'); });
+    }
 })();
 </script>
 </body>

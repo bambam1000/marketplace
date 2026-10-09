@@ -2831,11 +2831,9 @@ def dash_assistant_delete(request, pk):
 @login_required
 @seller_or_admin_required
 def dash_notifications(request):
-    """Centre de notifications du dashboard"""
-    from messaging.models import Notification
-    notifs = Notification.objects.filter(user=request.user)
-    notifs.filter(is_read=False).update(is_read=True)
-    return render(request, 'dashboard/notifications.html', {'notifications': notifs[:100]})
+    """Centre de notifications du dashboard (même page que sur le site, dans la mise en page vendeur)."""
+    from messaging.views import notification_center
+    return notification_center(request, layout='dashboard/base.html')
 
 
 @login_required
