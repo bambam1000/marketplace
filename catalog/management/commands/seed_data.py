@@ -241,6 +241,7 @@ class Command(BaseCommand):
                 qty = random.randint(1, 3)
                 OrderItem.objects.create(
                     order=order, product=prod, store=prod.store,
+                    warehouse=prod.store.warehouses.filter(is_default=True).first() or prod.store.warehouses.first(),
                     quantity=qty, price=prod.price,
                 )
                 total += int(prod.price) * qty

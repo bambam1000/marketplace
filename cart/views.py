@@ -269,7 +269,8 @@ def checkout(request):
             try:
                 product = Product.objects.get(pk=int(pid))
                 from inventory.models import Warehouse
-                wh = Warehouse.objects.filter(store=product.store, is_default=True).first()
+                whs = Warehouse.objects.filter(store=product.store)
+                wh = whs.filter(is_default=True).first() or whs.filter(is_active=True).first()
                 OrderItem.objects.create(
                     order=order, product=product, store=product.store, warehouse=wh,
                     quantity=item['quantity'], price=item['price'],

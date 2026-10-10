@@ -9,12 +9,13 @@ def unread_messages_count(request):
 
 
 def notifications_context(request):
-    """Context processor : notifications non lues + dernières notifications"""
+    """Context processor : nombre de non lues + les non lues récentes (menu de la cloche)"""
     if request.user.is_authenticated:
         from .models import Notification
-        qs = Notification.objects.filter(user=request.user)
+        unread = Notification.objects.filter(user=request.user, is_read=False)
         return {
-            'unread_notifications_count': qs.filter(is_read=False).count(),
-            'latest_notifications': qs[:8],
+            'unread_notifications_count': unread.count(),
+            # Une notification lue disparaît du menu de la cloche (elle reste dans la page Notifications)
+            'latest_notifications': unread[:8],
         }
     return {'unread_notifications_count': 0, 'latest_notifications': []}

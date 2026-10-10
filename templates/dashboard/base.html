@@ -927,27 +927,19 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <a href="{% url 'dashboard:assistant' %}" class="{% if rm.url_name == 'assistant' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
 </nav>
 
-{% if nav.can.orders or nav.can.sales or nav.can.invoices or nav.can.customers or nav.can.pos %}
-<div class="dash-sidebar-label">Ventes</div>
+{% if nav.can.warehouses %}
+<div class="dash-sidebar-label">Entrepôts</div>
 <nav class="dash-nav">
-{% if nav.can.orders %}<a href="{% url 'dashboard:orders' %}" class="{% if rm.url_name == 'orders' or rm.url_name == 'order_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-receipt"></i></span> Commandes{% if nav.badges.orders %}<span class="nav-badge warn" title="Commandes en attente">{{ nav.badges.orders }}</span>{% endif %}</a>{% endif %}
-{% if nav.can.sales %}<a href="{% url 'dashboard:sales' %}" class="{% if rm.url_name == 'sales' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span> Ventes</a>{% endif %}
-{% if nav.can.pos and nav.store %}<a href="{% url 'pos:dashboard' %}" class="{% if rm.app_name == 'pos' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-cash-register"></i></span> Caisse POS{% if nav.badges.pos_open %}<span class="nav-badge wa" title="Votre caisse est ouverte">Ouverte</span>{% endif %}</a>{% endif %}
-{% if nav.can.invoices %}<a href="{% url 'invoicing:invoices' %}" class="{% if rm.app_name == 'invoicing' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice"></i></span> Facturation</a>{% endif %}
-{% if nav.can.orders %}<a href="{% url 'dashboard:rfqs' %}" class="{% if rm.url_name == 'rfqs' or rm.url_name == 'rfq_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-signature"></i></span> Devis RFQ{% if nav.badges.rfqs %}<span class="nav-badge" title="Demandes sans votre réponse">{{ nav.badges.rfqs }}</span>{% endif %}</a>{% endif %}
-{% if nav.can.customers %}<a href="{% url 'dashboard:customers' %}" class="{% if rm.url_name == 'customers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Clients</a>{% endif %}
+<a href="{% url 'dashboard:warehouses' %}" class="{% if 'warehouse' in rm.url_name or rm.url_name in nav.hub_urls or rm.app_name == 'pos' or rm.app_name == 'invoicing' %}active{% endif %}" title="Commandes, ventes, caisses, factures, produits et stock de chaque entrepôt"><span class="nav-icon"><i class="fa-solid fa-warehouse"></i></span> Entrepôts{% if nav.badges.orders %}<span class="nav-badge warn" title="Commandes en attente">{{ nav.badges.orders }}</span>{% endif %}{% if nav.badges.stock %}<span class="nav-badge danger" title="Produits en rupture">{{ nav.badges.stock }}</span>{% endif %}{% if nav.badges.pos_open %}<span class="nav-badge wa" title="Votre caisse est ouverte">Caisse</span>{% endif %}</a>
+{% if nav.can.stock or nav.can.transfer %}<a href="{% url 'dashboard:transfers' %}" class="{% if 'transfer' in rm.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-right-left"></i></span> Transferts</a>{% endif %}
 </nav>
 {% endif %}
 
-{% if nav.can.products or nav.can.stock %}
-<div class="dash-sidebar-label">Catalogue et stock</div>
+{% if nav.can.orders or nav.can.customers %}
+<div class="dash-sidebar-label">Clients</div>
 <nav class="dash-nav">
-{% if nav.can.products %}<a href="{% url 'dashboard:products' %}" class="{% if rm.url_name == 'products' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-tag"></i></span> Produits</a>{% endif %}
-{% if nav.can.stock %}
-<a href="{% url 'dashboard:warehouses' %}" class="{% if 'warehouse' in rm.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-warehouse"></i></span> Entrepôts{% if nav.badges.stock %}<span class="nav-badge danger" title="Produits en rupture">{{ nav.badges.stock }}</span>{% endif %}</a>
-<a href="{% url 'dashboard:inventory' %}" class="{% if rm.url_name == 'inventory' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></span> Inventaire</a>
-<a href="{% url 'dashboard:transfers' %}" class="{% if 'transfer' in rm.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-right-left"></i></span> Transferts</a>
-{% endif %}
+{% if nav.can.orders %}<a href="{% url 'dashboard:rfqs' %}" class="{% if rm.url_name == 'rfqs' or rm.url_name == 'rfq_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-signature"></i></span> Devis RFQ{% if nav.badges.rfqs %}<span class="nav-badge" title="Demandes sans votre réponse">{{ nav.badges.rfqs }}</span>{% endif %}</a>{% endif %}
+{% if nav.can.customers %}<a href="{% url 'dashboard:customers' %}" class="{% if rm.url_name == 'customers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Clients</a>{% endif %}
 </nav>
 {% endif %}
 
@@ -964,19 +956,6 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <nav class="dash-nav">
 {% if nav.is_seller %}<a href="{% url 'dashboard:stores' %}" class="{% if rm.url_name == 'stores' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-store"></i></span> Boutiques</a>{% endif %}
 <a href="{% url 'dashboard:employees' %}" class="{% if rm.url_name|slice:':8' == 'employee' or rm.url_name == 'roles' or rm.url_name|slice:':3' == 'pay' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-user-tie"></i></span> Employés</a>
-{% if nav.is_seller %}
-{% with fin_open=rm.app_name %}
-<button type="button" class="nav-menu-toggle {% if fin_open == 'billing' or fin_open == 'accounting' %}active{% endif %}" onclick="toggleMenu(this)" aria-expanded="{% if fin_open == 'billing' or fin_open == 'accounting' %}true{% else %}false{% endif %}">
-<div><span class="nav-icon"><i class="fa-solid fa-sack-dollar"></i></span> Finances</div><i class="fa-solid fa-chevron-right"></i>
-</button>
-<div class="nav-submenu {% if fin_open == 'billing' or fin_open == 'accounting' %}active{% endif %}">
-<a href="{% url 'accounting:wallet' %}" class="{% if rm.url_name == 'wallet' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-wallet"></i></span> Portefeuille</a>
-<a href="{% url 'billing:my_subscription' %}" class="{% if rm.url_name == 'my_subscription' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gem"></i></span> Abonnement</a>
-<a href="{% url 'billing:my_boosts' %}" class="{% if rm.url_name == 'my_boosts' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-rocket"></i></span> Boosts</a>
-<a href="{% url 'dashboard:settings' %}?tab=payments" class="{% if rm.url_name == 'payment_config' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-credit-card"></i></span> Moyens de paiement</a>
-</div>
-{% endwith %}
-{% endif %}
 </nav>
 {% endif %}
 
@@ -1003,7 +982,6 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <div class="sb-bottom">
 <nav class="dash-nav">
 {% if nav.store and nav.can.owner %}<a href="{% url 'dashboard:settings' %}" class="{% if rm.url_name == 'settings' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>{% endif %}
-<a href="{% url 'faq' %}"><span class="nav-icon"><i class="fa-solid fa-circle-question"></i></span> Centre d'aide</a>
 <a href="#" onclick="openDashLogout();return false;"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Déconnexion</a>
 </nav>
 </div>
@@ -1070,7 +1048,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 {% if not n.is_read %}<span class="tb-dot"></span>{% endif %}
 </a>
 {% empty %}
-<div class="tb-empty"><i class="fa-regular fa-bell"></i>Aucune notification</div>
+<div class="tb-empty"><i class="fa-regular fa-bell"></i>Vous êtes à jour : aucune nouvelle notification</div>
 {% endfor %}
 </div>
 <a href="{% url 'dashboard:notifications' %}" class="tb-dd-foot">Voir toutes les notifications</a>
@@ -1089,6 +1067,14 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <div class="tb-dd-user"><strong>{{ user.display_name }}</strong><span>{{ user.email }}</span></div>
 <a href="{% url 'accounts:profile' %}"><i class="fa-solid fa-user"></i> Mon profil</a>
 {% if nav.store and nav.can.owner %}<a href="{% url 'dashboard:settings' %}"><i class="fa-solid fa-gear"></i> Paramètres</a>{% endif %}
+{% if nav.is_seller %}
+<div class="dropdown-divider"></div>
+<a href="{% url 'accounting:wallet' %}"><i class="fa-solid fa-wallet"></i> Portefeuille</a>
+<a href="{% url 'billing:my_subscription' %}"><i class="fa-solid fa-gem"></i> Abonnement</a>
+<a href="{% url 'billing:my_boosts' %}"><i class="fa-solid fa-rocket"></i> Boosts</a>
+<a href="{% url 'dashboard:settings' %}?tab=payments"><i class="fa-solid fa-credit-card"></i> Moyens de paiement</a>
+<div class="dropdown-divider"></div>
+{% endif %}
 <a href="{% url 'home' %}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Voir le site</a>
 <div class="dropdown-divider"></div>
 <button type="button" onclick="openDashLogout()" class="tb-danger"><i class="fa-solid fa-right-from-bracket"></i> Déconnexion</button>
@@ -1171,7 +1157,7 @@ document.addEventListener('keydown', function(e) {
   function render(items) {
     if (!list) return;
     list.textContent = '';
-    if (!items.length) { var e = document.createElement('div'); e.className = 'tb-empty'; e.innerHTML = '<i class="fa-regular fa-bell"></i>'; e.appendChild(document.createTextNode('Aucune notification')); list.appendChild(e); return; }
+    if (!items.length) { var e = document.createElement('div'); e.className = 'tb-empty'; e.innerHTML = '<i class="fa-regular fa-bell"></i>'; e.appendChild(document.createTextNode('Vous êtes à jour : aucune nouvelle notification')); list.appendChild(e); return; }
     items.forEach(function(n) {
       var a = document.createElement('a'); a.href = n.url; a.className = 'tb-notif' + (n.read ? '' : ' unread');
       var ic = document.createElement('span'); ic.className = 'tb-notif-ic'; ic.style.background = n.color + '1a'; ic.style.color = n.color;

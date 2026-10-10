@@ -286,9 +286,9 @@ def notifications_delete_read(request):
 
 @login_required
 def notifications_feed(request):
-    """Cloche en direct : nombre de non lues et dernières notifications."""
+    """Cloche en direct : nombre de non lues et les non lues récentes (les lues n'y apparaissent plus)."""
     from django.urls import reverse
-    latest = Notification.objects.filter(user=request.user)[:8]
+    latest = Notification.objects.filter(user=request.user, is_read=False)[:8]
     return _notif_json(request, {'items': [{
         'id': n.pk, 'title': n.title, 'message': n.message[:140], 'icon': n.icon, 'color': n.color,
         'read': n.is_read, 'ago': n.ago,

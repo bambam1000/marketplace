@@ -16,6 +16,11 @@ PERMS = {
 }
 
 
+# Pages rattachées aux entrepôts : le lien « Entrepôts » de la sidebar reste actif dessus
+HUB_URLS = ('orders', 'order_detail', 'sales', 'sale_create', 'products', 'product_add', 'product_edit', 'inventory',
+            'stock_adjust')
+
+
 def _build(request):
     user = request.user
     if not user.is_authenticated:
@@ -28,6 +33,8 @@ def _build(request):
     owner = is_admin or (store is not None and access.has_perm(user, store, None))
     can['owner'] = owner
     can['pos'] = can['pos'] or can['pos_manage']
+    # Commandes, ventes, caisse, factures, produits et stock se gèrent depuis la page de chaque entrepôt
+    can['warehouses'] = any(can[k] for k in ('stock', 'orders', 'sales', 'pos', 'invoices', 'products', 'finances'))
     limit = access.member_warehouse_id(user, store) if store is not None else None
 
     if is_admin and store is None:
@@ -59,7 +66,7 @@ def _build(request):
             from whatsapp.models import WhatsAppChat
             badges['whatsapp'] = (WhatsAppChat.objects.filter(instance__store=store)
                                   .aggregate(t=Sum('unread_count'))['t'] or 0)
-    return {'store': store, 'is_admin': is_admin, 'is_seller': user.is_seller, 'can': can, 'role': role,
+    return {'store': store, 'is_admin': is_admin, 'is_seller': user.is_seller, 'can': can, 'role': role, 'hub_urls': HUB_URLS,
             'badges': badges, 'initials': ''.join(w[0] for w in (user.display_name or '?').split()[:2]).upper()}
 
 

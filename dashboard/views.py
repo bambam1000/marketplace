@@ -1087,7 +1087,19 @@ def dash_warehouses(request):
         if limit:
             warehouses = warehouses.filter(pk=limit)
     other_stores = Store.objects.filter(owner=request.user).exclude(pk=store.pk) if store else []
+    # Employé rattaché à un seul entrepôt : directement sur sa page
+    if not store and not is_admin and warehouses.count() == 1:
+        return redirect('dashboard:warehouse_detail', pk=warehouses.first().pk)
+    # À traiter dans chaque entrepôt : commandes en attente, caisses ouvertes
+    from django.db.models import Count, Q as _Q
+    warehouses = warehouses.annotate(
+        pending_orders=Count('orderitem__order', filter=_Q(orderitem__order__status='pending'), distinct=True),
+        open_registers=Count('cash_registers__sessions', filter=_Q(cash_registers__sessions__status='open'), distinct=True),
+    )
+    acting = store or _acting_store(request.user)
+    show_stock = is_admin or (acting is not None and access.has_perm(request.user, acting, 'stock.view'))
     return render(request, 'dashboard/warehouses.html', {
+        'show_stock': show_stock,
         'warehouses': warehouses,
         'other_stores': other_stores,
         'can_create': bool(store),
@@ -1097,12 +1109,32 @@ def dash_warehouses(request):
 @login_required
 @seller_or_admin_required
 def dash_warehouse_detail(request, pk):
-    """Détail d'un entrepôt : stocks par produit"""
-    warehouse, denied = _get_warehouse_or_deny(request, pk, 'stock.view')
-    if denied:
-        return denied
+    """Page d'un entrepôt : point d'entrée unique vers ses caisses, commandes, ventes, factures, produits et stock.
+    Ouverte à quiconque a au moins un de ces droits sur cet entrepôt ; chaque bloc suit son propre droit."""
+    from inventory.models import Warehouse
+    warehouse = get_object_or_404(Warehouse.objects.select_related('store', 'manager'), pk=pk)
+    from pos import services as pos_services
+    pos_scope = pos_services.scope_for(request.user)
+    pos_ok = bool(pos_scope and pos_scope.can_use and pos_scope.store == warehouse.store and pos_scope.warehouse_ok(warehouse.pk))
+    perm = lambda p: _stock_access(request.user, warehouse.store, p, warehouse)  # noqa: E731
+    can = {
+        'stock': perm('stock.view'),
+        'transfer': perm('stock.transfer'),
+        'reception': perm('stock.adjust'),
+        'orders': perm('orders.view'),
+        'products': perm('products.view'),
+        'sales': perm('sales.view'),
+        'invoicing': perm('invoicing.view'),
+        'finances': perm('finances.view'),
+        'owner': perm(None),
+        'pos': pos_ok,
+        'pos_manage': pos_ok and pos_scope.can_manage,
+    }
+    if not any(can.values()):
+        django_messages.error(request, "Accès refusé.")
+        return redirect('dashboard:warehouses')
 
-    stocks = warehouse.stocks.select_related('product').order_by('product__name')
+    stocks = warehouse.stocks.select_related('product').order_by('product__name') if can['stock'] else warehouse.stocks.none()
     q = request.GET.get('q', '').strip()
     if q:
         stocks = stocks.filter(product__name__icontains=q)
@@ -1118,16 +1150,31 @@ def dash_warehouse_detail(request, pk):
     out_of_stock_count = warehouse.stocks.filter(quantity=0).count()
     unpaid_invoices = Invoice.objects.filter(warehouse=warehouse, status='sent').count()
     employees_count = StoreMember.objects.filter(warehouse=warehouse, is_active=True).count()
-    from pos import services as pos_services
-    pos_scope = pos_services.scope_for(request.user)
-    pos_info = None
-    if pos_scope and pos_scope.can_use and pos_scope.store == warehouse.store and pos_scope.warehouse_ok(warehouse.pk):
-        regs = warehouse.cash_registers.filter(is_active=True)
-        pos_info = {'count': regs.count(), 'open': regs.filter(sessions__status='open').count(),
-                    'today': pos_services.figures(warehouse.pos_sales.filter(completed_at__date=timezone.localdate()))['net']}
+
+    # Caisses de cet entrepôt : état de chacune, et ce que l'utilisateur peut y faire
+    pos_info, registers, my_session = None, [], None
+    if pos_ok:
+        from pos.models import POSSession
+        from django.db.models import Sum as _Sum
+        if not warehouse.cash_registers.exists() and pos_scope.can_manage:
+            pos_services.ensure_default_register(warehouse)
+        registers = list(warehouse.cash_registers.filter(is_active=True))
+        today = timezone.localdate()
+        open_by_reg = {s.register_id: s for s in POSSession.objects.filter(register__in=registers, status='open').select_related('cashier')}
+        totals = dict(warehouse.pos_sales.filter(completed_at__date=today, status__in=('completed', 'refunded'))
+                      .values_list('session__register').annotate(t=_Sum('total_amount')))
+        for reg in registers:
+            reg.current = open_by_reg.get(reg.pk)
+            reg.today_total = totals.get(reg.pk) or 0
+            reg.mine = bool(reg.current and reg.current.cashier_id == request.user.pk)
+        my_session = pos_services.current_session(request.user, warehouse.store)
+        pos_info = {'count': len(registers), 'open': len(open_by_reg),
+                    'today': pos_services.figures(warehouse.pos_sales.filter(completed_at__date=today))['net']}
 
     return render(request, 'dashboard/warehouse_detail.html', {
-        'pos_info': pos_info,
+        'pos_info': pos_info, 'registers': registers, 'my_session': my_session,
+        # Une seule caisse libre : le bouton l'ouvre directement
+        'free_register': (lambda f: f[0] if len(f) == 1 else None)([r for r in registers if not r.current]),
         'warehouse': warehouse,
         'stocks': stocks,
         'search_query': q,
@@ -1138,15 +1185,7 @@ def dash_warehouse_detail(request, pk):
         'out_of_stock_count': out_of_stock_count,
         'unpaid_invoices': unpaid_invoices,
         'employees_count': employees_count,
-        'can': {
-            'transfer': _stock_access(request.user, warehouse.store, 'stock.transfer', warehouse),
-            'orders': _stock_access(request.user, warehouse.store, 'orders.view', warehouse),
-            'products': _stock_access(request.user, warehouse.store, 'products.view', warehouse),
-            'sales': _stock_access(request.user, warehouse.store, 'sales.view', warehouse),
-            'invoicing': _stock_access(request.user, warehouse.store, 'invoicing.view', warehouse),
-            'finances': _stock_access(request.user, warehouse.store, 'finances.view', warehouse),
-            'owner': _stock_access(request.user, warehouse.store, None),
-        },
+        'can': can,
     })
 
 

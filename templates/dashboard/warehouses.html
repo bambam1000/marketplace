@@ -18,7 +18,7 @@
 <div class="dash-header">
     <div>
         <h1><i class="fa-solid fa-warehouse" style="color:var(--dash-accent);"></i> Entrepôts</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">{{ warehouses|length }} entrepôt{{ warehouses|length|pluralize:"s" }}</p>
+        <p style="font-size:13px;color:var(--dash-text3);">{{ warehouses|length }} entrepôt{{ warehouses|length|pluralize:"s" }} · commandes, ventes, caisses, factures, produits et stock se gèrent dans chacun</p>
     </div>
     {% if can_create %}<button type="button" class="btn btn-orange" onclick="document.getElementById('whModal').classList.add('open')"><i class="fa-solid fa-plus"></i> Nouvel entrepôt</button>{% endif %}
 </div>
@@ -36,6 +36,13 @@
             </div>
             {% if wh.is_default %}<span class="tag tag-orange">Principal</span>{% endif %}
         </div>
+        {% if wh.pending_orders or wh.open_registers %}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px;">
+            {% if wh.pending_orders %}<span style="font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:50px;background:#fff4e5;color:#b54708;"><i class="fa-solid fa-box"></i> {{ wh.pending_orders }} commande{{ wh.pending_orders|pluralize }} en attente</span>{% endif %}
+            {% if wh.open_registers %}<span style="font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:50px;background:#ecfdf3;color:#067647;"><i class="fa-solid fa-cash-register"></i> {{ wh.open_registers }} caisse{{ wh.open_registers|pluralize }} ouverte{{ wh.open_registers|pluralize }}</span>{% endif %}
+        </div>
+        {% endif %}
+        {% if show_stock %}
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;">
             <div style="background:var(--dash-bg);border-radius:6px;padding:10px;">
                 <div style="font-size:17px;font-weight:800;">{{ wh.total_products }}</div>
@@ -50,6 +57,9 @@
                 <div style="font-size:10px;color:var(--dash-text3);">Ruptures</div>
             </div>
         </div>
+        {% else %}
+        <div style="font-size:12.5px;color:var(--dash-text3);">Commandes, ventes et caisses de cet entrepôt <i class="fa-solid fa-arrow-right"></i></div>
+        {% endif %}
     </a>
     {% empty %}
     <div class="dash-card" style="grid-column:1/-1;text-align:center;padding:3rem;">

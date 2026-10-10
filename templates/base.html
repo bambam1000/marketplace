@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function render(items) {
     if (!list) return;
     list.textContent = '';
-    if (!items.length) { var e = document.createElement('div'); e.className = 'tb-empty'; e.innerHTML = '<i class="fa-regular fa-bell"></i>'; e.appendChild(document.createTextNode('Aucune notification')); list.appendChild(e); return; }
+    if (!items.length) { var e = document.createElement('div'); e.className = 'tb-empty'; e.innerHTML = '<i class="fa-regular fa-bell"></i>'; e.appendChild(document.createTextNode('Vous êtes à jour : aucune nouvelle notification')); list.appendChild(e); return; }
     items.forEach(function(n) {
       var a = document.createElement('a'); a.href = n.url; a.className = 'tb-notif' + (n.read ? '' : ' unread');
       var ic = document.createElement('span'); ic.className = 'tb-notif-ic'; ic.style.background = n.color + '1a'; ic.style.color = n.color;
