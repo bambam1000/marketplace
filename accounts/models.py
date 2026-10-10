@@ -15,6 +15,7 @@ class User(AbstractUser):
     city = models.CharField(max_length=100, blank=True)
     country = models.CharField(max_length=100, default='Cameroun')
     is_verified = models.BooleanField(default=False)
+    personalized = models.BooleanField(default=True, help_text="Recommandations basées sur les recherches et consultations")
 
     @property
     def store(self):

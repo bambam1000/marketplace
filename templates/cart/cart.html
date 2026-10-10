@@ -52,6 +52,7 @@ Commander sur WhatsApp
 <div class="empty-state" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:4rem;"><div class="icon"><i class="fa-solid fa-cart-shopping"></i></div><h3>Votre panier est vide</h3><p style="margin:8px 0 20px;">Découvrez nos produits et commencez vos achats.</p><a href="{% url 'catalog:product_list' %}" class="btn btn-orange">Explorer les produits</a></div>
 {% endif %}
 </div>
+{% include 'includes/reco_grid.html' with items=suggestions title='Vous aimerez aussi' icon='fa-heart-circle-plus' manage=True %}
 {% endblock %}
 
 {% block extra_js %}

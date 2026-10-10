@@ -12,3 +12,13 @@
 .cpt-light { --cpt-word: #fff; }
 .cpt-inverse { --cpt-bg: #fff; --cpt-fg: #ff6a00; --cpt-word: #fff; }
 .cpt-inverse .cpt-mark { filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .12)); }
+
+/* ── Recommandations ── */
+.reco-sub { font-size: 13px; color: var(--text3); margin: -6px 0 12px; }
+.reco-item { display: flex; flex-direction: column; min-width: 0; }
+.reco-item .product-card { flex: 1; }
+.reco-why { margin-top: 6px; font-size: 11.5px; color: var(--text2); background: #fff7ef; border: 1px solid #fde3cc; border-radius: 8px; padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reco-why i { color: var(--orange); margin-right: 3px; }
+.reco-strip { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 4px; }
+.reco-strip > * { flex: 0 0 170px; min-width: 0; }
+@media (max-width: 640px) { .reco-strip > * { flex-basis: 140px; } .reco-why { font-size: 10.5px; } }

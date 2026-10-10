@@ -145,6 +145,37 @@ a.pf-stat:hover { border-color: var(--orange); }
         <div class="pf-foot"><button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer l'adresse</button></div>
     </form>
 
+    <div class="pf-card" id="recommandations">
+        <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Recommandations</h2>
+        <p class="sub">Comptoir vous propose des produits selon vos recherches, les produits que vous consultez, vos favoris et vos achats. Ces informations ne sont jamais partagées avec les boutiques et sont effacées au bout de 90 jours.</p>
+        {% if user.personalized %}
+            {% if reco.categories or reco.queries %}
+            <div style="font-size:13.5px;line-height:1.8;margin-bottom:14px;">
+                {% if reco.categories %}<div><strong>Vos centres d'intérêt :</strong> {{ reco.categories|join:", " }}</div>{% endif %}
+                {% if reco.queries %}<div><strong>Vos recherches récentes :</strong> {% for q in reco.queries %}<span style="display:inline-block;background:var(--bg);border-radius:50px;padding:1px 10px;margin:2px 4px 2px 0;font-size:12.5px;">{{ q }}</span>{% endfor %}</div>{% endif %}
+            </div>
+            {% else %}
+            <p style="font-size:13.5px;color:var(--text2);margin-bottom:14px;">Rien pour l'instant : vos recommandations s'affineront au fil de vos recherches et visites.</p>
+            {% endif %}
+        {% endif %}
+        <div class="pf-foot" style="justify-content:space-between;align-items:center;">
+            <form method="post" style="margin:0;display:flex;align-items:center;gap:10px;">{% csrf_token %}
+                <input type="hidden" name="section" value="reco">
+                <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0;">
+                    <input type="checkbox" name="personalized" {% if user.personalized %}checked{% endif %} onchange="this.form.submit()" style="width:18px;height:18px;accent-color:var(--orange);">
+                    Recommandations personnalisées
+                </label>
+                <noscript><button type="submit" class="btn btn-outline btn-sm">Enregistrer</button></noscript>
+            </form>
+            {% if user.personalized and reco.count %}
+            <form method="post" style="margin:0;" onsubmit="return confirm('Effacer votre historique de recherche et de navigation ?');">{% csrf_token %}
+                <input type="hidden" name="section" value="reco"><input type="hidden" name="action" value="clear">
+                <button type="submit" class="btn btn-outline btn-sm"><i class="fa-regular fa-trash-can"></i> Effacer mon historique</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
     <form class="pf-card" id="securite" method="post">{% csrf_token %}
         <input type="hidden" name="section" value="password">
         <h2><i class="fa-solid fa-shield-halved"></i> Sécurité</h2>

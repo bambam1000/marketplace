@@ -308,3 +308,28 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.subject}"
+
+
+class BrowsingSignal(models.Model):
+    """Ce qu'un client cherche et regarde : sert uniquement à lui recommander des produits.
+    Les visiteurs non connectés sont suivis dans leur session (rien en base) ; conservé 90 jours."""
+    KIND_CHOICES = [
+        ('search', 'Recherche'),
+        ('view', 'Produit consulté'),
+        ('category', 'Catégorie consultée'),
+        ('cart', 'Ajout au panier'),
+        ('wishlist', 'Ajout aux favoris'),
+    ]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='browsing_signals')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    query = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', '-created_at'])]
+
+    def __str__(self):
+        return f'{self.user_id} {self.kind} {self.product_id or self.query or self.category_id}'

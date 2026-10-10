@@ -142,6 +142,18 @@ def profile_view(request):
             user.country = val('country')[:100] or user.country
             user.save(update_fields=['address', 'city', 'country'])
             messages.success(request, 'Adresse enregistrée : elle sera proposée à votre prochaine commande.')
+        elif section == 'reco':
+            from catalog import recommend
+            if request.POST.get('action') == 'clear':
+                recommend.clear(request)
+                messages.success(request, 'Votre historique de recherche et de navigation est effacé.')
+            else:
+                user.personalized = bool(request.POST.get('personalized'))
+                user.save(update_fields=['personalized'])
+                if not user.personalized:
+                    recommend.clear(request)
+                messages.success(request, 'Recommandations personnalisées activées.' if user.personalized
+                                 else 'Recommandations personnalisées désactivées, historique effacé.')
         elif section == 'password':
             if not user.check_password(request.POST.get('current_password', '')):
                 errors['current_password'] = 'Mot de passe actuel incorrect.'
@@ -164,7 +176,7 @@ def profile_view(request):
                 update_session_auth_hash(request, user)
                 messages.success(request, 'Mot de passe modifié.')
         if not errors:
-            anchor = {'info': '#infos', 'address': '#adresse', 'password': '#securite'}.get(section, '')
+            anchor = {'info': '#infos', 'address': '#adresse', 'password': '#securite', 'reco': '#recommandations'}.get(section, '')
             return redirect(reverse('accounts:profile') + anchor)
         messages.error(request, 'Certaines informations sont à corriger.')
 
@@ -175,7 +187,16 @@ def profile_view(request):
     form = {k: getattr(user, k) for k in ('first_name', 'last_name', 'email', 'phone')}
     if errors and section == 'info':
         form.update({k: request.POST.get(k, '') for k in form})
+    from catalog import recommend
+    from catalog.models import Category
+    prof = recommend.profile(request)
+    reco = {
+        'categories': list(Category.objects.filter(pk__in=[c for c, _ in prof.categories.most_common(4)]).values_list('name', flat=True)),
+        'queries': [q for q, _ in prof.queries.most_common(5)],
+        'count': user.browsing_signals.count(),
+    }
     context = {
+        'reco': reco,
         'acc': nav,
         'recent_orders': orders.prefetch_related('items__product')[:3],
         'stats': {

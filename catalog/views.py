@@ -22,7 +22,12 @@ def home(request):
     ).select_related('store', 'promo_code')[:4]
     for camp in active_campaigns:
         Campaign.objects.filter(pk=camp.pk).update(views_count=camp.views_count + 1)
+    from . import recommend
+    prof = recommend.profile(request)
     return render(request, 'catalog/home.html', {
+        'for_you': recommend.for_you(request, limit=12) if not prof.empty else [],
+        'recently_viewed': recommend.recently_viewed(request, limit=6),
+        'popular_products': recommend.popular(12) if prof.empty else [],
         'categories': categories,
         'banners': banners,
         'flash_products': flash_products,
@@ -54,6 +59,7 @@ def product_list(request):
                 products = products.filter(category=cat)
     if q:
         products = products.filter(Q(name__icontains=q) | Q(description__icontains=q))
+        _record_search(request, q, products)
     if min_price:
         products = products.filter(price__gte=min_price)
     if max_price:
@@ -86,6 +92,8 @@ def category_view(request, slug):
     else:
         products = Product.objects.filter(category=category, is_active=True)
     subcategories = category.children.filter(is_active=True) if category.is_parent else []
+    from . import recommend
+    recommend.record(request, 'category', category=category)
     return render(request, 'catalog/category.html', {
         'category': category,
         'subcategories': subcategories,
@@ -96,7 +104,10 @@ def product_detail(request, slug):
     product = get_object_or_404(Product, slug=slug, is_active=True)
     product.views_count += 1
     product.save(update_fields=['views_count'])
-    related = Product.objects.filter(category=product.category, is_active=True).exclude(pk=product.pk)[:6]
+    from . import recommend
+    recommend.record(request, 'view', product=product)
+    related = recommend.similar(product, limit=6)
+    together = recommend.bought_together([product.pk], limit=6)
     store_products = product.store.products.filter(is_active=True).exclude(pk=product.pk)[:6]
     reviews = product.reviews.all()[:20]
     all_reviews = product.reviews.all()
@@ -109,11 +120,22 @@ def product_detail(request, slug):
     return render(request, 'catalog/product_detail.html', {
         'product': product,
         'related_products': related,
+        'bought_together': together,
         'store_products': store_products,
         'reviews': reviews,
         'rating_dist': rating_dist,
         'in_wishlist': in_wishlist,
     })
+
+def _record_search(request, q, products):
+    """Note la recherche avec la catégorie la plus représentée dans les résultats."""
+    from collections import Counter
+    from . import recommend
+    cats = Counter(p.category_id for p in list(products[:20]))
+    top = cats.most_common(1)
+    cat = Category.objects.filter(pk=top[0][0]).first() if top else None
+    recommend.record(request, 'search', category=cat, query=q)
+
 
 def search_view(request):
     q = request.GET.get('q', '')
@@ -141,7 +163,14 @@ def search_view(request):
                 is_active=True
             )[:20]
 
+    if q:
+        _record_search(request, q, products)
+    suggestions = []
+    if q and not products:
+        from . import recommend
+        suggestions = recommend.for_you(request, limit=8)
     context = {
+        'suggestions': suggestions,
         'products': products,
         'stores': stores,
         'query': q,
@@ -229,6 +258,8 @@ def toggle_wishlist(request, product_id):
             messages.error(request, "Ce produit n'est plus disponible.")
             return redirect(_safe_next(request, 'catalog:wishlist'))
         Wishlist.objects.create(user=request.user, product=product)
+        from . import recommend
+        recommend.record(request, 'wishlist', product=product)
         added, text = True, f'« {product.name} » ajouté à vos favoris.'
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'added': added, 'count': Wishlist.objects.filter(user=request.user).count(), 'message': text})

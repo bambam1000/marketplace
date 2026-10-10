@@ -1,0 +1,20 @@
+{% comment %}
+Grille de recommandations. Paramètres : items = [(produit, raison)], title, icon, sub (facultatif), manage (lien « Gérer »).
+{% endcomment %}
+{% if items %}
+<div class="section reco-sec">
+    <div class="section-head">
+        <h2><i class="fa-solid {{ icon|default:'fa-wand-magic-sparkles' }}" style="color:var(--orange);"></i> {{ title }}</h2>
+        {% if manage and user.is_authenticated %}<a href="{% url 'accounts:profile' %}#recommandations" style="font-size:12.5px;">Pourquoi ces produits ?</a>{% endif %}
+    </div>
+    {% if sub %}<p class="reco-sub">{{ sub }}</p>{% endif %}
+    <div class="products-grid">
+        {% for p, why in items %}
+        <div class="reco-item">
+            {% include 'includes/product_card.html' with product=p %}
+            <div class="reco-why" title="{{ why }}"><i class="fa-solid fa-lightbulb"></i> {{ why }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

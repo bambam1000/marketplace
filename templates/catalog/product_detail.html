@@ -206,6 +206,7 @@ Commander sur WhatsApp
 </div>
 </div>
 <!-- Related products -->
+{% if bought_together %}<div style="margin-top:1.5rem;"><div class="section-head"><h2><i class="fa-solid fa-basket-shopping" style="color:var(--orange);"></i> Souvent achetés ensemble</h2></div><div class="products-grid">{% for p in bought_together %}{% include 'includes/product_card.html' with product=p %}{% endfor %}</div></div>{% endif %}
 {% if related_products %}<div style="margin-top:1.5rem;"><div class="section-head"><h2>Produits similaires</h2></div><div class="products-grid">{% for p in related_products %}{% include 'includes/product_card.html' with product=p %}{% endfor %}</div></div>{% endif %}
 </div>
 

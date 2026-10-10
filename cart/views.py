@@ -42,6 +42,8 @@ def add_to_cart(request, product_id):
             'size': size,
         }
     save_cart(request, cart)
+    from catalog import recommend
+    recommend.record(request, 'cart', product=product)
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({'success': True, 'cart_count': sum(i['quantity'] for i in cart.values())})
     messages.success(request, f'"{product.name}" ajouté au panier !')
@@ -172,7 +174,9 @@ def cart_view(request):
     shipping = shipping_for(subtotal)
     promo, discount = _get_applied_promo(request, cart)
     loyalty_discount, loyalty_details = _get_loyalty_discount(request, cart, promo)
+    from catalog import recommend
     return render(request, 'cart/cart.html', {
+        'suggestions': recommend.for_cart(request, [int(k) for k in cart if str(k).isdigit()], limit=6) if cart else recommend.for_you(request, limit=6),
         'cart_items': items,
         'subtotal': subtotal,
         'shipping': shipping,
