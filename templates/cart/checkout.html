@@ -3,125 +3,176 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css">
 <style>
-.co-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; max-width: 1000px; margin: 0 auto; }
-@media (max-width: 860px) { .co-grid { grid-template-columns: 1fr; } }
-.co-card { background: var(--white); border: 1px solid var(--border2); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
-.co-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-.co-card h3 i { color: var(--orange); }
-.co-card h3 .step { width: 24px; height: 24px; border-radius: 50%; background: var(--orange); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
-.form-control.valid { border-color: #12b76a; }
-.form-control.invalid { border-color: #f04438; }
-.field-msg { font-size: 11px; margin-top: 4px; display: none; }
-.field-msg.error { color: #f04438; display: block; }
-.field-msg.ok { color: #12b76a; display: block; }
+.co-wrap { max-width: 1040px; margin: 0 auto; padding: 1.5rem; }
+.co-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+.co-sub { font-size: 13px; color: var(--text3); margin-bottom: 1.4rem; }
+.co-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.co-card { background: var(--white); border: 1px solid var(--border2); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.co-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+.co-card h3 .step { width: 26px; height: 26px; border-radius: 50%; background: var(--orange); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+.co-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.co-f { margin-bottom: 14px; }
+.co-f label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+.co-f .form-control { width: 100%; }
+.co-f.err .form-control { border-color: #f04438; background: #fffbfa; }
+.co-f .msg { font-size: 12px; color: #d92d20; margin-top: 5px; display: none; }
+.co-f.err .msg { display: flex; gap: 6px; align-items: center; }
 .iti { width: 100%; }
-.pay-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-.pay-option { position: relative; }
-.pay-option input { position: absolute; opacity: 0; }
-.pay-option label { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1.5px solid var(--border2); border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .2s; margin: 0; }
-.pay-option label i { font-size: 18px; color: var(--text3); transition: color .2s; }
-.pay-option input:checked + label { border-color: var(--orange); background: rgba(255,106,0,.05); color: var(--orange); }
-.pay-option input:checked + label i { color: var(--orange); }
-.co-summary-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--border2); }
-.co-summary-row:last-child { border-bottom: none; }
-.co-total { display: flex; justify-content: space-between; padding: 14px 0 0; border-top: 2px solid var(--border); font-size: 20px; font-weight: 800; color: var(--red); margin-top: 8px; }
-.co-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--border2); }
-.co-item .q { background: var(--orange-light); color: var(--orange); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+.co-alert { display: flex; gap: 12px; padding: 14px 16px; border-radius: 12px; font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+.co-alert i { font-size: 17px; margin-top: 2px; }
+.co-alert.err { background: #fef3f2; border: 1px solid #fecdca; color: #912018; }
+.co-alert.warn { background: #fff4e5; border: 1px solid #fbd5a5; color: #7a4100; }
+.co-alert ul { margin: 6px 0 0 18px; padding: 0; }
+.co-alert a { color: inherit; font-weight: 700; text-decoration: underline; }
+.pay-list { display: flex; flex-direction: column; gap: 10px; }
+.pay-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.pay-opt label { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1.5px solid var(--border2); border-radius: 12px; cursor: pointer; transition: border-color .2s, background .2s; margin: 0; }
+.pay-opt .ico { width: 40px; height: 40px; border-radius: 10px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--text2); flex-shrink: 0; }
+.pay-opt .txt { flex: 1; min-width: 0; }
+.pay-opt .txt strong { display: block; font-size: 14px; }
+.pay-opt .txt span { font-size: 12px; color: var(--text3); }
+.pay-opt .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; transition: all .2s; }
+.pay-opt input:checked + label { border-color: var(--orange); background: #fff8f2; }
+.pay-opt input:checked + label .ico { background: var(--orange); color: #fff; }
+.pay-opt input:checked + label .dot { border-color: var(--orange); box-shadow: inset 0 0 0 4px #fff; background: var(--orange); }
+.pay-opt input:focus-visible + label { outline: 2px solid var(--orange); outline-offset: 2px; }
+.pay-detail { display: none; margin: -2px 0 4px; padding: 12px 14px; background: #fffaf5; border: 1px dashed #fbd5b5; border-radius: 10px; font-size: 13px; }
+.pay-opt input:checked ~ .pay-detail { display: block; }
+.pay-detail .st { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid #fde7d4; flex-wrap: wrap; }
+.pay-detail .st:last-child { border-bottom: none; }
+.pay-detail .num { font-weight: 700; font-variant-numeric: tabular-nums; }
+.co-pay-err .pay-opt label { border-color: #fda29b; }
+.co-sum { position: sticky; top: 90px; }
+.co-item { display: flex; gap: 10px; align-items: center; padding: 9px 0; font-size: 13px; border-bottom: 1px solid var(--border2); }
+.co-item img, .co-item .ph { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; background: var(--bg); flex-shrink: 0; }
+.co-item .nm { flex: 1; min-width: 0; }
+.co-item .nm div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.co-item .nm span { font-size: 11px; color: var(--text3); }
+.co-line { display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px; color: var(--text2); }
+.co-total { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 4px; border-top: 2px solid var(--border2); margin-top: 6px; font-size: 15px; font-weight: 700; }
+.co-total strong { font-size: 22px; color: var(--orange); }
+.co-submit { width: 100%; margin-top: 14px; justify-content: center; }
+.co-submit[disabled] { opacity: .55; cursor: not-allowed; }
+.co-err { display: none; margin-top: 10px; font-size: 13px; color: #b42318; background: #fef3f2; border: 1px solid #fecdca; border-radius: 10px; padding: 10px 12px; }
+.co-err.show { display: block; }
+.co-note { font-size: 12px; color: var(--text3); margin-top: 12px; line-height: 1.6; display: flex; gap: 8px; }
+@media (max-width: 860px) {
+    .co-grid { grid-template-columns: 1fr; }
+    .co-sum { position: static; }
+    .co-wrap { padding: 1rem 14px 6rem; }
+    .co-row { grid-template-columns: 1fr; gap: 0; }
+    .co-f .form-control { font-size: 16px; }
+}
 </style>
 {% endblock %}
 {% block content %}
-<div style="max-width:1000px;margin:0 auto;padding:1.5rem;">
-<h2 style="font-size:20px;margin-bottom:1.5rem;font-weight:800;"><i class="fa-solid fa-clipboard-check" style="color:var(--orange);"></i> Finaliser la commande</h2>
+<div class="co-wrap">
+<h1 class="co-title"><i class="fa-solid fa-clipboard-check" style="color:var(--orange);"></i> Finaliser la commande</h1>
+<p class="co-sub">Vérifiez votre adresse, choisissez votre moyen de paiement, et c'est terminé.</p>
 
-<form method="post" id="checkoutForm">{% csrf_token %}
+{% if errors %}
+<div class="co-alert err" id="srvErr"><i class="fa-solid fa-circle-exclamation"></i><div><strong>Votre commande n'a pas été envoyée.</strong> Corrigez les points signalés ci-dessous.</div></div>
+{% endif %}
+
+<form method="post" id="checkoutForm" novalidate>{% csrf_token %}
 <div class="co-grid">
-    <!-- Colonne gauche -->
     <div>
-        <!-- Adresse -->
         <div class="co-card">
             <h3><span class="step">1</span> Adresse de livraison</h3>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Nom complet *</label>
-                    <input type="text" name="shipping_name" class="form-control" value="{{ user.get_full_name }}" required data-validate="name">
-                    <div class="field-msg"></div>
+            <div class="co-row">
+                <div class="co-f {% if errors.shipping_name %}err{% endif %}" data-field="name">
+                    <label for="fName">Nom de la personne qui reçoit *</label>
+                    <input type="text" id="fName" name="shipping_name" class="form-control" value="{{ form.shipping_name }}" autocomplete="name" maxlength="200">
+                    <div class="msg"><i class="fa-solid fa-circle-exclamation"></i><span>{{ errors.shipping_name|default:"Indiquez le nom de la personne qui reçoit la commande." }}</span></div>
                 </div>
-                <div class="form-group">
-                    <label>Téléphone *</label>
-                    <input type="tel" id="phoneInput" class="form-control" value="{{ user.phone }}" required data-validate="phone" inputmode="numeric">
-                    <input type="hidden" name="shipping_phone" id="phoneFull" value="{{ user.phone }}">
-                    <div class="field-msg"></div>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Ville *</label>
-                    <select name="shipping_city" class="form-control">
-                        <option>Douala</option><option>Yaoundé</option><option>Bafoussam</option><option>Bamenda</option><option>Garoua</option><option>Maroua</option><option>Autre</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Adresse *</label>
-                    <input type="text" name="shipping_address" class="form-control" value="{{ user.address }}" required data-validate="address">
-                    <div class="field-msg"></div>
+                <div class="co-f {% if errors.shipping_phone %}err{% endif %}" data-field="phone">
+                    <label for="phoneInput">Téléphone *</label>
+                    <input type="tel" id="phoneInput" class="form-control" value="{{ form.shipping_phone }}" autocomplete="tel">
+                    <input type="hidden" name="shipping_phone" id="phoneFull" value="{{ form.shipping_phone }}">
+                    <div class="msg"><i class="fa-solid fa-circle-exclamation"></i><span>{{ errors.shipping_phone|default:"Indiquez un numéro de téléphone valide." }}</span></div>
                 </div>
             </div>
-            <div class="form-group" style="margin-bottom:0;">
-                <label>Notes (optionnel)</label>
-                <textarea name="notes" class="form-control" rows="2" placeholder="Instructions de livraison..."></textarea>
+            <div class="co-row">
+                <div class="co-f {% if errors.shipping_city %}err{% endif %}" data-field="city">
+                    <label for="fCity">Ville *</label>
+                    <input type="text" id="fCity" name="shipping_city" class="form-control" value="{{ form.shipping_city }}" list="cityList" autocomplete="address-level2" maxlength="100">
+                    <datalist id="cityList">{% for c in cities %}<option value="{{ c }}">{% endfor %}</datalist>
+                    <div class="msg"><i class="fa-solid fa-circle-exclamation"></i><span>{{ errors.shipping_city|default:"Indiquez la ville de livraison." }}</span></div>
+                </div>
+                <div class="co-f {% if errors.shipping_address %}err{% endif %}" data-field="address">
+                    <label for="fAddr">Adresse *</label>
+                    <input type="text" id="fAddr" name="shipping_address" class="form-control" value="{{ form.shipping_address }}" placeholder="Quartier, rue, point de repère" autocomplete="street-address">
+                    <div class="msg"><i class="fa-solid fa-circle-exclamation"></i><span>{{ errors.shipping_address|default:"Précisez l'adresse : quartier, rue, point de repère." }}</span></div>
+                </div>
+            </div>
+            <div class="co-f" style="margin-bottom:0;">
+                <label for="fNotes">Instructions pour la livraison <span style="font-weight:400;color:var(--text3);">(facultatif)</span></label>
+                <textarea id="fNotes" name="notes" class="form-control" rows="2" placeholder="Horaires, étage, personne à appeler…">{{ form.notes }}</textarea>
             </div>
         </div>
 
-        <!-- Paiement -->
-        <div class="co-card">
-            <h3><span class="step">2</span> Mode de paiement</h3>
-            <div class="pay-grid">
-                <div class="pay-option">
-                    <input type="radio" name="payment_method" value="momo" id="pm1" checked>
-                    <label for="pm1"><i class="fa-solid fa-mobile-screen"></i> MTN MoMo</label>
+        <div class="co-card {% if errors.payment_method %}co-pay-err{% endif %}" id="payCard" data-field="payment">
+            <h3><span class="step">2</span> Moyen de paiement</h3>
+            {% if pay.missing %}
+            <div class="co-alert warn" style="margin-bottom:0;"><i class="fa-solid fa-store-slash"></i><div>
+                {% if pay.missing|length == 1 %}La boutique <strong>{{ pay.missing.0.name }}</strong> n'a pas encore indiqué comment elle accepte d'être payée.
+                {% else %}Ces boutiques n'ont pas encore indiqué comment elles acceptent d'être payées : {% for s in pay.missing %}<strong>{{ s.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %}
+                Retirez leurs produits du <a href="{% url 'cart:view' %}">panier</a> pour commander le reste, ou contactez-les.
+            </div></div>
+            {% elif not pay.methods %}
+            <div class="co-alert warn" style="margin-bottom:0;"><i class="fa-solid fa-shuffle"></i><div>
+                Les boutiques de votre panier n'acceptent pas les mêmes moyens de paiement :
+                <ul>{% for s, labels in pay.by_store %}<li><strong>{{ s.name }}</strong> : {{ labels|join:", " }}</li>{% endfor %}</ul>
+                Passez une commande par boutique : retirez du <a href="{% url 'cart:view' %}">panier</a> les produits de l'une d'elles, puis revenez ici.
+            </div></div>
+            {% else %}
+            <div class="pay-list" role="radiogroup" aria-label="Moyen de paiement">
+                {% for m in pay.methods %}
+                <div class="pay-opt">
+                    <input type="radio" name="payment_method" value="{{ m.code }}" id="pm-{{ m.code }}" {% if form.payment_method == m.code %}checked{% endif %}>
+                    <label for="pm-{{ m.code }}">
+                        <span class="ico"><i class="fa-solid {{ m.icon }}"></i></span>
+                        <span class="txt"><strong>{{ m.label }}</strong><span>{{ m.hint }}</span></span>
+                        <span class="dot"></span>
+                    </label>
+                    {% if m.code != 'cash' %}
+                    <div class="pay-detail">
+                        {% for s, d in m.stores %}
+                        <div class="st"><span>{% if m.stores|length > 1 %}<strong>{{ s.name }}</strong> · {% endif %}{% if m.code == 'transfer' %}{{ d.bank }}{% else %}Numéro{% endif %}{% if d.name %} — {{ d.name }}{% endif %}</span><span class="num">{{ d.number }}</span></div>
+                        {% endfor %}
+                        <div style="font-size:12px;color:var(--text3);margin-top:6px;">Ces informations vous sont rappelées sur la page de votre commande.</div>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="pay-option">
-                    <input type="radio" name="payment_method" value="om" id="pm2">
-                    <label for="pm2"><i class="fa-solid fa-mobile-screen"></i> Orange Money</label>
-                </div>
-                <div class="pay-option">
-                    <input type="radio" name="payment_method" value="cash" id="pm3">
-                    <label for="pm3"><i class="fa-solid fa-money-bill-wave"></i> Cash livraison</label>
-                </div>
-                <div class="pay-option">
-                    <input type="radio" name="payment_method" value="card" id="pm4">
-                    <label for="pm4"><i class="fa-solid fa-credit-card"></i> Carte bancaire</label>
-                </div>
-                <div class="pay-option">
-                    <input type="radio" name="payment_method" value="transfer" id="pm5">
-                    <label for="pm5"><i class="fa-solid fa-building-columns"></i> Virement</label>
-                </div>
+                {% endfor %}
             </div>
+            <div class="co-f {% if errors.payment_method %}err{% endif %}" style="margin:8px 0 0;"><div class="msg"><i class="fa-solid fa-circle-exclamation"></i><span>{{ errors.payment_method|default:"Choisissez un moyen de paiement." }}</span></div></div>
+            {% endif %}
         </div>
     </div>
 
-    <!-- Colonne droite : récapitulatif -->
     <div>
-        <div class="co-card" style="position:sticky;top:80px;">
-            <h3><i class="fa-solid fa-cart-shopping"></i> Récapitulatif</h3>
+        <div class="co-card co-sum">
+            <h3><i class="fa-solid fa-bag-shopping" style="color:var(--orange);"></i> Votre commande</h3>
             {% for item in cart_items %}
             <div class="co-item">
-                <span style="flex:1;min-width:0;">{{ item.name }}<span class="q">× {{ item.quantity }}</span></span>
-                <span style="font-weight:600;">{{ item.subtotal|intcomma }} F</span>
+                {% if item.image %}<img src="{{ item.image }}" alt="">{% else %}<span class="ph"></span>{% endif %}
+                <div class="nm"><div>{{ item.name }}</div><span>{{ item.store }} · quantité {{ item.quantity }}</span></div>
+                <strong style="white-space:nowrap;">{{ item.subtotal|intcomma }} F</strong>
             </div>
             {% endfor %}
-            <div class="co-summary-row"><span>Sous-total</span><span>{{ subtotal|intcomma }} F</span></div>
-            <div class="co-summary-row"><span>Livraison</span><span>{% if shipping %}{{ shipping|intcomma }} F{% else %}<span style="color:var(--green);font-weight:600;">Gratuit</span>{% endif %}</span></div>
-            {% if promo %}
-            <div class="co-summary-row" style="color:var(--green);"><span><i class="fa-solid fa-ticket"></i> Code {{ promo.code }}</span><span>-{{ discount|floatformat:0|intcomma }} F</span></div>
-            {% endif %}
-            {% for store_name, tier, rate, amount in loyalty_details %}
-            <div class="co-summary-row" style="color:var(--green);"><span><i class="fa-solid fa-star"></i> Fidélité {{ tier }} (-{{ rate }}%)</span><span>-{{ amount|intcomma }} F</span></div>
-            {% endfor %}
-            <div class="co-total"><span>Total</span><span>{{ total|intcomma }} FCFA</span></div>
-
-            <div class="trade-assurance" style="margin-top:16px;"><i class="fa-solid fa-shield-halved"></i> <strong>Trade Assurance</strong> — Commande protégée. Remboursement si non conforme.</div>
-            <button type="submit" class="btn btn-orange btn-lg btn-block" style="margin-top:12px;"><i class="fa-solid fa-check"></i> Confirmer et Payer</button>
+            <div style="margin-top:8px;">
+                <div class="co-line"><span>Sous-total</span><span>{{ subtotal|intcomma }} F</span></div>
+                <div class="co-line"><span>Livraison</span><span>{% if shipping %}{{ shipping|intcomma }} F{% else %}<strong style="color:var(--green);">Offerte</strong>{% endif %}</span></div>
+                {% if promo %}<div class="co-line" style="color:var(--green);"><span><i class="fa-solid fa-ticket"></i> Code {{ promo.code }}</span><span>-{{ discount|floatformat:0|intcomma }} F</span></div>{% endif %}
+                {% for store_name, tier, rate, amount in loyalty_details %}
+                <div class="co-line" style="color:var(--green);"><span><i class="fa-solid fa-star"></i> Fidélité {{ tier }} (-{{ rate }} %)</span><span>-{{ amount|intcomma }} F</span></div>
+                {% endfor %}
+            </div>
+            <div class="co-total"><span>Total</span><strong>{{ total|intcomma }} FCFA</strong></div>
+            <button type="submit" class="btn btn-orange btn-lg co-submit" id="coSubmit" {% if pay.missing or not pay.methods %}disabled{% endif %}><i class="fa-solid fa-check"></i> Confirmer la commande</button>
+            <div class="co-err" id="coErr" role="alert"></div>
+            <p class="co-note"><i class="fa-regular fa-envelope" style="margin-top:2px;"></i><span>Vous recevez une confirmation, et vous suivez chaque étape dans <a href="{% url 'orders:list' %}" style="color:var(--orange);font-weight:600;">Mes commandes</a>.</span></p>
         </div>
     </div>
 </div>
@@ -131,65 +182,81 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/intlTelInput.min.js"></script>
 <script>
-// Téléphone avec indicatif pays
-const phoneInput = document.getElementById('phoneInput');
-const iti = window.intlTelInput(phoneInput, {
-    initialCountry: 'cm',
-    preferredCountries: ['cm', 'cf', 'td', 'cg', 'ga', 'gq'],
-    separateDialCode: true,
-    utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/utils.js',
-});
-phoneInput.addEventListener('keypress', function(e) {
-    if (!/[0-9\s+]/.test(e.key)) e.preventDefault();
-});
-phoneInput.addEventListener('input', function() {
-    document.getElementById('phoneFull').value = phoneInput.value.trim() ? iti.getNumber() : '';
-});
-// Si un numéro international est pré-rempli, le garder tel quel
-if (phoneInput.value.trim().startsWith('+')) {
-    document.getElementById('phoneFull').value = phoneInput.value.trim();
-}
+(function() {
+    var form = document.getElementById('checkoutForm');
+    var phoneInput = document.getElementById('phoneInput'), phoneFull = document.getElementById('phoneFull');
+    var iti = null;
+    try {
+        iti = window.intlTelInput(phoneInput, {
+            initialCountry: 'cm', separateDialCode: true,
+            preferredCountries: ['cm', 'ci', 'sn', 'ga', 'cg', 'fr'],
+            utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/utils.js',
+        });
+    } catch (e) { iti = null; }  /* sans la librairie, le champ reste un champ texte normal */
 
-// Validation en temps réel
-const validators = {
-    name: v => /^[a-zA-ZÀ-ÿ\s'-]{3,}$/.test(v) ? null : 'Nom complet invalide',
-    phone: v => {
-        if (v.startsWith('+')) return null;  // numéro international pré-rempli
-        return iti.isValidNumber() ? null : 'Numéro invalide';
-    },
-    address: v => v.length >= 5 ? null : 'Adresse trop courte',
-};
-document.querySelectorAll('[data-validate]').forEach(function(input) {
-    input.addEventListener('input', function() {
-        var msg = input.closest('.form-group').querySelector('.field-msg');
-        var error = validators[input.dataset.validate](input.value.trim());
-        input.classList.remove('valid', 'invalid');
-        msg.className = 'field-msg';
-        if (input.value.trim() === '') return;
-        if (error) {
-            input.classList.add('invalid');
-            msg.textContent = error;
-            msg.classList.add('error');
-        } else {
-            input.classList.add('valid');
-            msg.textContent = '✓';
-            msg.classList.add('ok');
-        }
+    var digits = function(v) { return (v || '').replace(/\D/g, ''); };
+    function syncPhone() {
+        var raw = phoneInput.value.trim();
+        if (!raw) { phoneFull.value = ''; return; }
+        if (raw.charAt(0) === '+' || !iti) { phoneFull.value = raw; return; }
+        var n = iti.getNumber();
+        phoneFull.value = n && n.charAt(0) === '+' ? n : raw;
+    }
+    phoneInput.addEventListener('input', syncPhone);
+
+    var checks = {
+        name: function() { return form.shipping_name.value.trim().length >= 2; },
+        phone: function() {
+            syncPhone();
+            var d = digits(phoneFull.value);
+            if (d.length < 8 || d.length > 15) return false;
+            /* vérification fine seulement si la librairie a pu se charger (null sinon) */
+            var v = iti && phoneInput.value.trim().charAt(0) !== '+' ? iti.isValidNumber() : null;
+            return v !== false;
+        },
+        city: function() { return form.shipping_city.value.trim().length >= 2; },
+        address: function() { return form.shipping_address.value.trim().length >= 5; },
+        payment: function() { return !form.querySelector('[name=payment_method]') || !!form.querySelector('[name=payment_method]:checked'); },
+    };
+    var labels = { name: 'nom', phone: 'téléphone', city: 'ville', address: 'adresse', payment: 'moyen de paiement' };
+
+    function mark(key, ok) {
+        var box = key === 'payment' ? document.getElementById('payCard') : form.querySelector('[data-field=' + key + ']');
+        if (key === 'payment') {
+            box.classList.toggle('co-pay-err', !ok);
+            var m = box.querySelector('.co-f'); if (m) m.classList.toggle('err', !ok);
+        } else box.classList.toggle('err', !ok);
+    }
+    /* Effacer l'erreur dès que le champ est corrigé */
+    ['name', 'phone', 'city', 'address'].forEach(function(k) {
+        var box = form.querySelector('[data-field=' + k + ']');
+        box.querySelector('input').addEventListener('input', function() { if (box.classList.contains('err') && checks[k]()) mark(k, true); });
     });
-});
-document.getElementById('checkoutForm').addEventListener('submit', function(e) {
-    var hasError = false;
-    document.querySelectorAll('[data-validate]').forEach(function(input) {
-        var error = validators[input.dataset.validate](input.value.trim());
-        if (error) {
-            input.classList.add('invalid');
-            var msg = input.closest('.form-group').querySelector('.field-msg');
-            msg.textContent = error;
-            msg.className = 'field-msg error';
-            hasError = true;
+    form.querySelectorAll('[name=payment_method]').forEach(function(r) { r.addEventListener('change', function() { mark('payment', true); }); });
+
+    var err = document.getElementById('coErr'), btn = document.getElementById('coSubmit');
+    form.addEventListener('submit', function(e) {
+        var bad = [];
+        Object.keys(checks).forEach(function(k) { var ok = checks[k](); mark(k, ok); if (!ok) bad.push(k); });
+        if (bad.length) {
+            e.preventDefault();
+            err.textContent = 'Il reste à compléter : ' + bad.map(function(k) { return labels[k]; }).join(', ') + '.';
+            err.classList.add('show');
+            var first = bad[0] === 'payment' ? document.getElementById('payCard') : form.querySelector('[data-field=' + bad[0] + ']');
+            first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            var inp = first.querySelector(bad[0] === 'payment' ? '[name=payment_method]' : 'input');
+            if (inp) setTimeout(function() { inp.focus({ preventScroll: true }); }, 350);
+            return;
         }
+        err.classList.remove('show');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Envoi de la commande…';
     });
-    if (hasError) e.preventDefault();
-});
+    /* Erreurs renvoyées par le serveur : amener le client au premier champ concerné */
+    var firstErr = document.querySelector('.co-f.err, .co-pay-err');
+    if (firstErr) firstErr.scrollIntoView({ block: 'center' });
+    /* Retour arrière après envoi : réactiver le bouton */
+    window.addEventListener('pageshow', function() { if (btn && !{% if pay.missing or not pay.methods %}true{% else %}false{% endif %}) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmer la commande'; } });
+})();
 </script>
 {% endblock %}

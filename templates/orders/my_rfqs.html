@@ -1,94 +1,191 @@
 {% extends 'base.html' %}{% load humanize %}
 {% block title %}Mes demandes de devis{% endblock %}
+{% block extra_css %}
+<style>
+.mr { max-width: none; margin: 0; padding: 0; }
+.mr-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+.mr-head h1 { font-size: 26px; display: flex; align-items: center; gap: 12px; }
+.mr-head h1 .ic { width: 44px; height: 44px; border-radius: 14px; background: var(--orange-light); color: var(--orange); display: inline-flex; align-items: center; justify-content: center; font-size: 18px; }
+.mr-head p { color: var(--text2); font-size: 14px; margin-top: 6px; }
+.mr-alert { display: flex; gap: 12px; align-items: center; background: #ecfdf3; border: 1px solid #abefc6; color: #067647; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; }
+.mr-alert i { font-size: 18px; }
+.mr-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 16px; }
+.mr-tabs::-webkit-scrollbar { display: none; }
+.mr-tabs a { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border); background: var(--white); font-size: 13px; font-weight: 600; color: var(--text2); }
+.mr-tabs a span { font-size: 11px; color: var(--text3); }
+.mr-tabs a.on { background: var(--orange); border-color: var(--orange); color: #fff; }
+.mr-tabs a.on span { color: rgba(255,255,255,.85); }
+.mr-tabs a.off { opacity: .45; }
+.mr-list { display: flex; flex-direction: column; gap: 12px; }
+.mr-card { background: var(--white); border: 1px solid var(--border2); border-radius: 14px; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+.mr-card:hover { box-shadow: 0 8px 24px rgba(16,24,40,.07); }
+.mr-card.has-new { border-color: #abefc6; }
+.mr-main { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 18px; padding: 18px 20px; }
+.mr-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.mr-title a { font-size: 17px; font-weight: 700; color: var(--text); font-family: var(--font); }
+.mr-title a:hover { color: var(--orange); }
+.st { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 50px; white-space: nowrap; }
+.st-open { background: #ecfdf3; color: #067647; }
+.st-quoted { background: #fff4ec; color: #c4320a; }
+.st-accepted { background: #eff8ff; color: #175cd3; }
+.st-closed { background: #f2f4f7; color: #475467; }
+.mr-desc { font-size: 13.5px; color: var(--text2); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mr-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text3); margin-top: 10px; }
+.mr-meta i { margin-right: 4px; }
+.mr-offers { border-left: 1px solid var(--border2); padding-left: 18px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.mr-offers .n { font-size: 12.5px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+.mr-offers .n b.new { background: var(--green); color: #fff; font-size: 10.5px; border-radius: 50px; padding: 1px 7px; }
+.mr-offers .best { font-size: 22px; font-weight: 800; color: var(--text); font-family: var(--font); }
+.mr-offers .best small { font-size: 12px; color: var(--text3); font-weight: 500; }
+.mr-offers .tot { font-size: 12px; color: var(--text3); }
+.mr-offers .none { font-size: 13px; color: var(--text3); line-height: 1.5; }
+.mr-won { display: flex; align-items: center; gap: 12px; background: #eff8ff; border-top: 1px solid #d1e9ff; padding: 12px 20px; font-size: 13.5px; color: #175cd3; flex-wrap: wrap; }
+.mr-won b { color: var(--text); }
+.mr-won .btn { margin-left: auto; }
+.mr-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 20px; border-top: 1px solid var(--border2); background: #fcfcfd; flex-wrap: wrap; }
+.mr-foot .ago { font-size: 12px; color: var(--text3); }
+.mr-foot .acts { display: flex; gap: 8px; }
+.mr-foot .btn { padding: 8px 14px; font-size: 13px; }
+.btn-danger-ghost { background: none; border: 1px solid #fecdca; color: var(--red); }
+.btn-danger-ghost:hover { background: var(--red-bg); }
+.mr-empty { background: var(--white); border: 1px solid var(--border2); border-radius: 14px; text-align: center; padding: 3.5rem 1.5rem; }
+.mr-empty .ic { width: 70px; height: 70px; border-radius: 50%; background: var(--orange-light); color: var(--orange); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 14px; }
+.mr-empty h3 { font-size: 19px; margin-bottom: 6px; }
+.mr-empty p { color: var(--text2); font-size: 13.5px; max-width: 440px; margin: 0 auto 16px; line-height: 1.6; }
+.mr-modal { display: none; position: fixed; inset: 0; background: rgba(16,24,40,.5); z-index: 3000; align-items: center; justify-content: center; padding: 20px; }
+.mr-modal.open { display: flex; }
+.mr-modal-box { background: #fff; border-radius: 16px; padding: 26px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.mr-modal-box .ic { width: 60px; height: 60px; border-radius: 50%; background: var(--red-bg); color: var(--red); display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 14px; }
+.mr-modal-box h3 { font-size: 18px; margin-bottom: 8px; }
+.mr-modal-box p { font-size: 13.5px; color: var(--text2); line-height: 1.6; margin-bottom: 18px; }
+.mr-modal-box .acts { display: flex; gap: 10px; justify-content: center; }
+@media (max-width: 760px) {
+    .mr { padding: 0; }
+    .mr-head h1 { font-size: 21px; }
+    .mr-head .btn { width: 100%; justify-content: center; }
+    .mr-main { grid-template-columns: 1fr; padding: 16px; gap: 12px; }
+    .mr-offers { border-left: none; padding-left: 0; border-top: 1px dashed var(--border2); padding-top: 12px; }
+    .mr-foot { padding: 10px 16px; }
+    .mr-foot .acts { width: 100%; }
+    .mr-foot .acts .btn { flex: 1; justify-content: center; }
+    .mr-won { padding: 12px 16px; }
+    .mr-won .btn { margin-left: 0; width: 100%; justify-content: center; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div class="breadcrumb"><a href="{% url 'home' %}">Accueil</a> › Mes demandes de devis</div>
-<div style="max-width:1200px;margin:0 auto;padding:1.5rem;">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
-<div>
-<h2 style="font-size:22px;margin-bottom:8px;"><i class="fa-solid fa-file-invoice"></i> Mes demandes de devis</h2>
-<p style="color:var(--text3);font-size:14px;">Suivez et gérez vos demandes de devis</p>
-</div>
-<a href="{% url 'orders:create_rfq' %}" class="btn btn-orange">+ Nouvelle demande</a>
+<div class="acc-wrap">
+{% include 'accounts/_nav.html' %}
+<main class="acc-main">
+<div class="mr">
+    <div class="mr-head">
+        <div>
+            <h1><span class="ic"><i class="fa-solid fa-file-signature"></i></span> Mes demandes de devis</h1>
+            <p>Suivez vos demandes, comparez les offres des boutiques et choisissez la meilleure.</p>
+        </div>
+        <a href="{% url 'orders:create_rfq' %}" class="btn btn-orange"><i class="fa-solid fa-plus"></i> Nouvelle demande</a>
+    </div>
+
+    {% if to_review %}
+    <div class="mr-alert"><i class="fa-solid fa-envelope-open-text"></i><span><b>{{ to_review }} demande{{ to_review|pluralize }}</b> {{ to_review|pluralize:"a,ont" }} des offres en attente de votre réponse.</span></div>
+    {% endif %}
+
+    <nav class="mr-tabs" aria-label="Filtrer par statut">
+        {% for code, label, n in tabs %}
+        <a href="{% if code %}?status={{ code }}{% else %}{% url 'orders:my_rfqs' %}{% endif %}" class="{% if code == status %}on{% elif not n %}off{% endif %}">{{ label }} <span>{{ n }}</span></a>
+        {% endfor %}
+    </nav>
+
+    {% if rfqs %}
+    <div class="mr-list">
+        {% for rfq in rfqs %}
+        <article class="mr-card {% if rfq.pending_cnt and rfq.status == 'quoted' %}has-new{% endif %}">
+            <div class="mr-main">
+                <div style="min-width:0;">
+                    <div class="mr-title">
+                        <a href="{% url 'orders:rfq_detail' rfq.pk %}">{{ rfq.product_name }}</a>
+                        <span class="st st-{{ rfq.status }}">{{ rfq.get_status_display }}</span>
+                    </div>
+                    <div class="mr-desc">{{ rfq.description }}</div>
+                    <div class="mr-meta">
+                        <span><i class="fa-solid fa-box"></i>{{ rfq.quantity|intcomma }} {{ rfq.unit }}</span>
+                        {% if rfq.target_price %}<span><i class="fa-solid fa-bullseye"></i>Cible {{ rfq.target_price|intcomma }} F / {{ rfq.unit }}</span>{% endif %}
+                        {% if rfq.category %}<span><i class="fa-solid fa-tag"></i>{{ rfq.category.name }}</span>{% endif %}
+                    </div>
+                </div>
+                <div class="mr-offers">
+                    {% if rfq.quote_cnt %}
+                    <div class="n"><i class="fa-solid fa-briefcase"></i> {{ rfq.quote_cnt }} offre{{ rfq.quote_cnt|pluralize }} {% if rfq.pending_cnt and rfq.status == 'quoted' %}<b class="new">{{ rfq.pending_cnt }} à étudier</b>{% endif %}</div>
+                    {% if rfq.best_price and rfq.status != 'accepted' %}
+                    <div class="best">{{ rfq.best_price|intcomma }} F <small>/ {{ rfq.unit }}</small></div>
+                    <div class="tot">Meilleure offre · total {% widthratio rfq.best_price 1 rfq.quantity as total %}{{ total|intcomma }} F</div>
+                    {% endif %}
+                    {% elif rfq.status == 'open' %}
+                    <div class="none"><i class="fa-regular fa-clock"></i> En attente d'offres.<br>Vous serez prévenu dès la première réponse.</div>
+                    {% else %}
+                    <div class="none">Aucune offre reçue.</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% for q in rfq.accepted_quotes %}
+            <div class="mr-won">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Offre retenue : <b>{{ q.store.name }}</b> — {{ q.price_per_unit|intcomma }} F / {{ rfq.unit }}, total {{ q.total_price|intcomma }} F, livraison {{ q.delivery_time }}</span>
+                <a href="{% url 'messaging:new' q.seller_id %}" class="btn btn-sm btn-outline"><i class="fa-solid fa-comments"></i> Contacter la boutique</a>
+            </div>
+            {% endfor %}
+            <div class="mr-foot">
+                <span class="ago">Envoyée le {{ rfq.created_at|date:"d/m/Y à H:i" }}</span>
+                <div class="acts">
+                    {% if rfq.status == 'open' or rfq.status == 'quoted' %}
+                    <button type="button" class="btn btn-danger-ghost" data-close="{% url 'orders:close_rfq' rfq.pk %}" data-name="{{ rfq.product_name }}"><i class="fa-solid fa-xmark"></i> Fermer</button>
+                    {% endif %}
+                    <a href="{% url 'orders:rfq_detail' rfq.pk %}" class="btn {% if rfq.pending_cnt and rfq.status == 'quoted' %}btn-orange{% else %}btn-outline{% endif %}">{% if rfq.quote_cnt %}<i class="fa-solid fa-scale-balanced"></i> Voir les offres{% else %}<i class="fa-solid fa-eye"></i> Voir la demande{% endif %}</a>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% elif status %}
+    <div class="mr-empty"><div class="ic"><i class="fa-solid fa-filter"></i></div><h3>Aucune demande dans cet onglet</h3><p>Choisissez un autre statut pour retrouver vos demandes.</p><a href="{% url 'orders:my_rfqs' %}" class="btn btn-outline">Toutes mes demandes</a></div>
+    {% else %}
+    <div class="mr-empty">
+        <div class="ic"><i class="fa-solid fa-file-signature"></i></div>
+        <h3>Aucune demande de devis</h3>
+        <p>Besoin d'un produit en quantité ? Décrivez-le : les boutiques concernées vous envoient leurs offres et vous choisissez la meilleure.</p>
+        <a href="{% url 'orders:create_rfq' %}" class="btn btn-orange"><i class="fa-solid fa-plus"></i> Créer une demande</a>
+    </div>
+    {% endif %}
 </div>
 
-<!-- Filtres par statut -->
-<div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;">
-<a href="{% url 'orders:my_rfqs' %}" class="btn {% if not request.GET.status %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Toutes</a>
-<a href="?status=open" class="btn {% if request.GET.status == 'open' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Ouvertes</a>
-<a href="?status=accepted" class="btn {% if request.GET.status == 'accepted' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Acceptées</a>
-<a href="?status=closed" class="btn {% if request.GET.status == 'closed' %}btn-orange{% else %}btn-outline{% endif %} btn-sm">Fermées</a>
+</main>
 </div>
-
-<!-- Liste des RFQ -->
-{% if rfqs %}
-<div style="display:grid;gap:1rem;">
-{% for rfq in rfqs %}
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;">
-<div style="display:grid;grid-template-columns:1fr auto;gap:1.5rem;align-items:start;">
-<div>
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-<h3 style="font-size:16px;margin:0;">{{ rfq.product_name }}</h3>
-<div style="background:{% if rfq.status == 'open' %}var(--green){% elif rfq.status == 'quoted' %}var(--orange){% elif rfq.status == 'accepted' %}var(--blue){% else %}var(--text3){% endif %};color:white;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">{{ rfq.get_status_display }}</div>
-</div>
-<div style="font-size:13px;color:var(--text2);margin-bottom:12px;">{{ rfq.description|truncatewords:40 }}</div>
-<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--text3);">
-<span><i class="fa-solid fa-box"></i> {{ rfq.quantity|intcomma }} {{ rfq.unit }}</span>
-{% if rfq.target_price %}<span><i class="fa-solid fa-money-bill"></i> {{ rfq.target_price|intcomma }} F/{{ rfq.unit }}</span>{% endif %}
-<span><i class="fa-solid fa-calendar"></i> {{ rfq.created_at|date:"d/m/Y" }}</span>
-{% if rfq.category %}<span><i class="fa-solid fa-tag"></i> {{ rfq.category.name }}</span>{% endif %}
-</div>
-</div>
-<div style="display:flex;align-items:center;">
-{% if rfq.status == 'open' or rfq.status == 'quoted' %}
-<button type="button" class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red);" onclick="openCloseModal({{ rfq.id }}, '{{ rfq.product_name|escapejs }}')"><i class="fa-solid fa-xmark"></i> Fermer la demande</button>
-{% endif %}
-</div>
-</div>
-</div>
-{% endfor %}
-</div>
-{% else %}
-<div class="empty-state" style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:4rem;">
-<div class="icon"><i class="fa-solid fa-file-invoice"></i></div>
-<h3>Aucune demande de devis</h3>
-<p style="margin:8px 0 20px;">Vous n'avez pas encore créé de demande de devis.</p>
-<a href="{% url 'orders:create_rfq' %}" class="btn btn-orange">Créer une demande</a>
-</div>
-{% endif %}
-</div>
-
-<!-- Modale de confirmation de fermeture -->
-<div id="closeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;">
-<div style="background:var(--white);border-radius:var(--radius);padding:2rem;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.2);">
-<div style="width:64px;height:64px;background:#fef2f2;color:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 1rem;"><i class="fa-solid fa-circle-xmark"></i></div>
-<h3 style="font-size:17px;margin-bottom:8px;">Fermer cette demande ?</h3>
-<p style="font-size:13px;color:var(--text3);margin-bottom:1.5rem;">La demande <strong id="closeModalName"></strong> sera définitivement fermée et ne recevra plus de devis.</p>
-<form method="post" id="closeModalForm">
-{% csrf_token %}
-<div style="display:flex;gap:10px;justify-content:center;">
-<button type="button" class="btn btn-outline" onclick="closeCloseModal()">Annuler</button>
-<button type="submit" class="btn" style="background:var(--red);color:#fff;"><i class="fa-solid fa-xmark"></i> Oui, fermer</button>
-</div>
-</form>
-</div>
+<div class="mr-modal" id="closeModal" role="dialog" aria-modal="true" aria-labelledby="closeTitle">
+    <div class="mr-modal-box">
+        <div class="ic"><i class="fa-solid fa-circle-xmark"></i></div>
+        <h3 id="closeTitle">Fermer cette demande ?</h3>
+        <p>La demande <b id="closeName"></b> ne recevra plus d'offres, et les offres en attente seront refusées.</p>
+        <form method="post" id="closeForm">{% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <div class="acts">
+                <button type="button" class="btn btn-outline" data-dismiss>Annuler</button>
+                <button type="submit" class="btn" style="background:var(--red);color:#fff;"><i class="fa-solid fa-xmark"></i> Oui, fermer</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
-
 {% block extra_js %}
 <script>
-function openCloseModal(rfqId, name) {
-  document.getElementById('closeModalName').textContent = '"' + name + '"';
-  document.getElementById('closeModalForm').action = '/fr/commandes/rfq/' + rfqId + '/fermer/';
-  document.getElementById('closeModal').style.display = 'flex';
-}
-function closeCloseModal() {
-  document.getElementById('closeModal').style.display = 'none';
-}
-document.getElementById('closeModal').addEventListener('click', function(e) {
-  if (e.target === this) closeCloseModal();
-});
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeCloseModal();
-});
+(function() {
+    var modal = document.getElementById('closeModal'), form = document.getElementById('closeForm'), name = document.getElementById('closeName');
+    document.querySelectorAll('[data-close]').forEach(function(b) {
+        b.addEventListener('click', function() { form.action = b.dataset.close; name.textContent = '« ' + b.dataset.name + ' »'; modal.classList.add('open'); });
+    });
+    function hide() { modal.classList.remove('open'); }
+    modal.querySelector('[data-dismiss]').addEventListener('click', hide);
+    modal.addEventListener('click', function(e) { if (e.target === modal) hide(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hide(); });
+})();
 </script>
 {% endblock %}

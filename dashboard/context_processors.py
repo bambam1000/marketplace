@@ -46,7 +46,7 @@ def _build(request):
             if limit:
                 mine = mine.filter(warehouse_id=limit)
             badges['orders'] = mine.values('order').distinct().count()
-            badges['rfqs'] = (RFQ.objects.filter(status='open').exclude(quotes__store=store)
+            badges['rfqs'] = (RFQ.objects.filter(status__in=('open', 'quoted')).exclude(quotes__store=store)
                               .exclude(buyer=store.owner).count())
         if can['stock']:
             from inventory.models import ProductStock

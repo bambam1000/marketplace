@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -33,7 +34,13 @@ def register_view(request):
         username = request.POST.get('username')
         email = request.POST.get('email')
         password = request.POST.get('password')
-        if User.objects.filter(username=username).exists():
+        from .passwords import password_problem
+        pw_error = password_problem(password, username or '', email or '')
+        if not (username or '').strip() or not (email or '').strip():
+            messages.error(request, "Indiquez un nom d'utilisateur et une adresse e-mail.")
+        elif pw_error:
+            messages.error(request, pw_error)
+        elif User.objects.filter(username=username).exists():
             messages.error(request, 'Ce nom d\'utilisateur existe déjà.')
         elif User.objects.filter(email=email).exists():
             messages.error(request, 'Cet email est déjà utilisé.')
@@ -92,35 +99,97 @@ def logout_view(request):
 
 @login_required
 def profile_view(request):
-    if request.method == 'POST':
-        request.user.first_name = request.POST.get('first_name', '')
-        request.user.last_name = request.POST.get('last_name', '')
-        request.user.phone = request.POST.get('phone', '')
-        request.user.address = request.POST.get('address', '')
-        request.user.city = request.POST.get('city', '')
-        request.user.save()
-        messages.success(request, 'Profil mis à jour !')
-
-    from orders.models import Order, RFQ
-    from messaging.models import Message
-    from catalog.models import Wishlist
+    """Espace client : à faire, dernières commandes, informations, adresse et mot de passe."""
+    import re
+    from django.contrib.auth import update_session_auth_hash
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
     from django.db.models import Sum
+    from orders.models import Order, RFQ
+    from .account import account_nav, profile_completion, ACTIVE_ORDER
 
-    user_orders = Order.objects.filter(buyer=request.user)
+    user = request.user
+    errors, section = {}, request.POST.get('section')
+    if request.method == 'POST':
+        val = lambda k: (request.POST.get(k) or '').strip()  # noqa: E731
+        if section == 'info':
+            email = val('email')
+            try:
+                validate_email(email)
+                if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+                    errors['email'] = 'Cette adresse e-mail est déjà utilisée par un autre compte.'
+            except ValidationError:
+                errors['email'] = 'Adresse e-mail invalide.'
+            phone = val('phone')
+            if phone and not 8 <= len(re.sub(r'\D', '', phone)) <= 15:
+                errors['phone'] = 'Numéro de téléphone invalide.'
+            avatar = request.FILES.get('avatar')
+            if avatar and (avatar.size > 3 * 1024 * 1024 or not (avatar.content_type or '').startswith('image/')):
+                errors['avatar'] = 'Choisissez une image de moins de 3 Mo.'
+            if not errors:
+                user.first_name, user.last_name = val('first_name')[:150], val('last_name')[:150]
+                user.email, user.phone = email, phone[:20]
+                if avatar:
+                    user.avatar = avatar
+                elif request.POST.get('remove_avatar') and user.avatar:
+                    user.avatar.delete(save=False)
+                    user.avatar = None
+                user.save()
+                messages.success(request, 'Vos informations sont enregistrées.')
+        elif section == 'address':
+            user.address, user.city = val('address')[:500], val('city')[:100]
+            user.country = val('country')[:100] or user.country
+            user.save(update_fields=['address', 'city', 'country'])
+            messages.success(request, 'Adresse enregistrée : elle sera proposée à votre prochaine commande.')
+        elif section == 'password':
+            if not user.check_password(request.POST.get('current_password', '')):
+                errors['current_password'] = 'Mot de passe actuel incorrect.'
+            new = request.POST.get('new_password', '')
+            if new != request.POST.get('confirm_password', ''):
+                errors['confirm_password'] = 'Les deux mots de passe ne correspondent pas.'
+            elif not errors:
+                from .passwords import password_problem
+                problem = password_problem(new, user.username, user.email)
+                if problem:
+                    errors['new_password'] = problem
+                else:
+                    try:
+                        validate_password(new, user)
+                    except ValidationError as e:
+                        errors['new_password'] = ' '.join(e.messages)
+            if not errors:
+                user.set_password(new)
+                user.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, 'Mot de passe modifié.')
+        if not errors:
+            anchor = {'info': '#infos', 'address': '#adresse', 'password': '#securite'}.get(section, '')
+            return redirect(reverse('accounts:profile') + anchor)
+        messages.error(request, 'Certaines informations sont à corriger.')
+
+    orders = Order.objects.filter(buyer=user)
+    nav = account_nav(user, 'profile')
+    completion = profile_completion(user)
+    done = sum(1 for _, ok in completion if ok)
+    form = {k: getattr(user, k) for k in ('first_name', 'last_name', 'email', 'phone')}
+    if errors and section == 'info':
+        form.update({k: request.POST.get(k, '') for k in form})
     context = {
-        'recent_orders': user_orders[:5],
-        'orders_count': user_orders.count(),
-        'pending_orders': user_orders.filter(status__in=['pending', 'confirmed', 'processing', 'shipped']).count(),
-        'delivered_orders': user_orders.filter(status='delivered').count(),
-        'total_spent': user_orders.filter(is_paid=True).aggregate(t=Sum('total_amount'))['t'] or 0,
-        'rfqs': RFQ.objects.filter(buyer=request.user)[:5],
-        'rfqs_count': RFQ.objects.filter(buyer=request.user).count(),
-        'wishlist_count': Wishlist.objects.filter(user=request.user).count(),
-        'unread_messages': Message.objects.filter(
-            conversation__buyer=request.user, is_read=False
-        ).exclude(sender=request.user).count(),
+        'acc': nav,
+        'recent_orders': orders.prefetch_related('items__product')[:3],
+        'stats': {
+            'orders': orders.count(),
+            'active': orders.filter(status__in=ACTIVE_ORDER).count(),
+            'delivered': orders.filter(status='delivered').count(),
+            'paid': orders.filter(is_paid=True).exclude(status__in=('cancelled', 'refunded')).aggregate(t=Sum('total_amount'))['t'] or 0,
+        },
+        'to_pay': orders.filter(status='pending', is_paid=False).exclude(payment_method='cash')[:3],
+        'rfqs_count': RFQ.objects.filter(buyer=user).count(),
+        'completion': completion, 'completion_pct': done * 100 // len(completion), 'completion_done': done == len(completion),
+        'form': form, 'errors': errors, 'section': section,
     }
-    return render(request, 'accounts/profile.html', context)
+    return render(request, 'accounts/profile.html', context, status=400 if errors else 200)
 
 
 def privacy_view(request):
@@ -216,13 +285,15 @@ def password_reset_confirm_view(request, uidb64, token):
             password2 = request.POST.get('new_password2')
 
             if password1 and password1 == password2:
-                if len(password1) >= 8:
+                from .passwords import password_problem
+                pw_error = password_problem(password1, user.username, user.email)
+                if pw_error is None:
                     user.set_password(password1)
                     user.save()
-                    messages.success(request, '✅ Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.')
+                    messages.success(request, 'Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter.')
                     return redirect('accounts:login')
                 else:
-                    messages.error(request, 'Le mot de passe doit contenir au moins 8 caractères.')
+                    messages.error(request, pw_error)
             else:
                 messages.error(request, 'Les mots de passe ne correspondent pas.')
 

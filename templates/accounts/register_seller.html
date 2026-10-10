@@ -120,7 +120,7 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
                     <div class="field-msg"></div>
                 </div>
                 <div class="form-group">
-                    <input type="password" name="password" class="form-control" required placeholder="Mot de passe (min. 6 caractères) *" data-validate="password">
+                    <input type="password" name="password" class="form-control" required placeholder="Mot de passe (8 caractères min.) *" data-validate="password">
                     <div class="field-msg"></div>
                 </div>
                 <div class="form-group" id="store-field">
@@ -159,7 +159,7 @@ const validators = {
     username: v => /^[a-zA-Z0-9._-]{3,}$/.test(v) ? null : 'Min. 3 caractères (lettres, chiffres, . _ -)',
     email: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? null : 'Email invalide',
     phone: v => v === '' || iti.isValidNumber() ? null : 'Numéro invalide',
-    password: v => v.length >= 6 ? null : 'Min. 6 caractères',
+    password: v => v.length < 8 ? '8 caractères minimum' : (/^\d+$/.test(v) ? 'Pas uniquement des chiffres' : null),
 };
 document.querySelectorAll('[data-validate]').forEach(function(input) {
     input.addEventListener('input', function() {

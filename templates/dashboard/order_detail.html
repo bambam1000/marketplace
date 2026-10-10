@@ -117,15 +117,41 @@
         <div class="od-card">
             <div class="od-card-head"><i class="fa-solid fa-arrows-rotate"></i> Mettre à jour le statut</div>
             <div class="od-card-body">
-                <form method="post" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                {% if order.status == 'cancelled' or order.status == 'refunded' %}
+                <div style="font-size:13px;line-height:1.6;color:var(--dash-text2);">
+                    <i class="fa-solid fa-ban" style="color:var(--dash-red);"></i> Commande {{ order.get_status_display|lower }} : le stock a été remis en place.
+                    Elle ne peut plus être réactivée.
+                </div>
+                {% if order.status == 'cancelled' and order.is_paid %}
+                <form method="post" style="margin-top:10px;">{% csrf_token %}
+                    <input type="hidden" name="status" value="refunded">
+                    <button type="submit" class="btn btn-outline btn-sm"><i class="fa-solid fa-rotate-left"></i> Marquer comme remboursée</button>
+                </form>
+                {% endif %}
+                {% else %}
+                <form method="post" id="statusForm" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                     {% csrf_token %}
-                    <select name="status" class="form-control" style="flex:1;min-width:180px;">
-                        {% for code, label in order.STATUS_CHOICES %}
+                    <select name="status" id="statusSelect" class="form-control" style="flex:1;min-width:180px;">
+                        {% for code, label in order.STATUS_CHOICES %}{% if code != 'refunded' %}
                         <option value="{{ code }}" {% if order.status == code %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
+                        {% endif %}{% endfor %}
                     </select>
                     <button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Mettre à jour</button>
+                    <div id="cancelBox" style="display:none;width:100%;">
+                        <input type="text" name="cancel_reason" maxlength="200" class="form-control" placeholder="Motif de l'annulation (visible par le client)">
+                        <div style="font-size:11.5px;color:var(--dash-red);margin-top:6px;"><i class="fa-solid fa-triangle-exclamation"></i> Annuler remet le stock en place{% if order.is_paid %}, retire la vente de votre portefeuille{% endif %} et ne peut pas être défait.</div>
+                    </div>
                 </form>
+                <script>
+                (function() {
+                    var sel = document.getElementById('statusSelect'), box = document.getElementById('cancelBox');
+                    sel.addEventListener('change', function() { box.style.display = sel.value === 'cancelled' ? 'block' : 'none'; });
+                    document.getElementById('statusForm').addEventListener('submit', function(e) {
+                        if (sel.value === 'cancelled' && !confirm('Annuler définitivement la commande {{ order.order_number }} ?')) e.preventDefault();
+                    });
+                })();
+                </script>
+                {% endif %}
                 <div style="font-size:11px;color:var(--dash-text3);margin-top:8px;"><i class="fa-solid fa-bell"></i> Le client sera notifié par email et notification interne.</div>
             </div>
         </div>

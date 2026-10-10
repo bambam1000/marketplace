@@ -31,7 +31,7 @@
 </div>
 
 <!-- ═══ Formulaire de devis ═══ -->
-{% if rfq.status == 'open' %}
+{% if rfq.status == 'open' or rfq.status == 'quoted' %}
 <div class="dash-card" style="padding:22px;">
     {% if user_quote %}
     <div style="background:rgba(18,183,106,.08);border:1px solid rgba(18,183,106,.2);border-radius:6px;padding:14px 16px;margin-bottom:16px;">

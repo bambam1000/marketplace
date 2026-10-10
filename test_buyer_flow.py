@@ -22,6 +22,9 @@ seller, _ = User.objects.get_or_create(username='vendeur_test', defaults={'role'
 seller.set_password('testpass123')
 seller.save()
 store, _ = Store.objects.get_or_create(owner=seller, defaults={'name': 'Boutique Test'})
+# La boutique accepte MoMo : seuls les moyens activés par le vendeur sont proposés
+from billing.models import PaymentConfig
+PaymentConfig.objects.update_or_create(user=seller, defaults={'momo_enabled': True, 'momo_number': '+237677000111', 'cash_enabled': True})
 cat, _ = Category.objects.get_or_create(slug='test-cat', defaults={'name': 'Test'})
 product, _ = Product.objects.get_or_create(
     slug='produit-test',

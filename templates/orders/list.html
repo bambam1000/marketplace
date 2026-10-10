@@ -1,20 +1,142 @@
 {% extends 'base.html' %}{% load humanize %}
-{% block title %}Mes Commandes{% endblock %}
+{% block title %}Mes commandes{% endblock %}
+{% block extra_css %}
+<style>
+.ol-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.ol-head h1 { font-size: 26px; }
+.ol-head p { color: var(--text2); font-size: 14px; margin-top: 4px; }
+.ol-search { position: relative; min-width: 260px; flex: 0 1 320px; }
+.ol-search i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); }
+.ol-search input { width: 100%; padding: 11px 14px 11px 38px; border: 1.5px solid var(--border); border-radius: 12px; font: 14px var(--font); background: var(--white); }
+.ol-search input:focus { outline: none; border-color: var(--orange); }
+.ol-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-bottom: 16px; }
+.ol-tabs::-webkit-scrollbar { display: none; }
+.ol-tabs a { flex-shrink: 0; padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border); background: var(--white); font-size: 13.5px; font-weight: 600; color: var(--text2); display: inline-flex; gap: 7px; align-items: center; }
+.ol-tabs a span { font-size: 12px; color: var(--text3); font-weight: 500; }
+.ol-tabs a.on { background: var(--orange); border-color: var(--orange); color: #fff; }
+.ol-tabs a.on span { color: rgba(255,255,255,.85); }
+.ol-tabs a.warn:not(.on) { border-color: #fbd5a5; color: #b54708; }
+.ol-card { background: var(--white); border: 1px solid var(--border2); border-radius: 16px; margin-bottom: 12px; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+.ol-card:hover { box-shadow: 0 8px 24px rgba(16,24,40,.06); }
+.ol-card.pay { border-color: #fbd5a5; }
+.ol-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid var(--border2); }
+.ol-top .num { font-weight: 800; font-size: 15px; color: var(--text); }
+.ol-top .num:hover { color: var(--orange); }
+.ol-top .meta { font-size: 12.5px; color: var(--text3); margin-top: 2px; }
+.ol-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ol-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 50px; font-size: 11.5px; font-weight: 700; background: #fff4e5; color: #b54708; }
+.ol-body { display: flex; gap: 16px; align-items: center; padding: 14px 18px; }
+.ol-thumbs { display: flex; flex-shrink: 0; }
+.ol-thumbs img, .ol-thumbs .ph { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; border: 2px solid var(--white); background: var(--bg); margin-left: -14px; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 12px; font-weight: 700; }
+.ol-thumbs > :first-child { margin-left: 0; }
+.ol-items { flex: 1; min-width: 0; font-size: 13.5px; }
+.ol-items div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 1px 0; }
+.ol-items .more { color: var(--text3); font-size: 12.5px; }
+.ol-total { text-align: right; white-space: nowrap; }
+.ol-total small { display: block; font-size: 12px; color: var(--text3); }
+.ol-total strong { font-size: 18px; }
+.ol-prog { height: 4px; background: var(--border2); }
+.ol-prog span { display: block; height: 100%; background: var(--orange); }
+.ol-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding: 0 18px 14px; }
+.ol-acts form { margin: 0; }
+.ol-empty { background: var(--white); border: 1px solid var(--border2); border-radius: 16px; text-align: center; padding: 3rem 1rem; }
+.ol-empty i { font-size: 38px; color: var(--text3); opacity: .5; margin-bottom: 12px; }
+.ol-empty h3 { font-size: 17px; margin-bottom: 6px; }
+.ol-empty p { color: var(--text2); font-size: 14px; margin-bottom: 14px; }
+.ol-pages { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+.ol-pages a, .ol-pages span { padding: 7px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--white); font-size: 13px; color: var(--text2); }
+.ol-pages span.cur { background: var(--orange); border-color: var(--orange); color: #fff; }
+@media (max-width: 640px) {
+    .ol-head h1 { font-size: 21px; }
+    .ol-search { flex: 1 1 100%; min-width: 0; }
+    .ol-search input { font-size: 16px; }
+    .ol-top, .ol-body { padding: 12px 14px; }
+    .ol-body { flex-wrap: wrap; gap: 10px; }
+    .ol-thumbs img, .ol-thumbs .ph { width: 48px; height: 48px; }
+    .ol-total { width: 100%; display: flex; justify-content: space-between; align-items: baseline; text-align: left; border-top: 1px dashed var(--border2); padding-top: 8px; }
+    .ol-acts { padding: 0 14px 12px; }
+    .ol-acts > * { flex: 1; }
+    .ol-acts .btn { width: 100%; justify-content: center; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div class="section"><h2 style="font-size:18px;margin-bottom:1rem;">📦 Mes Commandes</h2>
-<div style="display:flex;gap:6px;margin-bottom:1rem;">{% for code, label in orders.model.STATUS_CHOICES %}<a href="?status={{ code }}" class="btn btn-sm btn-outline">{{ label }}</a>{% endfor %}<a href="{% url 'orders:list' %}" class="btn btn-sm btn-outline">Toutes</a></div>
-{% for order in orders %}
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;margin-bottom:8px;">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-<div><strong>{{ order.order_number }}</strong> <span style="font-size:12px;color:var(--text3);">{{ order.created_at|date:"d/m/Y H:i" }}</span></div>
-<span class="status-badge st-{{ order.status }}">{{ order.get_status_display }}</span>
-</div>
-{% for item in order.items.all %}<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;"><span>{{ item.product.name|truncatechars:50 }}</span><span style="color:var(--text3);">×{{ item.quantity }}</span><span style="font-weight:600;margin-left:auto;">{{ item.subtotal|intcomma }} F</span></div>{% endfor %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);">
-<span style="font-weight:700;color:var(--red);">Total: {{ order.total_amount|intcomma }} FCFA</span>
-<a href="{% url 'orders:detail' order.order_number %}" class="btn btn-sm btn-outline">Détails →</a>
-</div>
-</div>
-{% empty %}<div class="empty-state"><div class="icon">📦</div><h3>Aucune commande</h3><a href="{% url 'catalog:product_list' %}" class="btn btn-orange" style="margin-top:12px;">Commencer vos achats</a></div>{% endfor %}
+<div class="acc-wrap">
+{% include 'accounts/_nav.html' %}
+<main class="acc-main">
+    <div class="ol-head">
+        <div>
+            <h1>Mes commandes</h1>
+            <p>Suivez vos achats, payez, et recommandez en un clic.</p>
+        </div>
+        {% if total %}
+        <form class="ol-search" method="get" role="search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+            <input type="search" name="q" value="{{ q }}" placeholder="N° de commande ou produit" aria-label="Rechercher une commande">
+        </form>
+        {% endif %}
+    </div>
+
+    {% if total %}
+    <nav class="ol-tabs" aria-label="Filtrer">
+        {% for code, label, n in tabs %}<a href="?{% if code %}status={{ code }}{% endif %}{% if q %}{% if code %}&{% endif %}q={{ q|urlencode }}{% endif %}" class="{% if status == code %}on{% endif %} {% if code == 'to_pay' %}warn{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}
+    </nav>
+    {% endif %}
+
+    {% for o in orders %}
+    <article class="ol-card {% if o.to_pay %}pay{% endif %}">
+        <div class="ol-top">
+            <div>
+                <a class="num" href="{% url 'orders:detail' o.order_number %}">{{ o.order_number }}</a>
+                <div class="meta">{{ o.created_at|date:"d/m/Y à H:i" }} · {{ o.store_names|join:", " }}</div>
+            </div>
+            <div class="ol-badges">
+                {% if o.to_pay %}<span class="ol-pill"><i class="fa-regular fa-clock"></i> À payer</span>{% endif %}
+                <span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span>
+            </div>
+        </div>
+        <a class="ol-body" href="{% url 'orders:detail' o.order_number %}" style="color:inherit;">
+            <span class="ol-thumbs">{% for it in o.item_list|slice:":3" %}{% if it.product.image %}<img src="{{ it.product.image.url }}" alt="" loading="lazy">{% else %}<span class="ph"><i class="fa-regular fa-image"></i></span>{% endif %}{% endfor %}{% if o.item_list|length > 3 %}<span class="ph">+{{ o.item_list|length|add:"-3" }}</span>{% endif %}</span>
+            <span class="ol-items">
+                {% for it in o.item_list|slice:":2" %}<div>{{ it.product.name }} <span style="color:var(--text3);">× {{ it.quantity }}</span></div>{% endfor %}
+                {% if o.item_list|length > 2 %}<div class="more">et {{ o.item_list|length|add:"-2" }} autre{{ o.item_list|length|add:"-2"|pluralize }} article{{ o.item_list|length|add:"-2"|pluralize }}</div>{% endif %}
+            </span>
+            <span class="ol-total"><small>Total</small><strong>{{ o.total_amount|intcomma }} F</strong></span>
+        </a>
+        <div class="ol-acts">
+            {% if o.to_pay %}<a href="{% url 'orders:detail' o.order_number %}" class="btn btn-orange btn-sm"><i class="fa-solid fa-wallet"></i> Payer</a>{% endif %}
+            {% if o.status == 'delivered' %}<a href="{% url 'orders:detail' o.order_number %}#articles" class="btn btn-outline btn-sm"><i class="fa-regular fa-star"></i> Donner mon avis</a>{% endif %}
+            {% if o.status == 'delivered' or o.status == 'cancelled' or o.status == 'refunded' %}
+            <form method="post" action="{% url 'orders:reorder' o.order_number %}">{% csrf_token %}<button type="submit" class="btn btn-outline btn-sm"><i class="fa-solid fa-rotate-right"></i> Commander à nouveau</button></form>
+            {% endif %}
+            <a href="{% url 'orders:detail' o.order_number %}" class="btn {% if o.to_pay %}btn-outline{% else %}btn-orange{% endif %} btn-sm">{% if o.status in 'pending confirmed processing shipped' %}<i class="fa-solid fa-route"></i> Suivre{% else %}Voir le détail{% endif %}</a>
+        </div>
+        {% if o.progress_percent and o.status != 'delivered' %}<div class="ol-prog"><span style="width:{{ o.progress_percent }}%;"></span></div>{% endif %}
+    </article>
+    {% empty %}
+    <div class="ol-empty">
+        {% if q or status %}
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <h3>Aucune commande trouvée</h3>
+        <p>{% if q %}Rien ne correspond à « {{ q }} ».{% else %}Aucune commande dans cette catégorie.{% endif %}</p>
+        <a href="{% url 'orders:list' %}" class="btn btn-outline">Voir toutes mes commandes</a>
+        {% else %}
+        <i class="fa-solid fa-bag-shopping"></i>
+        <h3>Vous n'avez pas encore commandé</h3>
+        <p>Vos commandes et leur suivi apparaîtront ici.</p>
+        <a href="{% url 'catalog:product_list' %}" class="btn btn-orange">Découvrir les produits</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    {% if page.has_other_pages %}
+    <nav class="ol-pages" aria-label="Pages">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" aria-label="Précédente"><i class="fa-solid fa-chevron-left"></i></a>{% endif %}
+        <span class="cur">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" aria-label="Suivante"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+    </nav>
+    {% endif %}
+</main>
 </div>
 {% endblock %}

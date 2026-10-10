@@ -68,6 +68,13 @@
 </style>
 
 <!-- ═══ En-tête ═══ -->
+{% if no_payment %}
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#fff4e5;border:1px solid #fbd5a5;color:#7a4100;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;">
+    <i class="fa-solid fa-triangle-exclamation" style="font-size:18px;"></i>
+    <div style="flex:1;min-width:220px;"><strong>Vos clients ne peuvent pas encore commander sur le site.</strong> Activez au moins un moyen de paiement (MoMo, Orange Money, virement ou paiement à la livraison).</div>
+    {% if nav.can.owner %}<a href="{% url 'dashboard:settings' %}?tab=payments" class="btn btn-orange btn-sm">Configurer les paiements</a>{% endif %}
+</div>
+{% endif %}
 <div class="ov-head">
     <div>
         <h1>Bonjour {{ request.user.first_name|default:request.user.username }}</h1>

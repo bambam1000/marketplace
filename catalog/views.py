@@ -307,27 +307,102 @@ def contact(request):
     return render(request, 'catalog/contact.html')
 
 def faq(request):
-    faq_data = {
-        '📦 Commandes & Livraison': [
-            ('Comment passer une commande ?', 'Parcourez les produits, ajoutez au panier, puis finalisez avec vos infos de livraison et mode de paiement.'),
-            ('Quels sont les délais de livraison ?', 'Douala: 24h. Yaoundé: 24-48h. Autres villes: 48-72h. Zones rurales: 3-5 jours.'),
-            ('Combien coûte la livraison ?', 'Gratuite dès 50,000 FCFA. Sinon 2,000 F (Douala/Yaoundé) ou 3,500 F (autres villes).'),
-        ],
-        '💳 Paiement': [
-            ('Quels moyens de paiement ?', 'MTN MoMo, Orange Money, carte bancaire (Visa/Mastercard), virement, et cash à la livraison.'),
-            ('Le paiement est-il sécurisé ?', 'Oui ! Transactions chiffrées via les passerelles officielles. Trade Assurance sur chaque commande.'),
-        ],
-        '🏪 Vendeurs': [
-            ('Comment devenir vendeur ?', 'Inscrivez-vous en tant que vendeur, c\'est gratuit. Créez votre boutique et ajoutez vos produits.'),
-            ('Qu\'est-ce que la Trade Assurance ?', 'C\'est notre garantie acheteur : si le produit n\'est pas conforme, vous êtes remboursé.'),
-            ('Comment fonctionne le RFQ ?', 'Soumettez une demande de devis avec vos besoins. Les vendeurs vous envoient leurs meilleures offres.'),
-        ],
-        '🔄 Retours': [
-            ('Politique de retour ?', 'Retour possible sous 7 jours. Produit non utilisé, emballage d\'origine. Contactez-nous par WhatsApp.'),
-            ('Délai de remboursement ?', '3-5 jours ouvrés après validation du retour, via le même moyen de paiement.'),
-        ],
-    }
-    return render(request, 'catalog/faq.html', {'faq_data': faq_data})
+    """Questions fréquentes. Les réponses décrivent ce que fait réellement la plateforme."""
+    from django.urls import reverse
+    from cart.views import FREE_SHIPPING_FROM, SHIPPING_FEE
+    money = lambda n: f'{n:,} F'.replace(',', ' ')  # noqa: E731
+    link = lambda name, label, *args: f'<a href="{reverse(name, args=args)}">{label}</a>'  # noqa: E731
+    from billing.payments import METHODS
+    payments = ', '.join(m['label'] for m in METHODS.values())
+    sections = [
+        ('commander', 'fa-bag-shopping', 'Commander', [
+            ('Comment passer une commande ?',
+             f"Ajoutez les produits au panier, puis validez-le : indiquez votre adresse de livraison et votre moyen de paiement. "
+             f"Il faut un compte pour commander ; l'{link('accounts:register', 'inscription')} est gratuite."),
+            ('Comment suivre ma commande ?',
+             f"Dans {link('orders:list', 'Mes commandes')}, chaque commande indique son étape : en attente, confirmée, en traitement, "
+             f"expédiée puis livrée. Vous êtes prévenu à chaque changement, sur le site et par e-mail."),
+            ('Puis-je commander chez plusieurs boutiques en même temps ?',
+             "Oui. Votre panier peut contenir des produits de plusieurs boutiques ; chacune prépare et expédie sa partie de la commande."),
+            ('Comment modifier ou annuler une commande ?',
+             f"Écrivez à la boutique depuis la page du produit ou votre {link('messaging:inbox', 'messagerie')} le plus tôt possible : "
+             f"tant que la commande n'est pas expédiée, elle peut l'ajuster ou l'annuler."),
+        ]),
+        ('livraison', 'fa-truck-fast', 'Livraison', [
+            ('Combien coûte la livraison ?',
+             f"La livraison coûte {money(SHIPPING_FEE)} par commande, et elle est offerte dès {money(FREE_SHIPPING_FROM)} d'achats. "
+             f"Le montant exact est affiché dans votre panier avant de valider."),
+            ('Quels sont les délais de livraison ?',
+             "Ils dépendent de la boutique et de votre adresse. La boutique vous confirme le délai lorsqu'elle accepte votre commande ; "
+             "n'hésitez pas à le lui demander avant d'acheter via la messagerie."),
+            ("Que faire si ma commande n'arrive pas ?",
+             f"Contactez d'abord la boutique depuis votre {link('messaging:inbox', 'messagerie')}. Sans réponse de sa part, "
+             f"{link('contact', 'écrivez-nous')} en indiquant votre numéro de commande."),
+        ]),
+        ('paiement', 'fa-wallet', 'Paiement', [
+            ('Quels moyens de paiement sont acceptés ?',
+             f"Chaque boutique choisit ceux qu'elle accepte parmi : {payments}. Au moment de commander, vous ne voyez que "
+             f"les moyens acceptés par toutes les boutiques de votre panier."),
+            ('Quand mon paiement est-il pris en compte ?',
+             "La boutique confirme la réception de votre paiement ; votre commande passe alors à l'étape suivante. "
+             "Avec le paiement à la livraison, vous réglez au moment de recevoir votre colis."),
+            ('Comment utiliser un code promo ?',
+             "Saisissez-le dans votre panier avant de valider la commande. La réduction s'applique aux produits de la boutique "
+             "qui a créé le code."),
+            ('Comment fonctionne la fidélité ?',
+             "Certaines boutiques récompensent leurs clients réguliers : selon vos achats chez elles, vous atteignez un niveau "
+             "(Argent, Or, Platine) qui donne droit à une remise appliquée automatiquement dans votre panier. "
+             "Elle ne se cumule pas avec un code promo."),
+        ]),
+        ('retours', 'fa-rotate-left', 'Retours et problèmes', [
+            ('Mon produit ne correspond pas : que faire ?',
+             f"Contactez la boutique depuis votre {link('messaging:inbox', 'messagerie')}, avec des photos si possible. Chaque boutique "
+             f"fixe ses conditions d'échange et de remboursement ; demandez-les avant d'acheter si c'est important pour vous."),
+            ("La boutique ne me répond pas",
+             f"{link('contact', 'Écrivez-nous')} en précisant votre numéro de commande et l'échange avec la boutique : nous vous aidons à trouver une solution avec elle."),
+        ]),
+        ('devis', 'fa-file-signature', 'Demandes de devis', [
+            ("À quoi sert une demande de devis ?",
+             f"Pour un achat en quantité, {link('orders:create_rfq', 'décrivez votre besoin')} : les boutiques concernées vous "
+             f"envoient leurs offres avec prix, délai et conditions de paiement."),
+            ('Comment choisir une offre ?',
+             f"Dans {link('orders:my_rfqs', 'Mes demandes de devis')}, comparez les offres (la moins chère est signalée), contactez les "
+             f"boutiques si besoin, puis acceptez celle qui vous convient : les autres sont automatiquement refusées."),
+            ('Puis-je arrêter de recevoir des offres ?',
+             "Oui, fermez la demande depuis « Mes demandes de devis » : elle ne reçoit plus d'offres."),
+        ]),
+        ('compte', 'fa-user-shield', 'Compte et sécurité', [
+            ("J'ai oublié mon mot de passe",
+             f"Utilisez « {link('accounts:password_reset', 'Mot de passe oublié')} » sur la page de connexion : vous recevez un lien "
+             f"par e-mail pour en choisir un nouveau."),
+            ('Comment gérer mes notifications ?',
+             f"Dans vos {link('messaging:notifications', 'notifications')}, le panneau « Préférences » permet de choisir ce que vous "
+             f"recevez sur le site, par e-mail et sur WhatsApp."),
+            ("Puis-je installer Comptoir sur mon téléphone ?",
+             "Oui. Sur Android, touchez « Installer » quand le site vous le propose ; sur iPhone, utilisez Partager puis "
+             "« Sur l'écran d'accueil »."),
+            ('Que faites-vous de mes données ?',
+             f"Elles servent à traiter vos commandes et vos échanges avec les boutiques. Tout est expliqué dans notre "
+             f"{link('accounts:privacy', 'politique de confidentialité')}."),
+        ]),
+        ('vendre', 'fa-store', 'Vendre sur Comptoir', [
+            ('Comment devenir vendeur ?',
+             f"Créez un compte vendeur puis choisissez une formule d'abonnement adaptée à votre activité. Tout est détaillé sur la "
+             f"page {link('seller_landing', 'Vendre sur Comptoir')}."),
+            ('Quelle commission prend Comptoir ?',
+             "Le taux dépend de votre formule et ne s'applique qu'aux ventes passées sur le site ; les ventes en caisse et les "
+             "ventes directes que vous enregistrez n'en ont pas."),
+            ('Où trouver plus de réponses pour les vendeurs ?',
+             f"Les questions des vendeurs (paiements, caisse, employés, WhatsApp…) sont sur la "
+             f"{link('seller_landing', 'page vendeurs')}."),
+        ]),
+    ]
+    from django.utils.html import strip_tags
+    from django.utils.safestring import mark_safe
+    sections = [{'id': sid, 'icon': icon, 'title': title,
+                 'items': [{'q': q, 'a': mark_safe(a), 'plain': strip_tags(a), 'id': f'{sid}-{i + 1}'} for i, (q, a) in enumerate(items)]}
+                for sid, icon, title, items in sections]
+    return render(request, 'catalog/faq.html', {'sections': sections, 'count': sum(len(s['items']) for s in sections)})
 
 
 def search_autocomplete(request):

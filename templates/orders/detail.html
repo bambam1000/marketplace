@@ -1,37 +1,297 @@
 {% extends 'base.html' %}{% load humanize %}
 {% block title %}Commande {{ order.order_number }}{% endblock %}
+{% block extra_css %}
+<style>
+.od-wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+.od-back { font-size: 13px; color: var(--text2); display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+.od-back:hover { color: var(--orange); }
+.od-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.od-head h1 { font-size: 24px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.od-copy { border: 1px solid var(--border); background: var(--white); border-radius: 8px; padding: 4px 9px; font-size: 12px; color: var(--text2); cursor: pointer; font-family: var(--font); }
+.od-copy:hover { color: var(--orange); border-color: var(--orange); }
+.od-meta { font-size: 13px; color: var(--text3); margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.od-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 50px; font-size: 12px; font-weight: 700; }
+.od-pill.paid { background: #ecfdf3; color: #067647; }
+.od-pill.unpaid { background: #fff4e5; color: #b54708; }
+.od-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.od-acts form { margin: 0; }
+.od-btn-danger { background: var(--white); border: 1px solid #fda29b; color: #d92d20; }
+.od-btn-danger:hover { background: #fef3f2; }
+.od-grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+.od-card { background: var(--white); border: 1px solid var(--border2); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.od-card h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.od-card h2 i { color: var(--orange); }
+/* Étapes */
+.od-steps { display: grid; grid-template-columns: repeat(5, 1fr); position: relative; margin: 6px 0 4px; }
+.od-step { text-align: center; position: relative; padding: 0 4px; }
+.od-step::before { content: ''; position: absolute; top: 19px; left: -50%; right: 50%; height: 3px; background: var(--border2); z-index: 0; }
+.od-step:first-child::before { display: none; }
+.od-step.done::before { background: var(--orange); }
+.od-step .dot { width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center; background: var(--white); border: 2px solid var(--border2); color: var(--text3); position: relative; z-index: 1; font-size: 15px; }
+.od-step.done .dot { background: var(--orange); border-color: var(--orange); color: #fff; }
+.od-step.current .dot { box-shadow: 0 0 0 6px rgba(255,106,0,.15); }
+.od-step .lb { font-size: 13px; font-weight: 600; color: var(--text3); }
+.od-step.done .lb { color: var(--text); }
+.od-step .dt { font-size: 11.5px; color: var(--text3); margin-top: 2px; min-height: 16px; }
+.od-next { margin-top: 16px; padding: 12px 14px; background: var(--bg); border-radius: 10px; font-size: 13.5px; color: var(--text2); line-height: 1.6; display: flex; gap: 10px; }
+.od-next i { color: var(--orange); margin-top: 3px; }
+.od-stopped { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; border-radius: 14px; background: #fef3f2; border: 1px solid #fecdca; color: #912018; margin-bottom: 16px; font-size: 14px; line-height: 1.6; }
+.od-stopped i { font-size: 22px; margin-top: 2px; }
+/* Paiement à faire */
+.od-pay { background: #fffaf5; border-color: #fbd5b5; }
+.od-pay .st { padding: 10px 0; border-bottom: 1px dashed #fbd5b5; font-size: 13.5px; line-height: 1.6; }
+.od-pay .st:last-of-type { border-bottom: none; }
+.od-pay .num { font-size: 17px; font-weight: 800; letter-spacing: .3px; }
+/* Articles */
+.od-store { border: 1px solid var(--border2); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+.od-store:last-child { margin-bottom: 0; }
+.od-store-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: #fafafa; border-bottom: 1px solid var(--border2); flex-wrap: wrap; }
+.od-store-head .logo { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; background: var(--orange-light); color: var(--orange); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; flex-shrink: 0; }
+.od-store-head .nm { flex: 1; min-width: 120px; font-weight: 700; font-size: 14px; color: var(--text); }
+.od-store-head .nm:hover { color: var(--orange); }
+.od-small-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--white); font-size: 12.5px; font-weight: 600; color: var(--text); }
+.od-small-btn:hover { border-color: var(--orange); color: var(--orange); }
+.od-item { display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border2); align-items: flex-start; }
+.od-item:last-child { border-bottom: none; }
+.od-item img, .od-item .ph { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; background: var(--bg); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text3); }
+.od-item .info { flex: 1; min-width: 0; }
+.od-item .info a { font-weight: 600; font-size: 14px; color: var(--text); }
+.od-item .info a:hover { color: var(--orange); }
+.od-item .var { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.od-item .price { text-align: right; font-size: 13px; color: var(--text3); white-space: nowrap; }
+.od-item .price strong { display: block; color: var(--text); font-size: 14px; }
+.od-review { margin-top: 10px; }
+.od-review summary { cursor: pointer; font-size: 13px; color: var(--orange); font-weight: 600; list-style: none; display: inline-flex; gap: 6px; align-items: center; }
+.od-review summary::-webkit-details-marker { display: none; }
+.od-review form { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.od-stars { display: inline-flex; flex-direction: row-reverse; gap: 2px; }
+.od-stars input { position: absolute; opacity: 0; width: 0; }
+.od-stars label { font-size: 22px; color: #d0d5dd; cursor: pointer; margin: 0; }
+.od-stars input:checked ~ label, .od-stars label:hover, .od-stars label:hover ~ label { color: #f5a623; }
+.od-stars input:focus-visible + label { outline: 2px solid var(--orange); border-radius: 4px; }
+.od-done-review { margin-top: 8px; font-size: 12.5px; color: #067647; display: inline-flex; gap: 6px; align-items: center; }
+/* Colonne de droite */
+.od-line { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 13.5px; color: var(--text2); }
+.od-total { display: flex; justify-content: space-between; align-items: baseline; border-top: 2px solid var(--border2); margin-top: 8px; padding-top: 12px; font-weight: 700; }
+.od-total strong { font-size: 21px; color: var(--orange); }
+.od-addr { font-size: 13.5px; line-height: 1.7; color: var(--text2); }
+.od-addr strong { color: var(--text); }
+.od-help a { display: flex; align-items: center; gap: 10px; padding: 9px 0; font-size: 13.5px; color: var(--text2); border-bottom: 1px solid var(--border2); }
+.od-help a:last-child { border-bottom: none; }
+.od-help a:hover { color: var(--orange); }
+.od-help a i { width: 18px; color: var(--orange); }
+/* Fenêtre d'annulation */
+.od-modal { position: fixed; inset: 0; background: rgba(16,24,40,.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.od-modal.open { display: flex; }
+.od-modal-box { background: var(--white); border-radius: 16px; padding: 22px; width: 100%; max-width: 440px; }
+.od-modal-box h3 { font-size: 18px; margin-bottom: 6px; }
+.od-modal-box p { font-size: 13.5px; color: var(--text2); line-height: 1.6; margin-bottom: 14px; }
+.od-modal-box select, .od-modal-box textarea { width: 100%; margin-bottom: 10px; }
+.od-modal-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+@media (max-width: 900px) {
+    .od-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+    .od-wrap { padding: 1rem 14px 5rem; }
+    .od-head h1 { font-size: 20px; }
+    .od-acts { width: 100%; }
+    .od-acts form, .od-acts .btn { flex: 1; }
+    .od-acts .btn { width: 100%; justify-content: center; }
+    .od-card { padding: 16px; }
+    /* Étapes en colonne */
+    .od-steps { grid-template-columns: 1fr; gap: 0; }
+    .od-step { display: grid; grid-template-columns: 40px 1fr; column-gap: 12px; text-align: left; padding: 0 0 14px; }
+    .od-step::before { top: -14px; bottom: auto; left: 18.5px; right: auto; width: 3px; height: 28px; }
+    .od-step .dot { margin: 0; grid-row: span 2; }
+    .od-step .lb { align-self: end; }
+    .od-step .dt { min-height: 0; }
+    .od-item img, .od-item .ph { width: 54px; height: 54px; }
+    .od-modal { align-items: flex-end; padding: 0; }
+    .od-modal-box { border-radius: 16px 16px 0 0; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div class="section">
-<a href="{% url 'orders:list' %}" style="font-size:13px;color:var(--orange);">← Mes commandes</a>
-<h2 style="font-size:18px;margin:1rem 0;">Commande {{ order.order_number }}</h2>
-<div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem;">
-<div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
-<h3 style="font-size:14px;margin-bottom:12px;">Progression</h3>
-<div style="height:6px;background:var(--border2);border-radius:3px;overflow:hidden;"><div style="height:100%;background:var(--orange);border-radius:3px;width:{{ order.progress_percent }}%;transition:width .5s;"></div></div>
-<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text3);"><span>En attente</span><span>Confirmée</span><span>En traitement</span><span>Expédiée</span><span>Livrée</span></div>
+<div class="od-wrap">
+    <a href="{% url 'orders:list' %}" class="od-back"><i class="fa-solid fa-arrow-left"></i> Mes commandes</a>
+
+    <div class="od-head">
+        <div>
+            <h1>Commande {{ order.order_number }} <button type="button" class="od-copy" data-copy="{{ order.order_number }}" title="Copier le numéro"><i class="fa-regular fa-copy"></i> Copier</button></h1>
+            <div class="od-meta">
+                <span>Passée le {{ order.created_at|date:"d/m/Y à H:i" }}</span><span>·</span>
+                <span class="status-badge st-{{ order.status }}">{{ order.get_status_display }}</span>
+                {% if not stopped %}{% if order.is_paid %}<span class="od-pill paid"><i class="fa-solid fa-circle-check"></i> Payée</span>{% else %}<span class="od-pill unpaid"><i class="fa-regular fa-clock"></i> {% if order.payment_method == 'cash' %}À payer à la livraison{% else %}En attente de paiement{% endif %}</span>{% endif %}{% endif %}
+            </div>
+        </div>
+        {% if is_buyer %}
+        <div class="od-acts">
+            <form method="post" action="{% url 'orders:reorder' order.order_number %}">{% csrf_token %}
+                <button type="submit" class="btn {% if delivered or stopped %}btn-orange{% else %}btn-outline{% endif %}"><i class="fa-solid fa-rotate-right"></i> Commander à nouveau</button>
+            </form>
+            {% if can_cancel %}<button type="button" class="btn od-btn-danger" id="openCancel"><i class="fa-solid fa-xmark"></i> Annuler la commande</button>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="od-grid">
+        <div>
+            {% if stopped %}
+            <div class="od-stopped"><i class="fa-solid fa-ban"></i><div>
+                <strong>Commande {{ order.get_status_display|lower }} le {{ stopped_at|date:"d/m/Y à H:i" }}.</strong>
+                {% if cancel_note %}<br>Motif : {{ cancel_note }}{% endif %}
+                {% if order.status == 'cancelled' and order.is_paid %}<br>Vous aviez déjà payé : contactez la boutique pour votre remboursement.{% endif %}
+            </div></div>
+            {% else %}
+            <div class="od-card">
+                <h2><i class="fa-solid fa-route"></i> Suivi</h2>
+                <div class="od-steps">
+                    {% for s in steps %}
+                    <div class="od-step {% if s.done %}done{% endif %} {% if s.current %}current{% endif %}">
+                        <div class="dot"><i class="fa-solid {{ s.icon }}"></i></div>
+                        <div class="lb">{{ s.label }}</div>
+                        <div class="dt">{% if s.date %}{{ s.date|date:"d/m à H:i" }}{% endif %}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="od-next"><i class="fa-solid fa-circle-info"></i><div>
+                    {% if order.status == 'pending' %}La boutique va confirmer votre commande. Vous êtes prévenu dès que c'est fait{% if can_cancel %} ; d'ici là, vous pouvez encore l'annuler{% endif %}.
+                    {% elif order.status == 'confirmed' %}Votre commande est confirmée : la boutique s'apprête à la préparer.
+                    {% elif order.status == 'processing' %}La boutique prépare votre colis. Vous serez prévenu à son expédition.
+                    {% elif order.status == 'shipped' %}Votre colis est en route{% if order.tracking_number %} — numéro de suivi : <strong>{{ order.tracking_number }}</strong>{% endif %}. Gardez votre téléphone à portée de main.
+                    {% elif order.status == 'delivered' %}Commande livrée. Votre avis aide les autres acheteurs : notez les produits ci-dessous.{% endif %}
+                </div></div>
+            </div>
+            {% endif %}
+
+            {% if pay_info and order.payment_method != 'cash' %}
+            <div class="od-card od-pay">
+                <h2><i class="fa-solid {{ pay_method.icon }}"></i> Paiement à effectuer — {{ pay_method.label }}</h2>
+                {% for s, amount, d in pay_info %}
+                <div class="st">
+                    {% if pay_info|length > 1 %}<strong>{{ s.name }}</strong> — articles : {{ amount|intcomma }} F<br>{% else %}Montant : <strong>{{ order.total_amount|intcomma }} FCFA</strong><br>{% endif %}
+                    {% if d %}
+                        {% if order.payment_method == 'transfer' %}{{ d.bank }}<br>{% endif %}
+                        <span class="num">{{ d.number }}</span> <button type="button" class="od-copy" data-copy="{{ d.number }}">Copier</button>
+                        {% if d.name %}<br><span style="color:var(--text3);">Au nom de {{ d.name }}</span>{% endif %}
+                    {% else %}<span style="color:var(--text3);">La boutique vous communiquera ses coordonnées de paiement.</span>{% endif %}
+                </div>
+                {% endfor %}
+                <p style="font-size:12.5px;color:var(--text3);margin-top:8px;">Indiquez <strong>{{ order.order_number }}</strong> comme motif. La boutique confirme la réception du paiement sur cette page.</p>
+            </div>
+            {% endif %}
+
+            <div class="od-card" id="articles">
+                <h2><i class="fa-solid fa-bag-shopping"></i> Articles</h2>
+                {% for g in groups %}
+                <div class="od-store">
+                    <div class="od-store-head">
+                        {% if g.store.logo %}<img class="logo" src="{{ g.store.logo.url }}" alt="">{% else %}<span class="logo">{{ g.store.name|first|upper }}</span>{% endif %}
+                        <a class="nm" href="{% url 'store:detail' g.store.slug %}">{{ g.store.name }}</a>
+                        {% if is_buyer %}<a class="od-small-btn" href="{% url 'messaging:new' g.store.owner_id %}"><i class="fa-regular fa-comments"></i> Contacter</a>{% endif %}
+                    </div>
+                    {% for item in g.items %}
+                    <div class="od-item">
+                        {% if item.product.image %}<img src="{{ item.product.image.url }}" alt="" loading="lazy">{% else %}<span class="ph"><i class="fa-regular fa-image"></i></span>{% endif %}
+                        <div class="info">
+                            <a href="{% url 'catalog:product_detail' item.product.slug %}">{{ item.product.name }}</a>
+                            {% if item.color or item.size %}<div class="var">{% if item.color %}Couleur : {{ item.color }}{% endif %}{% if item.color and item.size %} · {% endif %}{% if item.size %}Taille : {{ item.size }}{% endif %}</div>{% endif %}
+                            {% if delivered and is_buyer %}
+                                {% if item.product_id in reviewed %}
+                                <div class="od-done-review"><i class="fa-solid fa-circle-check"></i> Avis publié, merci</div>
+                                {% else %}
+                                <details class="od-review">
+                                    <summary><i class="fa-regular fa-star"></i> Donner mon avis</summary>
+                                    <form method="post" action="{% url 'orders:review' order.order_number item.product_id %}">{% csrf_token %}
+                                        <div class="od-stars" role="radiogroup" aria-label="Note">
+                                            {% for n in "54321" %}<input type="radio" name="rating" value="{{ n }}" id="r{{ item.pk }}-{{ n }}" required><label for="r{{ item.pk }}-{{ n }}" title="{{ n }} sur 5"><i class="fa-solid fa-star"></i></label>{% endfor %}
+                                        </div>
+                                        <textarea name="comment" class="form-control" rows="2" maxlength="2000" placeholder="Qualité, conformité, emballage… (facultatif)"></textarea>
+                                        <button type="submit" class="btn btn-orange btn-sm" style="align-self:flex-start;">Publier mon avis</button>
+                                    </form>
+                                </details>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="price">{{ item.quantity }} × {{ item.price|intcomma }} F<strong>{{ item.subtotal|intcomma }} F</strong></div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <div class="od-card">
+                <h2><i class="fa-solid fa-receipt"></i> Récapitulatif</h2>
+                <div class="od-line"><span>Sous-total</span><span>{{ order.subtotal|intcomma }} F</span></div>
+                <div class="od-line"><span>Livraison</span><span>{% if order.shipping_cost %}{{ order.shipping_cost|intcomma }} F{% else %}<strong style="color:var(--green);">Offerte</strong>{% endif %}</span></div>
+                {% if order.discount_amount %}<div class="od-line" style="color:var(--green);"><span>Code {{ order.promo_code.code|default:"promo" }}</span><span>-{{ order.discount_amount|intcomma }} F</span></div>{% endif %}
+                {% if order.loyalty_discount %}<div class="od-line" style="color:var(--green);"><span>Remise fidélité</span><span>-{{ order.loyalty_discount|intcomma }} F</span></div>{% endif %}
+                <div class="od-total"><span>Total</span><strong>{{ order.total_amount|intcomma }} FCFA</strong></div>
+                <div class="od-line" style="margin-top:6px;"><span>Paiement</span><span style="text-align:right;">{{ pay_method.label|default:order.get_payment_method_display }}</span></div>
+            </div>
+
+            <div class="od-card">
+                <h2><i class="fa-solid fa-location-dot"></i> Livraison</h2>
+                <div class="od-addr">
+                    <strong>{{ order.shipping_name }}</strong><br>
+                    {{ order.shipping_address }}<br>{{ order.shipping_city }}<br>
+                    <i class="fa-solid fa-phone" style="font-size:11px;color:var(--text3);"></i> {{ order.shipping_phone }}
+                    {% if order.notes %}<div style="margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:12.5px;">{{ order.notes }}</div>{% endif %}
+                    {% if order.tracking_number %}<div style="margin-top:8px;">Numéro de suivi : <strong>{{ order.tracking_number }}</strong></div>{% endif %}
+                </div>
+            </div>
+
+            <div class="od-card od-help">
+                <h2><i class="fa-regular fa-life-ring"></i> Besoin d'aide ?</h2>
+                {% if is_buyer and groups|length == 1 %}<a href="{% url 'messaging:new' groups.0.store.owner_id %}"><i class="fa-regular fa-comments"></i> Écrire à {{ groups.0.store.name }}</a>{% endif %}
+                <a href="{% url 'faq' %}#commander"><i class="fa-regular fa-circle-question"></i> Questions fréquentes</a>
+                <a href="{% url 'contact' %}"><i class="fa-regular fa-envelope"></i> Contacter Comptoir</a>
+            </div>
+        </div>
+    </div>
 </div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;">
-<h3 style="font-size:14px;margin-bottom:10px;">Articles</h3>
-{% for item in order.items.all %}<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border2);font-size:13px;"><div><strong>{{ item.product.name }}</strong><br><span style="color:var(--text3);">🏪 {{ item.store.name }}{% if item.color %} · {{ item.color }}{% endif %}</span></div><div style="text-align:right;"><div>{{ item.quantity }} × {{ item.price|intcomma }} F</div><div style="font-weight:700;">{{ item.subtotal|intcomma }} F</div></div></div>{% endfor %}
-<div style="display:flex;justify-content:space-between;padding:12px 0;font-size:18px;font-weight:700;color:var(--red);"><span>Total</span><span>{{ order.total_amount|intcomma }} FCFA</span></div>
+
+{% if can_cancel %}
+<div class="od-modal" id="cancelModal" role="dialog" aria-modal="true" aria-labelledby="cancelTitle">
+    <form class="od-modal-box" method="post" action="{% url 'orders:cancel' order.order_number %}">{% csrf_token %}
+        <h3 id="cancelTitle">Annuler la commande ?</h3>
+        <p>La commande {{ order.order_number }} sera annulée et {% if groups|length > 1 %}les boutiques seront prévenues{% else %}la boutique sera prévenue{% endif %}. Cette action est définitive.</p>
+        <label for="cReason" style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Motif (facultatif)</label>
+        <select id="cReason" name="reason" class="form-control">
+            <option value="">— Choisir —</option>
+            <option>J'ai changé d'avis</option>
+            <option>J'ai trouvé moins cher ailleurs</option>
+            <option>Délai de livraison trop long</option>
+            <option>Erreur dans ma commande (produit, quantité, adresse)</option>
+            <option>Autre raison</option>
+        </select>
+        <div class="od-modal-acts">
+            <button type="button" class="btn btn-outline" data-close>Garder ma commande</button>
+            <button type="submit" class="btn od-btn-danger"><i class="fa-solid fa-xmark"></i> Oui, annuler</button>
+        </div>
+    </form>
 </div>
-</div>
-<div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
-<h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Statut</h4>
-<span class="status-badge st-{{ order.status }}">{{ order.get_status_display }}</span>
-<p style="font-size:12px;color:var(--text3);margin-top:6px;">{% if order.is_paid %}✓ Payée{% else %}⏳ En attente de paiement{% endif %}</p>
-</div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1rem;">
-<h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Livraison</h4>
-<p style="font-size:13px;line-height:1.7;">{{ order.shipping_name }}<br>{{ order.shipping_phone }}<br>{{ order.shipping_address }}<br>{{ order.shipping_city }}</p>
-</div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.2rem;">
-<h4 style="font-size:13px;font-weight:600;margin-bottom:8px;">Paiement</h4>
-<p style="font-size:13px;">{{ order.get_payment_method_display }}</p>
-</div>
-</div>
-</div>
-</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelectorAll('.od-copy').forEach(function(b) {
+    b.addEventListener('click', function() {
+        var v = b.dataset.copy.replace(/\s/g, ''), html = b.innerHTML;
+        var done = function() { b.textContent = 'Copié'; setTimeout(function() { b.innerHTML = html; }, 1500); };
+        if (navigator.clipboard) navigator.clipboard.writeText(v).then(done, function() { prompt('À copier :', v); }); else prompt('À copier :', v);
+    });
+});
+(function() {
+    var m = document.getElementById('cancelModal'), open = document.getElementById('openCancel');
+    if (!m || !open) return;
+    var close = function() { m.classList.remove('open'); open.focus(); };
+    open.addEventListener('click', function() { m.classList.add('open'); m.querySelector('select').focus(); });
+    m.querySelector('[data-close]').addEventListener('click', close);
+    m.addEventListener('click', function(e) { if (e.target === m) close(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && m.classList.contains('open')) close(); });
+})();
+</script>
 {% endblock %}

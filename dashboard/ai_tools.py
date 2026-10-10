@@ -374,7 +374,7 @@ def devis_ouverts(ctx, args):
     from orders.models import RFQ
     store, _ = ctx.scope('orders.view')
     n = _int(args, 'limit', 10)
-    rfqs = (RFQ.objects.filter(status='open').exclude(quotes__store=store).exclude(buyer=store.owner)
+    rfqs = (RFQ.objects.filter(status__in=('open', 'quoted')).exclude(quotes__store=store).exclude(buyer=store.owner)
             .select_related('category').order_by('-created_at'))
     return {'total': rfqs.count(), 'demandes': [{
         'id': r.pk, 'produit': r.product_name, 'quantite': f'{r.quantity} {r.unit}', 'categorie': r.category.name if r.category else None,

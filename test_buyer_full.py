@@ -49,6 +49,9 @@ PromoCode.objects.filter(code__startswith='BT').delete()
 # ===== Données de test =====
 seller = User.objects.create_user(username=f'vend{TS}', password='testpass123', role='seller')
 store = Store.objects.create(owner=seller, name='Boutique Test Buyer', slug='boutique-test-buyer')
+# La boutique accepte MoMo : seuls les moyens activés par le vendeur sont proposés
+from billing.models import PaymentConfig
+PaymentConfig.objects.update_or_create(user=seller, defaults={'momo_enabled': True, 'momo_number': '+237677000111', 'cash_enabled': True})
 cat = Category.objects.create(name='TestCatBuyer', slug='testcatbuyer')
 product = Product.objects.create(
     store=store, category=cat, name='Produit Test Buyer', slug='produit-test-buyer',

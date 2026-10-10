@@ -236,7 +236,7 @@ def index(request):
                          f'{int(agg["t"] or 0):,} F à relancer'.replace(',', ' '), reverse('invoicing:invoices') + '?status=overdue'))
     if perms['orders'] and scope_store is not None:
         from orders.models import RFQ
-        rfqs = RFQ.objects.filter(status='open').exclude(quotes__store=scope_store).exclude(buyer=scope_store.owner).count()
+        rfqs = RFQ.objects.filter(status__in=('open', 'quoted')).exclude(quotes__store=scope_store).exclude(buyer=scope_store.owner).count()
         if rfqs:
             todo.append(('fa-file-signature', 'var(--dash-purple)', f'{rfqs} demande{"s" if rfqs > 1 else ""} de devis sans réponse',
                          'Répondez vite pour décrocher la vente', reverse('dashboard:rfqs')))
@@ -262,6 +262,9 @@ def index(request):
             'sellers': User.objects.filter(role='seller').count(), 'buyers': User.objects.filter(role='buyer').count(),
             'stores': Store.objects.count(), 'verified': Store.objects.filter(is_verified=True).count(),
         }
+    if store is not None and not is_admin:
+        from billing.payments import store_methods
+        ctx['no_payment'] = not store_methods(store)
     return render(request, 'dashboard/index.html', ctx)
 
 
@@ -356,14 +359,38 @@ def dash_order_detail(request, order_number):
             django_messages.error(request, "Vous n'avez pas le droit de modifier cette commande.")
             return redirect('dashboard:order_detail', order_number=order_number)
         new_status = request.POST.get('status')
+        from orders.services import STOPPED, apply_cancellation
+        if new_status and new_status != order.status and order.status in STOPPED and new_status != 'refunded':
+            # Le stock, la fidélité et le crédit vendeur ont été défaits : pas de retour en arrière
+            django_messages.error(request, "Une commande annulée ne peut pas être réactivée. Le client peut repasser commande.")
+            return redirect('dashboard:order_detail', order_number=order_number)
         if new_status and new_status in dict(Order.STATUS_CHOICES):
             from django.db import transaction as db_transaction
+            from orders.models import OrderStatusEvent
+            per_store = {}
             with db_transaction.atomic():
-                order.status = new_status
-                if new_status in ['confirmed', 'delivered']:
-                    order.is_paid = True
-                    _credit_sellers_for_order(order)
-                order.save()
+                order = Order.objects.select_for_update().get(pk=order.pk)
+                changed = order.status != new_status
+                if new_status == 'cancelled' and changed:
+                    reason = (request.POST.get('cancel_reason') or '').strip()
+                    per_store = apply_cancellation(order, request.user, reason)
+                else:
+                    order.status = new_status
+                    if new_status in ['confirmed', 'delivered']:
+                        order.is_paid = True
+                        _credit_sellers_for_order(order)
+                    order.save()
+                    if changed:
+                        OrderStatusEvent.objects.create(order=order, status=new_status, by=request.user)
+            # Les autres boutiques de la commande sont prévenues de l'annulation
+            if per_store:
+                from messaging.utils import notify_store
+                who = store.name if store is not None else 'Comptoir'
+                for st in per_store:
+                    if store is None or st.pk != store.pk:
+                        notify_store(st, 'orders.view', 'order', f'Commande {order.order_number} annulée',
+                                     f'La commande a été annulée par {who}. Le stock de vos articles a été remis en place.',
+                                     url=f'/dashboard/commandes/{order.order_number}/')
             # Notifier le client du changement de statut
             from messaging.utils import notify
             status_labels = {
@@ -933,7 +960,7 @@ def dash_rfqs(request):
     elif view == 'quoted':
         rfqs = RFQ.objects.filter(pk__in=my_quoted_ids).annotate(quote_cnt=Count('quotes')).order_by('-created_at')
     else:
-        rfqs = RFQ.objects.filter(status='open').exclude(buyer=request.user).annotate(quote_cnt=Count('quotes')).order_by('-created_at')
+        rfqs = RFQ.objects.filter(status__in=('open', 'quoted')).exclude(buyer=request.user).annotate(quote_cnt=Count('quotes')).order_by('-created_at')
 
     q = request.GET.get('q', '').strip()
     if q:
@@ -950,7 +977,7 @@ def dash_rfqs(request):
         'category_filter': category,
         'current_view': view,
         'my_quoted_ids': my_quoted_ids,
-        'total_open': RFQ.objects.filter(status='open').exclude(buyer=request.user).count(),
+        'total_open': RFQ.objects.filter(status__in=('open', 'quoted')).exclude(buyer=request.user).count(),
         'my_quotes_count': len(my_quoted_ids),
         'my_rfqs_count': my_rfqs.count(),
         'quotes_received_count': Quote.objects.filter(rfq__buyer=request.user).count(),
@@ -966,29 +993,12 @@ def dash_rfq_detail(request, rfq_id):
     user_quote = Quote.objects.filter(rfq=rfq, seller=request.user).first()
 
     if request.method == 'POST':
-        if not (request.user.store is not None):
-            django_messages.error(request, 'Vous devez avoir une boutique.')
-            return redirect('dashboard:rfq_detail', rfq_id=rfq_id)
-        if rfq.status != 'open':
-            django_messages.error(request, "Cette demande n'est plus ouverte.")
-            return redirect('dashboard:rfq_detail', rfq_id=rfq_id)
-
-        price_per_unit = int(request.POST.get('price_per_unit'))
-        Quote.objects.update_or_create(
-            rfq=rfq, seller=request.user,
-            defaults={
-                'store': request.user.store,
-                'price_per_unit': price_per_unit,
-                'total_price': price_per_unit * rfq.quantity,
-                'delivery_time': request.POST.get('delivery_time') or '',
-                'payment_terms': request.POST.get('payment_terms') or '',
-                'description': request.POST.get('description') or '',
-            }
-        )
-        if rfq.status == 'open':
-            rfq.status = 'quoted'
-            rfq.save()
-        django_messages.success(request, 'Votre devis a été soumis avec succès !')
+        from orders.rfq_services import QuoteError, submit_quote
+        try:
+            _, created = submit_quote(rfq, request.user, request.POST)
+            django_messages.success(request, "Votre offre a été envoyée à l'acheteur." if created else 'Votre offre a été mise à jour.')
+        except QuoteError as exc:
+            django_messages.error(request, str(exc))
         return redirect('dashboard:rfq_detail', rfq_id=rfq_id)
 
     return render(request, 'dashboard/rfq_detail.html', {
@@ -2006,8 +2016,10 @@ def dash_employees_list(request):
         user = User.objects.filter(username=username).first()
         if user is None:
             # Créer le compte employé avec mot de passe
-            if not password or len(password) < 6:
-                django_messages.error(request, "Mot de passe requis (min. 6 caractères) pour créer le compte.")
+            from accounts.passwords import password_problem
+            pw_error = password_problem(password, username)
+            if pw_error:
+                django_messages.error(request, f"Mot de passe de l'employé : {pw_error}")
                 return redirect('dashboard:employees_list')
             if password != password_confirm:
                 django_messages.error(request, "Les mots de passe ne correspondent pas.")
@@ -2887,6 +2899,16 @@ def dash_settings(request):
             s.save()
             django_messages.success(request, 'Paramètres de facturation enregistrés.')
 
+        elif section == 'payments':
+            from billing.models import PaymentConfig
+            from billing.payments import save_config
+            cfg, _ = PaymentConfig.objects.get_or_create(user=store.owner)
+            errors = save_config(cfg, request.POST)
+            for e in errors:
+                django_messages.error(request, e)
+            if not errors:
+                django_messages.success(request, 'Moyens de paiement enregistrés. Vos clients les voient dès maintenant.')
+
         elif section == 'notifications':
             from messaging.models import NotificationPreference
             prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
@@ -2913,13 +2935,15 @@ def dash_settings(request):
             if new_password:
                 if not user.check_password(request.POST.get('current_password', '')):
                     django_messages.error(request, 'Mot de passe actuel incorrect.')
-                    return redirect('dashboard:settings')
-                if len(new_password) < 6:
-                    django_messages.error(request, 'Le nouveau mot de passe doit faire au moins 6 caractères.')
-                    return redirect('dashboard:settings')
+                    return redirect(reverse('dashboard:settings') + '?tab=account')
+                from accounts.passwords import password_problem
+                pw_error = password_problem(new_password, user.username, user.email)
+                if pw_error:
+                    django_messages.error(request, pw_error)
+                    return redirect(reverse('dashboard:settings') + '?tab=account')
                 if new_password != request.POST.get('confirm_password', ''):
                     django_messages.error(request, 'Les mots de passe ne correspondent pas.')
-                    return redirect('dashboard:settings')
+                    return redirect(reverse('dashboard:settings') + '?tab=account')
                 user.set_password(new_password)
                 user.save()
                 from django.contrib.auth import update_session_auth_hash
@@ -2928,15 +2952,24 @@ def dash_settings(request):
             else:
                 django_messages.success(request, 'Informations du compte enregistrées.')
 
-        return redirect('dashboard:settings')
+        tab = section if section in ('invoicing', 'payments', 'notifications', 'account') else 'invoicing'
+        return redirect(reverse('dashboard:settings') + f'?tab={tab}')
 
     from messaging.models import NotificationPreference
+    from billing.models import PaymentConfig
+    from billing.payments import METHODS, config_methods
     notif_prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
+    pay_cfg = PaymentConfig.objects.filter(user=store.owner).first() or PaymentConfig(user=store.owner)
+    active = config_methods(pay_cfg) if pay_cfg.pk else {}
+    tab = request.GET.get('tab')
 
     return render(request, 'dashboard/settings.html', {
         'store': store,
         'invoice_settings': invoice_settings,
         'notif_prefs': notif_prefs,
+        'pay_cfg': pay_cfg,
+        'pay_active': [METHODS[c] for c in METHODS if c in active],
+        'tab': tab if tab in ('invoicing', 'payments', 'notifications', 'account') else ('invoicing' if active else 'payments'),
     })
 
 

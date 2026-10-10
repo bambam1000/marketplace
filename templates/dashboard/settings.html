@@ -9,24 +9,51 @@
 .set-panel { display: none; }
 .set-panel.active { display: block; }
 .set-section-title { font-size: 11px; font-weight: 700; color: var(--dash-text3); text-transform: uppercase; letter-spacing: .5px; margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--dash-border); }
+.pay-status { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 10px; font-size: 13px; line-height: 1.6; margin-bottom: 16px; max-width: 760px; }
+.pay-status i { font-size: 18px; margin-top: 2px; }
+.pay-status.warn { background: #fff4e5; border: 1px solid #fbd5a5; color: #8a4b00; }
+.pay-status.ok { background: #ecfdf3; border: 1px solid #abefc6; color: #05603a; }
+.pay-status .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.pay-status .chip { background: #fff; border: 1px solid #abefc6; border-radius: 50px; padding: 2px 10px; font-size: 12px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+.pay-list { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.pay-m { border: 1px solid var(--dash-border); border-radius: 10px; background: var(--dash-card); transition: border-color .2s, box-shadow .2s; }
+.pay-m.on { border-color: var(--dash-accent); box-shadow: 0 0 0 3px rgba(255,106,0,.08); }
+.pay-m-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; margin: 0; }
+.pay-m-ico { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+.pay-m-txt { flex: 1; min-width: 0; }
+.pay-m-txt strong { display: block; font-size: 14px; color: var(--dash-text); }
+.pay-m-txt span { font-size: 12px; color: var(--dash-text3); }
+.pay-sw { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+.pay-sw input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.pay-sw b { position: absolute; inset: 0; background: #d0d5dd; border-radius: 50px; transition: background .2s; }
+.pay-sw b::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.pay-sw input:checked + b { background: var(--dash-accent); }
+.pay-sw input:checked + b::after { transform: translateX(18px); }
+.pay-sw input:focus-visible + b { outline: 2px solid var(--dash-accent); outline-offset: 2px; }
+.pay-m-body { display: none; padding: 0 16px 16px; border-top: 1px dashed var(--dash-border); padding-top: 14px; }
+.pay-m.on .pay-m-body { display: block; }
+.pay-m-body .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pay-m-body .help { font-size: 12px; color: var(--dash-text3); margin-top: 4px; }
+@media (max-width: 640px) { .pay-m-body .grid { grid-template-columns: 1fr; } .set-tabs { overflow-x: auto; } .set-tab { white-space: nowrap; padding: 10px 12px; } }
 .set-section-title:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 </style>
 
 <div class="dash-header">
     <div>
         <h1><i class="fa-solid fa-gear" style="color:var(--dash-accent);"></i> Paramètres</h1>
-        <p style="font-size:13px;color:var(--dash-text3);">Facturation et compte</p>
+        <p style="font-size:13px;color:var(--dash-text3);">Facturation, paiements, notifications et compte</p>
     </div>
 </div>
 
 <div class="set-tabs">
-    <button type="button" class="set-tab active" onclick="showTab('invoicing', this)"><i class="fa-solid fa-receipt"></i> Facturation</button>
-    <button type="button" class="set-tab" onclick="showTab('notifications', this)"><i class="fa-regular fa-bell"></i> Notifications</button>
-    <button type="button" class="set-tab" onclick="showTab('account', this)"><i class="fa-solid fa-user"></i> Compte</button>
+    <button type="button" class="set-tab {% if tab == 'invoicing' %}active{% endif %}" onclick="showTab('invoicing', this)"><i class="fa-solid fa-receipt"></i> Facturation</button>
+    <button type="button" class="set-tab {% if tab == 'payments' %}active{% endif %}" onclick="showTab('payments', this)"><i class="fa-solid fa-wallet"></i> Paiements{% if not pay_active %} <span style="width:7px;height:7px;border-radius:50%;background:#f04438;display:inline-block;vertical-align:middle;"></span>{% endif %}</button>
+    <button type="button" class="set-tab {% if tab == 'notifications' %}active{% endif %}" onclick="showTab('notifications', this)"><i class="fa-regular fa-bell"></i> Notifications</button>
+    <button type="button" class="set-tab {% if tab == 'account' %}active{% endif %}" onclick="showTab('account', this)"><i class="fa-solid fa-user"></i> Compte</button>
 </div>
 
 <!-- ═══ FACTURATION ═══ -->
-<div class="set-panel active" id="panel-invoicing">
+<div class="set-panel {% if tab == 'invoicing' %}active{% endif %}" id="panel-invoicing">
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="hidden" name="section" value="invoicing">
@@ -133,7 +160,7 @@
 </div>
 
 <!-- ═══ NOTIFICATIONS ═══ -->
-<div class="set-panel" id="panel-notifications">
+<div class="set-panel {% if tab == 'notifications' %}active{% endif %}" id="panel-notifications">
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="section" value="notifications">
@@ -186,8 +213,77 @@
     </form>
 </div>
 
+<!-- ═══ PAIEMENTS ═══ -->
+<div class="set-panel {% if tab == 'payments' %}active{% endif %}" id="panel-payments">
+    {% if pay_active %}
+    <div class="pay-status ok"><i class="fa-solid fa-circle-check"></i><div><strong>Vos clients peuvent payer avec :</strong>
+        <div class="chips">{% for m in pay_active %}<span class="chip"><i class="fa-solid {{ m.icon }}"></i> {{ m.short }}</span>{% endfor %}</div></div></div>
+    {% else %}
+    <div class="pay-status warn"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Aucun moyen de paiement activé.</strong><br>
+        Tant que vous n'en activez pas au moins un, les clients ne peuvent pas commander vos produits sur le site.</div></div>
+    {% endif %}
+    <p style="font-size:13px;color:var(--dash-text3);margin-bottom:14px;max-width:760px;line-height:1.6;">
+        Seuls les moyens activés ici sont proposés à vos clients au moment de commander. Vos numéros et votre compte bancaire
+        leur sont affichés au moment de commander, puis rappelés sur leur commande : ils vous paient directement. Si un panier contient les produits de
+        plusieurs boutiques, le client ne voit que les moyens acceptés par toutes.
+    </p>
+    <form method="post" id="payForm">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="payments">
+        <div class="pay-list">
+            <div class="pay-m {% if pay_cfg.momo_enabled %}on{% endif %}">
+                <label class="pay-m-head">
+                    <span class="pay-m-ico" style="background:#fff8d6;color:#b58900;"><i class="fa-solid fa-mobile-screen-button"></i></span>
+                    <span class="pay-m-txt"><strong>MTN Mobile Money</strong><span>Le client envoie le montant sur votre numéro MoMo</span></span>
+                    <span class="pay-sw"><input type="checkbox" name="momo_enabled" {% if pay_cfg.momo_enabled %}checked{% endif %} aria-label="Activer MTN Mobile Money"><b></b></span>
+                </label>
+                <div class="pay-m-body"><div class="grid">
+                    <div class="form-group" style="margin:0;"><label>Numéro MoMo *</label><input type="tel" name="momo_number" value="{{ pay_cfg.momo_number }}" class="form-control" placeholder="+237 6XX XX XX XX" data-req="momo_enabled"></div>
+                    <div class="form-group" style="margin:0;"><label>Nom du titulaire</label><input type="text" name="momo_name" value="{{ pay_cfg.momo_name }}" class="form-control" placeholder="Le nom affiché lors du transfert"></div>
+                </div><p class="help">Le nom aide le client à vérifier qu'il envoie au bon numéro.</p></div>
+            </div>
+
+            <div class="pay-m {% if pay_cfg.om_enabled %}on{% endif %}">
+                <label class="pay-m-head">
+                    <span class="pay-m-ico" style="background:#fff1e6;color:#ff6a00;"><i class="fa-solid fa-mobile-screen"></i></span>
+                    <span class="pay-m-txt"><strong>Orange Money</strong><span>Le client envoie le montant sur votre numéro Orange Money</span></span>
+                    <span class="pay-sw"><input type="checkbox" name="om_enabled" {% if pay_cfg.om_enabled %}checked{% endif %} aria-label="Activer Orange Money"><b></b></span>
+                </label>
+                <div class="pay-m-body"><div class="grid">
+                    <div class="form-group" style="margin:0;"><label>Numéro Orange Money *</label><input type="tel" name="om_number" value="{{ pay_cfg.om_number }}" class="form-control" placeholder="+237 6XX XX XX XX" data-req="om_enabled"></div>
+                    <div class="form-group" style="margin:0;"><label>Nom du titulaire</label><input type="text" name="om_name" value="{{ pay_cfg.om_name }}" class="form-control"></div>
+                </div></div>
+            </div>
+
+            <div class="pay-m {% if pay_cfg.bank_enabled %}on{% endif %}">
+                <label class="pay-m-head">
+                    <span class="pay-m-ico" style="background:#eef4ff;color:#3538cd;"><i class="fa-solid fa-building-columns"></i></span>
+                    <span class="pay-m-txt"><strong>Virement bancaire</strong><span>Pratique pour les grosses commandes et les professionnels</span></span>
+                    <span class="pay-sw"><input type="checkbox" name="bank_enabled" {% if pay_cfg.bank_enabled %}checked{% endif %} aria-label="Activer le virement bancaire"><b></b></span>
+                </label>
+                <div class="pay-m-body">
+                    <div class="form-group"><label>Banque *</label><input type="text" name="bank_name" value="{{ pay_cfg.bank_name }}" class="form-control" placeholder="Nom de la banque" data-req="bank_enabled"></div>
+                    <div class="grid">
+                        <div class="form-group" style="margin:0;"><label>Numéro de compte / IBAN *</label><input type="text" name="bank_account_number" value="{{ pay_cfg.bank_account_number }}" class="form-control" data-req="bank_enabled"></div>
+                        <div class="form-group" style="margin:0;"><label>Titulaire du compte</label><input type="text" name="bank_account_name" value="{{ pay_cfg.bank_account_name }}" class="form-control"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pay-m {% if pay_cfg.cash_enabled %}on{% endif %}">
+                <label class="pay-m-head">
+                    <span class="pay-m-ico" style="background:#ecfdf3;color:#039855;"><i class="fa-solid fa-money-bill-wave"></i></span>
+                    <span class="pay-m-txt"><strong>Paiement à la livraison</strong><span>Le client paie en espèces en recevant son colis</span></span>
+                    <span class="pay-sw"><input type="checkbox" name="cash_enabled" {% if pay_cfg.cash_enabled %}checked{% endif %} aria-label="Activer le paiement à la livraison"><b></b></span>
+                </label>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-orange" style="margin-top:16px;"><i class="fa-solid fa-check"></i> Enregistrer les moyens de paiement</button>
+    </form>
+</div>
+
 <!-- ═══ COMPTE ═══ -->
-<div class="set-panel" id="panel-account">
+<div class="set-panel {% if tab == 'account' %}active{% endif %}" id="panel-account">
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="section" value="account">
@@ -237,6 +333,26 @@ function showTab(name, btn) {
     document.querySelectorAll('.set-tab').forEach(function(t) { t.classList.remove('active'); });
     document.getElementById('panel-' + name).classList.add('active');
     btn.classList.add('active');
+    try { history.replaceState(null, '', '?tab=' + name); } catch (e) {}
 }
+/* Moyens de paiement : ouvrir les champs d'un moyen activé, exiger ses champs obligatoires */
+document.querySelectorAll('.pay-m .pay-sw input').forEach(function(sw) {
+    sw.addEventListener('change', function() {
+        var card = sw.closest('.pay-m');
+        card.classList.toggle('on', sw.checked);
+        var first = card.querySelector('.pay-m-body input');
+        if (sw.checked && first && !first.value) first.focus();
+    });
+});
+document.getElementById('payForm').addEventListener('submit', function(e) {
+    var bad = null;
+    this.querySelectorAll('[data-req]').forEach(function(inp) {
+        var on = document.querySelector('[name=' + inp.dataset.req + ']').checked;
+        var miss = on && !inp.value.trim();
+        inp.style.borderColor = miss ? '#f04438' : '';
+        if (miss && !bad) bad = inp;
+    });
+    if (bad) { e.preventDefault(); bad.scrollIntoView({ block: 'center' }); bad.focus(); }
+});
 </script>
 {% endblock %}

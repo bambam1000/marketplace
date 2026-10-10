@@ -1,94 +1,183 @@
-{% extends 'base.html' %}
-{% load humanize %}
-{% block title %}Mon Compte{% endblock %}
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Mon compte{% endblock %}
+{% block extra_css %}
+<style>
+.pf-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.pf-head h1 { font-size: 26px; }
+.pf-head p { color: var(--text2); font-size: 14px; margin-top: 4px; }
+.pf-ring { display: flex; align-items: center; gap: 12px; background: var(--white); border: 1px solid var(--border2); border-radius: 14px; padding: 10px 14px; text-decoration: none; color: inherit; }
+.pf-ring .c { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: conic-gradient(var(--orange) calc(var(--p) * 1%), var(--border2) 0); position: relative; }
+.pf-ring .c::before { content: ''; position: absolute; inset: 5px; background: var(--white); border-radius: 50%; }
+.pf-ring .c span { position: relative; }
+.pf-ring small { display: block; font-size: 12px; color: var(--text3); }
+.pf-card { background: var(--white); border: 1px solid var(--border2); border-radius: 16px; padding: 20px; margin-bottom: 16px; scroll-margin-top: 150px; }
+.pf-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 9px; }
+.pf-card h2 i { color: var(--orange); }
+.pf-card .sub { font-size: 13px; color: var(--text3); margin-bottom: 16px; }
+.pf-todo { display: flex; flex-direction: column; gap: 8px; }
+.pf-todo a { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #fffaf5; border: 1px solid #fde3cc; color: var(--text); font-size: 14px; }
+.pf-todo a:hover { border-color: var(--orange); }
+.pf-todo a .ic { width: 34px; height: 34px; border-radius: 10px; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pf-todo a .go { margin-left: auto; color: var(--orange); font-weight: 700; font-size: 13px; white-space: nowrap; }
+.pf-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.pf-stat { background: var(--white); border: 1px solid var(--border2); border-radius: 14px; padding: 14px 16px; color: inherit; }
+a.pf-stat:hover { border-color: var(--orange); }
+.pf-stat .v { font-size: 22px; font-weight: 800; }
+.pf-stat .l { font-size: 12.5px; color: var(--text3); margin-top: 2px; display: flex; gap: 6px; align-items: center; }
+.pf-order { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border2); color: inherit; }
+.pf-order:last-child { border-bottom: none; }
+.pf-order:hover .num { color: var(--orange); }
+.pf-thumbs { display: flex; flex-shrink: 0; }
+.pf-thumbs img, .pf-thumbs span { width: 40px; height: 40px; border-radius: 9px; object-fit: cover; border: 2px solid var(--white); background: var(--bg); margin-left: -10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text2); }
+.pf-thumbs > :first-child { margin-left: 0; }
+.pf-order .mid { flex: 1; min-width: 0; }
+.pf-order .num { font-weight: 700; font-size: 14px; }
+.pf-order .meta { font-size: 12.5px; color: var(--text3); }
+.pf-order .tot { font-weight: 700; white-space: nowrap; }
+.pf-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pf-f { margin-bottom: 14px; }
+.pf-f label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.pf-f .form-control { width: 100%; }
+.pf-f.err .form-control { border-color: #f04438; }
+.pf-f .msg { font-size: 12px; color: #d92d20; margin-top: 5px; }
+.pf-f .hint { font-size: 12px; color: var(--text3); margin-top: 5px; }
+.pf-avatar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.pf-avatar .pic { width: 72px; height: 72px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; object-fit: cover; }
+.pf-avatar label.btn { cursor: pointer; margin: 0; }
+.pf-foot { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.pf-pass { position: relative; }
+.pf-pass button { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text3); cursor: pointer; padding: 6px; }
+@media (max-width: 760px) {
+    .pf-head h1 { font-size: 21px; }
+    .pf-stats { grid-template-columns: 1fr 1fr; }
+    .pf-grid2 { grid-template-columns: 1fr; gap: 0; }
+    .pf-card { padding: 16px; }
+    .pf-f .form-control { font-size: 16px; }
+    .pf-foot .btn { width: 100%; justify-content: center; }
+}
+</style>
+{% endblock %}
 {% block content %}
-<div style="max-width:1000px;margin:0 auto;padding:1.5rem;">
+<div class="acc-wrap">
+{% include 'accounts/_nav.html' %}
+<main class="acc-main">
+    <div class="pf-head">
+        <div>
+            <h1>Bonjour {{ user.first_name|default:user.username }}</h1>
+            <p>Retrouvez vos commandes, vos demandes de devis et vos informations.</p>
+        </div>
+        {% if not completion_done %}
+        <a class="pf-ring" href="#infos" title="Compléter mon profil">
+            <span class="c" style="--p: {{ completion_pct }};"><span>{{ completion_pct }} %</span></span>
+            <span><strong style="font-size:13.5px;">Profil à compléter</strong><small>Pour commander plus vite</small></span>
+        </a>
+        {% endif %}
+    </div>
 
-<!-- En-tête profil -->
-<div style="display:flex;align-items:center;gap:1rem;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.25rem;">
-<div style="width:56px;height:56px;border-radius:50%;background:var(--orange,#ff6a00);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;">{{ user.initials }}</div>
-<div style="flex:1;">
-<div style="font-weight:700;font-size:17px;">{{ user.display_name }}</div>
-<div style="color:var(--gray,#777);font-size:13px;">{{ user.email }} · Membre depuis {{ user.date_joined|date:'F Y' }}</div>
-</div>
-{% if user.is_verified %}<span style="background:#e6f9ed;color:#16a34a;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;"><i class="fa-solid fa-circle-check"></i> Vérifié</span>{% endif %}
-</div>
+    {% if to_pay or acc.rfqs_to_review or acc.unread_messages %}
+    <div class="pf-card">
+        <h2><i class="fa-solid fa-list-check"></i> À faire</h2>
+        <p class="sub">Ce qui attend une action de votre part.</p>
+        <div class="pf-todo">
+            {% for o in to_pay %}
+            <a href="{% url 'orders:detail' o.order_number %}"><span class="ic"><i class="fa-solid fa-wallet"></i></span><span>Payer la commande <strong>{{ o.order_number }}</strong> — {{ o.total_amount|intcomma }} F</span><span class="go">Voir comment</span></a>
+            {% endfor %}
+            {% if acc.rfqs_to_review %}<a href="{% url 'orders:my_rfqs' %}?status=quoted"><span class="ic"><i class="fa-solid fa-scale-balanced"></i></span><span>{{ acc.rfqs_to_review }} demande{{ acc.rfqs_to_review|pluralize }} de devis avec des offres à comparer</span><span class="go">Comparer</span></a>{% endif %}
+            {% if acc.unread_messages %}<a href="{% url 'messaging:inbox' %}"><span class="ic"><i class="fa-regular fa-comments"></i></span><span>{{ acc.unread_messages }} message{{ acc.unread_messages|pluralize }} non lu{{ acc.unread_messages|pluralize }}</span><span class="go">Lire</span></a>{% endif %}
+        </div>
+    </div>
+    {% endif %}
 
-<!-- Statistiques -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem;margin-bottom:1.25rem;">
-<a href="{% url 'orders:list' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
-<div style="font-size:24px;font-weight:700;">{{ orders_count }}</div>
-<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-box"></i> Commandes</div>
-</a>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
-<div style="font-size:24px;font-weight:700;color:#d97706;">{{ pending_orders }}</div>
-<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-clock"></i> En cours</div>
-</div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
-<div style="font-size:24px;font-weight:700;color:#16a34a;">{{ delivered_orders }}</div>
-<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-circle-check"></i> Livrées</div>
-</div>
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;text-align:center;">
-<div style="font-size:18px;font-weight:700;">{{ total_spent|intcomma }} F</div>
-<div style="font-size:12px;color:var(--gray,#777);"><i class="fa-solid fa-wallet"></i> Total dépensé</div>
-</div>
-</div>
+    <div class="pf-stats">
+        <a class="pf-stat" href="{% url 'orders:list' %}"><div class="v">{{ stats.orders }}</div><div class="l"><i class="fa-solid fa-box"></i> Commandes</div></a>
+        <a class="pf-stat" href="{% url 'orders:list' %}?status=active"><div class="v" style="color:#b54708;">{{ stats.active }}</div><div class="l"><i class="fa-solid fa-truck-fast"></i> En cours</div></a>
+        <a class="pf-stat" href="{% url 'orders:my_rfqs' %}"><div class="v">{{ rfqs_count }}</div><div class="l"><i class="fa-solid fa-file-signature"></i> Demandes de devis</div></a>
+        <div class="pf-stat"><div class="v" style="font-size:19px;">{{ stats.paid|intcomma }} F</div><div class="l"><i class="fa-solid fa-receipt"></i> Total payé</div></div>
+    </div>
 
-<!-- Accès rapides -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.25rem;">
-<a href="{% url 'orders:list' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
-<span style="font-size:22px;color:var(--orange,#ff6a00);"><i class="fa-solid fa-box-open"></i></span><span><b>Mes commandes</b><br><small style="color:var(--gray,#777);">Suivre mes achats</small></span>
-</a>
-<a href="{% url 'orders:my_rfqs' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
-<span style="font-size:22px;color:#4f46e5;"><i class="fa-solid fa-file-invoice"></i></span><span><b>Mes demandes de devis</b> <span style="background:#eef2ff;color:#4f46e5;border-radius:10px;padding:1px 7px;font-size:11px;">{{ rfqs_count }}</span><br><small style="color:var(--gray,#777);">RFQ et devis reçus</small></span>
-</a>
-<a href="{% url 'messaging:inbox' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
-<span style="font-size:22px;color:#0891b2;"><i class="fa-solid fa-comments"></i></span><span><b>Messages</b>{% if unread_messages %} <span style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;">{{ unread_messages }}</span>{% endif %}<br><small style="color:var(--gray,#777);">Discussions vendeurs</small></span>
-</a>
-<a href="{% url 'catalog:wishlist' %}" style="text-decoration:none;color:inherit;background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:.75rem;">
-<span style="font-size:22px;color:#db2777;"><i class="fa-solid fa-heart"></i></span><span><b>Mes favoris</b> <span style="background:#fce7f3;color:#db2777;border-radius:10px;padding:1px 7px;font-size:11px;">{{ wishlist_count }}</span><br><small style="color:var(--gray,#777);">Produits sauvegardés</small></span>
-</a>
-</div>
+    <div class="pf-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <h2><i class="fa-solid fa-clock-rotate-left"></i> Dernières commandes</h2>
+            {% if recent_orders %}<a href="{% url 'orders:list' %}" style="font-size:13px;color:var(--orange);font-weight:600;">Tout voir</a>{% endif %}
+        </div>
+        {% for o in recent_orders %}
+        <a class="pf-order" href="{% url 'orders:detail' o.order_number %}">
+            <span class="pf-thumbs">{% for it in o.items.all|slice:":3" %}{% if it.product.image %}<img src="{{ it.product.image.url }}" alt="">{% else %}<span><i class="fa-regular fa-image"></i></span>{% endif %}{% endfor %}{% if o.items.all|length > 3 %}<span>+{{ o.items.all|length|add:"-3" }}</span>{% endif %}</span>
+            <span class="mid"><span class="num">{{ o.order_number }}</span><span class="meta" style="display:block;">{{ o.created_at|date:"d/m/Y" }} · {{ o.items.all|length }} article{{ o.items.all|length|pluralize }}</span></span>
+            <span style="text-align:right;"><span class="tot">{{ o.total_amount|intcomma }} F</span><br><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></span>
+        </a>
+        {% empty %}
+        <p style="font-size:14px;color:var(--text2);margin-top:10px;">Vous n'avez pas encore commandé. <a href="{% url 'catalog:product_list' %}" style="color:var(--orange);font-weight:600;">Découvrir les produits</a></p>
+        {% endfor %}
+    </div>
 
-<div style="display:grid;grid-template-columns:1fr;gap:1.25rem;">
-<!-- Commandes récentes -->
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.25rem;">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-<h3 style="font-size:15px;margin:0;"><i class="fa-solid fa-clock-rotate-left"></i> Commandes récentes</h3>
-<a href="{% url 'orders:list' %}" style="font-size:13px;">Tout voir →</a>
-</div>
-{% if recent_orders %}
-<table style="width:100%;border-collapse:collapse;font-size:13px;">
-<thead><tr style="text-align:left;color:var(--gray,#777);border-bottom:1px solid var(--border2);">
-<th style="padding:.5rem 0;">N°</th><th>Date</th><th>Total</th><th>Statut</th><th></th>
-</tr></thead>
-<tbody>
-{% for order in recent_orders %}
-<tr style="border-bottom:1px solid var(--border2);">
-<td style="padding:.6rem 0;font-weight:600;">#{{ order.order_number }}</td>
-<td>{{ order.created_at|date:'d/m/Y' }}</td>
-<td>{{ order.total_amount|intcomma }} F</td>
-<td><span style="padding:2px 8px;border-radius:12px;font-size:11px;background:#f3f4f6;">{{ order.get_status_display }}</span></td>
-<td><a href="{% url 'orders:detail' order.order_number %}" style="font-size:12px;">Détails</a></td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-{% else %}
-<p style="color:var(--gray,#777);font-size:13px;margin:0;">Aucune commande pour le moment. <a href="{% url 'catalog:product_list' %}">Découvrir les produits →</a></p>
-{% endif %}
-</div>
+    <form class="pf-card" id="infos" method="post" enctype="multipart/form-data">{% csrf_token %}
+        <input type="hidden" name="section" value="info">
+        <h2><i class="fa-regular fa-id-card"></i> Mes informations</h2>
+        <p class="sub">Les boutiques voient votre nom ; votre e-mail et votre téléphone ne servent qu'à vos commandes.</p>
+        <div class="pf-avatar">
+            {% if user.avatar %}<img class="pic" id="avPrev" src="{{ user.avatar.url }}" alt="">{% else %}<span class="pic" id="avPrev">{{ user.initials }}</span>{% endif %}
+            <div>
+                <label class="btn btn-outline btn-sm"><i class="fa-solid fa-camera"></i> Changer la photo<input type="file" name="avatar" accept="image/*" id="avInput" hidden></label>
+                {% if user.avatar %}<label style="font-size:12.5px;color:var(--text3);margin-left:8px;"><input type="checkbox" name="remove_avatar"> Retirer</label>{% endif %}
+                {% if errors.avatar %}<div style="font-size:12px;color:#d92d20;margin-top:6px;">{{ errors.avatar }}</div>{% endif %}
+            </div>
+        </div>
+        <div class="pf-grid2">
+            <div class="pf-f"><label for="pFirst">Prénom</label><input id="pFirst" type="text" name="first_name" value="{{ form.first_name }}" class="form-control" autocomplete="given-name" maxlength="150"></div>
+            <div class="pf-f"><label for="pLast">Nom</label><input id="pLast" type="text" name="last_name" value="{{ form.last_name }}" class="form-control" autocomplete="family-name" maxlength="150"></div>
+            <div class="pf-f {% if errors.email %}err{% endif %}"><label for="pEmail">E-mail</label><input id="pEmail" type="email" name="email" value="{{ form.email }}" class="form-control" autocomplete="email" required>{% if errors.email %}<div class="msg">{{ errors.email }}</div>{% endif %}</div>
+            <div class="pf-f {% if errors.phone %}err{% endif %}"><label for="pPhone">Téléphone</label><input id="pPhone" type="tel" name="phone" value="{{ form.phone }}" class="form-control" autocomplete="tel" placeholder="+237 6XX XX XX XX">{% if errors.phone %}<div class="msg">{{ errors.phone }}</div>{% else %}<div class="hint">Le livreur vous appelle sur ce numéro.</div>{% endif %}</div>
+        </div>
+        <div class="pf-foot"><button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer</button></div>
+    </form>
 
-<!-- Formulaire profil -->
-<div style="background:var(--white);border:1px solid var(--border2);border-radius:var(--radius);padding:1.25rem;">
-<h3 style="font-size:15px;margin:0 0 .75rem;"><i class="fa-solid fa-user-pen"></i> Mes informations</h3>
-<form method="post">{% csrf_token %}
-<div class="form-row"><div class="form-group"><label>Prénom</label><input type="text" name="first_name" value="{{ user.first_name }}" class="form-control"></div><div class="form-group"><label>Nom</label><input type="text" name="last_name" value="{{ user.last_name }}" class="form-control"></div></div>
-<div class="form-row"><div class="form-group"><label>Téléphone</label><input type="tel" name="phone" value="{{ user.phone }}" class="form-control"></div><div class="form-group"><label>Ville</label><input type="text" name="city" value="{{ user.city }}" class="form-control"></div></div>
-<div class="form-group"><label>Adresse de livraison</label><textarea name="address" class="form-control" rows="2">{{ user.address }}</textarea></div>
-<button type="submit" class="btn btn-orange">Enregistrer</button>
-</form>
+    <form class="pf-card" id="adresse" method="post">{% csrf_token %}
+        <input type="hidden" name="section" value="address">
+        <h2><i class="fa-solid fa-location-dot"></i> Adresse de livraison</h2>
+        <p class="sub">Proposée automatiquement quand vous commandez.</p>
+        <div class="pf-f"><label for="pAddr">Adresse</label><textarea id="pAddr" name="address" class="form-control" rows="2" placeholder="Quartier, rue, point de repère" autocomplete="street-address">{{ user.address }}</textarea></div>
+        <div class="pf-grid2">
+            <div class="pf-f"><label for="pCity">Ville</label><input id="pCity" type="text" name="city" value="{{ user.city }}" class="form-control" list="pCities" autocomplete="address-level2">
+                <datalist id="pCities"><option value="Douala"><option value="Yaoundé"><option value="Bafoussam"><option value="Bamenda"><option value="Garoua"><option value="Kribi"><option value="Limbé"></datalist></div>
+            <div class="pf-f"><label for="pCountry">Pays</label><input id="pCountry" type="text" name="country" value="{{ user.country }}" class="form-control" autocomplete="country-name"></div>
+        </div>
+        <div class="pf-foot"><button type="submit" class="btn btn-orange"><i class="fa-solid fa-check"></i> Enregistrer l'adresse</button></div>
+    </form>
+
+    <form class="pf-card" id="securite" method="post">{% csrf_token %}
+        <input type="hidden" name="section" value="password">
+        <h2><i class="fa-solid fa-shield-halved"></i> Sécurité</h2>
+        <p class="sub">Changez votre mot de passe. Vos préférences d'alertes se règlent dans <a href="{% url 'messaging:notifications' %}#preferences" style="color:var(--orange);font-weight:600;">Notifications</a>.</p>
+        <div class="pf-f {% if errors.current_password %}err{% endif %}" style="max-width:420px;"><label for="pCur">Mot de passe actuel</label><div class="pf-pass"><input id="pCur" type="password" name="current_password" class="form-control" autocomplete="current-password" required><button type="button" data-eye aria-label="Afficher"><i class="fa-regular fa-eye"></i></button></div>{% if errors.current_password %}<div class="msg">{{ errors.current_password }}</div>{% endif %}</div>
+        <div class="pf-grid2">
+            <div class="pf-f {% if errors.new_password %}err{% endif %}"><label for="pNew">Nouveau mot de passe</label><div class="pf-pass"><input id="pNew" type="password" name="new_password" class="form-control" autocomplete="new-password" minlength="8" required><button type="button" data-eye aria-label="Afficher"><i class="fa-regular fa-eye"></i></button></div>{% if errors.new_password %}<div class="msg">{{ errors.new_password }}</div>{% else %}<div class="hint">8 caractères minimum, pas uniquement des chiffres.</div>{% endif %}</div>
+            <div class="pf-f {% if errors.confirm_password %}err{% endif %}"><label for="pConf">Confirmer</label><div class="pf-pass"><input id="pConf" type="password" name="confirm_password" class="form-control" autocomplete="new-password" required><button type="button" data-eye aria-label="Afficher"><i class="fa-regular fa-eye"></i></button></div>{% if errors.confirm_password %}<div class="msg">{{ errors.confirm_password }}</div>{% endif %}</div>
+        </div>
+        <div class="pf-foot"><button type="submit" class="btn btn-orange"><i class="fa-solid fa-key"></i> Changer le mot de passe</button></div>
+    </form>
+</main>
 </div>
-</div>
-</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+    var input = document.getElementById('avInput'), prev = document.getElementById('avPrev');
+    input.addEventListener('change', function() {
+        var f = input.files[0];
+        if (!f) return;
+        if (f.size > 3 * 1024 * 1024) { alert('Choisissez une image de moins de 3 Mo.'); input.value = ''; return; }
+        var img = document.createElement('img'); img.className = 'pic'; img.id = 'avPrev'; img.alt = '';
+        img.src = URL.createObjectURL(f); prev.replaceWith(img); prev = img;
+    });
+    document.querySelectorAll('[data-eye]').forEach(function(b) {
+        b.addEventListener('click', function() {
+            var i = b.previousElementSibling, show = i.type === 'password';
+            i.type = show ? 'text' : 'password';
+            b.innerHTML = show ? '<i class="fa-regular fa-eye-slash"></i>' : '<i class="fa-regular fa-eye"></i>';
+        });
+    });
+    {% if errors and section %}var t = document.getElementById({% if section == 'info' %}'infos'{% elif section == 'password' %}'securite'{% else %}'adresse'{% endif %}); if (t) t.scrollIntoView({ block: 'start' });{% endif %}
+})();
+</script>
 {% endblock %}

@@ -1,13 +1,80 @@
 {% extends 'base.html' %}{% load humanize %}
 {% block title %}Commande confirmée{% endblock %}
+{% block extra_css %}
+<style>
+.ok-wrap { max-width: 620px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+.ok-head { text-align: center; margin-bottom: 1.6rem; }
+.ok-ico { width: 72px; height: 72px; border-radius: 50%; background: #ecfdf3; color: #12b76a; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 14px; box-shadow: 0 0 0 10px #f6fef9; }
+.ok-head h1 { font-size: 24px; margin-bottom: 6px; }
+.ok-head p { color: var(--text2); font-size: 14px; line-height: 1.6; }
+.ok-card { background: var(--white); border: 1px solid var(--border2); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+.ok-card h2 { font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.ok-card h2 i { color: var(--orange); }
+.ok-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 6px 0; }
+.ok-row span:first-child { color: var(--text3); }
+.ok-pay { background: #fffaf5; border-color: #fbd5b5; }
+.ok-st { padding: 10px 0; border-bottom: 1px dashed #fbd5b5; font-size: 13.5px; line-height: 1.6; }
+.ok-st:last-of-type { border-bottom: none; }
+.ok-num { font-size: 17px; font-weight: 800; letter-spacing: .3px; display: inline-flex; align-items: center; gap: 8px; }
+.ok-copy { border: 1px solid #fbd5b5; background: #fff; border-radius: 8px; padding: 3px 9px; font-size: 12px; cursor: pointer; color: var(--orange); font-family: var(--font); }
+.ok-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+@media (max-width: 520px) { .ok-acts .btn { width: 100%; justify-content: center; } }
+</style>
+{% endblock %}
 {% block content %}
-<div style="text-align:center;max-width:600px;margin:0 auto;padding:4rem 2rem;">
-<div style="font-size:4rem;margin-bottom:1rem;">🎉</div>
-<h2 style="font-size:22px;margin-bottom:8px;">Commande confirmée !</h2>
-<p style="color:var(--text2);margin-bottom:2rem;">Votre commande <strong>{{ order.order_number }}</strong> a été enregistrée. Total: <strong style="color:var(--red);">{{ order.total_amount|intcomma }} FCFA</strong></p>
-<div style="display:flex;gap:10px;justify-content:center;">
-<a href="{% url 'orders:detail' order.order_number %}" class="btn btn-orange">Voir ma commande</a>
-<a href="{% url 'home' %}" class="btn btn-outline">Retour à l'accueil</a>
+<div class="ok-wrap">
+    <div class="ok-head">
+        <span class="ok-ico"><i class="fa-solid fa-check"></i></span>
+        <h1>Commande enregistrée</h1>
+        <p>Merci ! Votre commande <strong>{{ order.order_number }}</strong> a été transmise {% if store_count > 1 %}aux {{ store_count }} boutiques{% else %}à la boutique{% endif %}.<br>Vous êtes prévenu à chaque étape.</p>
+    </div>
+
+    {% if pay_info and order.payment_method != 'cash' %}
+    <div class="ok-card ok-pay">
+        <h2><i class="fa-solid {{ pay_method.icon }}"></i> Dernière étape : le paiement par {{ pay_method.short }}</h2>
+        {% for s, amount, d in pay_info %}
+        <div class="ok-st">
+            {% if pay_info|length > 1 %}<strong>{{ s.name }}</strong> — articles : {{ amount|intcomma }} F<br>{% else %}Montant : <strong>{{ order.total_amount|intcomma }} FCFA</strong><br>{% endif %}
+            {% if d %}
+                {% if order.payment_method == 'transfer' %}{{ d.bank }}<br>{% endif %}
+                <span class="ok-num">{{ d.number }} <button type="button" class="ok-copy" data-copy="{{ d.number }}">Copier</button></span>
+                {% if d.name %}<br><span style="color:var(--text3);">Au nom de {{ d.name }}</span>{% endif %}
+            {% else %}
+                <span style="color:var(--text3);">La boutique vous communiquera ses coordonnées de paiement.</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <p style="font-size:12.5px;color:var(--text3);margin-top:8px;line-height:1.6;">Indiquez <strong>{{ order.order_number }}</strong> comme motif. La boutique confirme la réception, puis prépare votre commande{% if pay_info|length > 1 %} ; les frais de livraison et remises éventuels vous sont précisés par les boutiques{% endif %}.</p>
+    </div>
+    {% elif order.payment_method == 'cash' %}
+    <div class="ok-card ok-pay">
+        <h2><i class="fa-solid fa-money-bill-wave"></i> Paiement à la livraison</h2>
+        <p style="font-size:13.5px;line-height:1.6;">Préparez <strong>{{ order.total_amount|intcomma }} FCFA</strong> pour la réception de votre colis.</p>
+    </div>
+    {% endif %}
+
+    <div class="ok-card">
+        <h2><i class="fa-solid fa-receipt"></i> Récapitulatif</h2>
+        <div class="ok-row"><span>Commande</span><strong>{{ order.order_number }}</strong></div>
+        <div class="ok-row"><span>Total</span><strong>{{ order.total_amount|intcomma }} FCFA</strong></div>
+        <div class="ok-row"><span>Paiement</span><span>{{ pay_method.label|default:order.get_payment_method_display }}</span></div>
+        <div class="ok-row"><span>Livraison</span><span style="text-align:right;">{{ order.shipping_name }}, {{ order.shipping_address }}, {{ order.shipping_city }}</span></div>
+    </div>
+
+    <div class="ok-acts">
+        <a href="{% url 'orders:detail' order.order_number %}" class="btn btn-orange"><i class="fa-solid fa-truck-fast"></i> Suivre ma commande</a>
+        <a href="{% url 'home' %}" class="btn btn-outline">Continuer mes achats</a>
+    </div>
 </div>
-</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelectorAll('.ok-copy').forEach(function(b) {
+    b.addEventListener('click', function() {
+        var v = b.dataset.copy.replace(/\s/g, '');
+        var done = function() { b.textContent = 'Copié'; setTimeout(function() { b.textContent = 'Copier'; }, 1600); };
+        if (navigator.clipboard) navigator.clipboard.writeText(v).then(done, function() { prompt('Numéro :', v); }); else prompt('Numéro :', v);
+    });
+});
+</script>
 {% endblock %}

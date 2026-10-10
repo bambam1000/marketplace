@@ -1,0 +1,47 @@
+<style>
+.acc-wrap { max-width: 1180px; margin: 0 auto; padding: 1.5rem; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; align-items: start; }
+.acc-nav { position: sticky; top: 140px; background: var(--white); border: 1px solid var(--border2); border-radius: 16px; padding: 14px; }
+.acc-user { display: flex; align-items: center; gap: 10px; padding: 4px 4px 14px; border-bottom: 1px solid var(--border2); margin-bottom: 8px; }
+.acc-av { width: 42px; height: 42px; border-radius: 50%; background: var(--orange); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex-shrink: 0; object-fit: cover; }
+.acc-user strong { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.acc-user span { font-size: 12px; color: var(--text3); }
+.acc-user .acc-av { color: #fff; font-size: 15px; }
+.acc-links { display: flex; flex-direction: column; gap: 2px; }
+.acc-links a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--text2); white-space: nowrap; }
+.acc-links a i { width: 18px; text-align: center; color: var(--text3); }
+.acc-links a:hover { background: var(--bg); color: var(--text); }
+.acc-links a.on { background: #fff4ec; color: var(--orange); font-weight: 700; }
+.acc-links a.on i { color: var(--orange); }
+.acc-links .n { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 50px; background: var(--bg); color: var(--text2); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.acc-links .n.hot { background: var(--orange); color: #fff; }
+.acc-links .sep { height: 1px; background: var(--border2); margin: 6px 4px; }
+.acc-main { min-width: 0; }
+@media (max-width: 900px) {
+    .acc-wrap { grid-template-columns: minmax(0, 1fr); padding: .75rem 14px 5rem; gap: 12px; }
+    .acc-nav { min-width: 0; }
+    .acc-nav { position: static; padding: 0; border: none; background: none; }
+    .acc-user, .acc-links .sep, .acc-links .out { display: none; }
+    .acc-links { flex-direction: row; overflow-x: auto; scrollbar-width: none; gap: 6px; padding-bottom: 2px; }
+    .acc-links::-webkit-scrollbar { display: none; }
+    .acc-links a { background: var(--white); border: 1px solid var(--border2); border-radius: 50px; padding: 7px 12px; font-size: 13px; flex-shrink: 0; }
+    .acc-links a.on { border-color: var(--orange); }
+    .acc-links .n { margin-left: 2px; }
+}
+</style>
+<aside class="acc-nav" aria-label="Mon compte">
+    <div class="acc-user">
+        {% if user.avatar %}<img class="acc-av" src="{{ user.avatar.url }}" alt="">{% else %}<span class="acc-av">{{ user.initials }}</span>{% endif %}
+        <div style="min-width:0;"><strong>{{ user.display_name }}</strong><span>Membre depuis {{ user.date_joined|date:"F Y" }}</span></div>
+    </div>
+    <nav class="acc-links">
+        <a href="{% url 'accounts:profile' %}" class="{% if acc.active == 'profile' %}on{% endif %}"><i class="fa-regular fa-user"></i> Mon compte</a>
+        <a href="{% url 'orders:list' %}" class="{% if acc.active == 'orders' %}on{% endif %}"><i class="fa-solid fa-box"></i> Mes commandes{% if acc.orders_active %}<span class="n {% if acc.to_pay %}hot{% endif %}">{{ acc.orders_active }}</span>{% endif %}</a>
+        <a href="{% url 'orders:my_rfqs' %}" class="{% if acc.active == 'rfqs' %}on{% endif %}"><i class="fa-solid fa-file-signature"></i> Demandes de devis{% if acc.rfqs_to_review %}<span class="n hot">{{ acc.rfqs_to_review }}</span>{% endif %}</a>
+        <a href="{% url 'messaging:inbox' %}"><i class="fa-regular fa-comments"></i> Messages{% if acc.unread_messages %}<span class="n hot">{{ acc.unread_messages }}</span>{% endif %}</a>
+        <a href="{% url 'messaging:notifications' %}"><i class="fa-regular fa-bell"></i> Notifications{% if acc.unread_notifs %}<span class="n">{{ acc.unread_notifs }}</span>{% endif %}</a>
+        <a href="{% url 'catalog:wishlist' %}"><i class="fa-regular fa-heart"></i> Favoris{% if acc.wishlist %}<span class="n">{{ acc.wishlist }}</span>{% endif %}</a>
+        {% if user.store %}<div class="sep"></div><a href="{% url 'dashboard:index' %}"><i class="fa-solid fa-store"></i> Ma boutique</a>{% endif %}
+        <div class="sep"></div>
+        <a href="{% url 'accounts:logout' %}" class="out"><i class="fa-solid fa-arrow-right-from-bracket"></i> Déconnexion</a>
+    </nav>
+</aside>

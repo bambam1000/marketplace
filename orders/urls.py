@@ -4,6 +4,9 @@ app_name = 'orders'
 urlpatterns = [
     path('', views.order_list, name='list'),
     path('<str:order_number>/', views.order_detail, name='detail'),
+    path('<str:order_number>/annuler/', views.cancel_order, name='cancel'),
+    path('<str:order_number>/racheter/', views.reorder, name='reorder'),
+    path('<str:order_number>/avis/<int:product_id>/', views.review_item, name='review'),
     path('succes/<str:order_number>/', views.order_success, name='success'),
 
     # RFQ URLs

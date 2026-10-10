@@ -72,6 +72,21 @@ class Order(models.Model):
         return steps.get(self.status, 0)
 
 
+class OrderStatusEvent(models.Model):
+    """Historique des changements de statut d'une commande (dates affichées au client)."""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='events')
+    status = models.CharField(max_length=20, choices=Order.STATUS_CHOICES)
+    by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    note = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.order.order_number} → {self.status}'
+
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('catalog.Product', on_delete=models.CASCADE)

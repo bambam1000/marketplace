@@ -1,3 +1,5 @@
+import re
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
@@ -6,6 +8,13 @@ from django.http import JsonResponse
 from catalog.models import Product
 from orders.models import Order, OrderItem
 from .utils import get_cart, save_cart
+
+SHIPPING_FEE = 2000            # frais de livraison (FCFA) sous le seuil de gratuité
+FREE_SHIPPING_FROM = 50000     # livraison offerte à partir de ce sous-total (FCFA)
+
+
+def shipping_for(subtotal):
+    return SHIPPING_FEE if 0 < subtotal < FREE_SHIPPING_FROM else 0
 
 @require_POST
 def add_to_cart(request, product_id):
@@ -160,7 +169,7 @@ def cart_view(request):
             except Store.DoesNotExist:
                 pass
         items.append({**item, 'id': pid, 'subtotal': s, 'whatsapp': whatsapp})
-    shipping = 2000 if subtotal < 50000 and subtotal > 0 else 0
+    shipping = shipping_for(subtotal)
     promo, discount = _get_applied_promo(request, cart)
     loyalty_discount, loyalty_details = _get_loyalty_discount(request, cart, promo)
     return render(request, 'cart/cart.html', {
@@ -199,27 +208,63 @@ def checkout(request):
         s = item['price'] * item['quantity']
         subtotal += s
         items.append({**item, 'id': pid, 'subtotal': s})
-    shipping = 2000 if subtotal < 50000 else 0
+    shipping = shipping_for(subtotal)
     promo, discount = _get_applied_promo(request, cart)
     loyalty_discount, loyalty_details = _get_loyalty_discount(request, cart, promo)
     total = subtotal + shipping - discount - loyalty_discount
 
+    # Moyens de paiement : seulement ceux que toutes les boutiques du panier ont activés
+    from store.models import Store
+    from billing.payments import checkout_options
+    store_ids = list(dict.fromkeys(i['store_id'] for i in cart.values() if i.get('store_id')))
+    stores = sorted(Store.objects.filter(pk__in=store_ids), key=lambda s: store_ids.index(s.pk))
+    pay = checkout_options(stores)
+    allowed = [m['code'] for m in pay['methods']]
+
+    # Pré-remplissage : profil, sinon dernière commande
+    last = Order.objects.filter(buyer=request.user).order_by('-created_at').first()
+    form = {
+        'shipping_name': request.user.get_full_name() or (last.shipping_name if last else ''),
+        'shipping_phone': request.user.phone or (last.shipping_phone if last else ''),
+        'shipping_address': request.user.address or (last.shipping_address if last else ''),
+        'shipping_city': request.user.city or (last.shipping_city if last else '') or 'Douala',
+        'notes': '',
+        'payment_method': allowed[0] if len(allowed) == 1 else '',
+    }
+    errors = {}
     if request.method == 'POST':
+        form = {k: (request.POST.get(k) or '').strip() for k in form}
+        if len(form['shipping_name']) < 2:
+            errors['shipping_name'] = 'Indiquez le nom de la personne qui reçoit la commande.'
+        if not 8 <= len(re.sub(r'\D', '', form['shipping_phone'])) <= 15:
+            errors['shipping_phone'] = 'Indiquez un numéro de téléphone valide.'
+        if len(form['shipping_address']) < 5:
+            errors['shipping_address'] = "Précisez l'adresse : quartier, rue, point de repère."
+        if not form['shipping_city']:
+            errors['shipping_city'] = 'Indiquez la ville de livraison.'
+        if not allowed:
+            errors['payment_method'] = "Aucun moyen de paiement n'est disponible pour ce panier."
+        elif form['payment_method'] not in allowed:
+            errors['payment_method'] = 'Choisissez un moyen de paiement.'
+
+    if request.method == 'POST' and not errors:
         order = Order.objects.create(
             buyer=request.user,
-            payment_method=request.POST.get('payment_method', 'momo'),
+            payment_method=form['payment_method'],
             subtotal=subtotal,
             shipping_cost=shipping,
             promo_code=promo,
             discount_amount=discount,
             loyalty_discount=loyalty_discount,
             total_amount=total,
-            shipping_name=request.POST.get('shipping_name'),
-            shipping_phone=request.POST.get('shipping_phone'),
-            shipping_address=request.POST.get('shipping_address'),
-            shipping_city=request.POST.get('shipping_city', 'Douala'),
-            notes=request.POST.get('notes', ''),
+            shipping_name=form['shipping_name'],
+            shipping_phone=form['shipping_phone'],
+            shipping_address=form['shipping_address'],
+            shipping_city=form['shipping_city'],
+            notes=form['notes'],
         )
+        from orders.models import OrderStatusEvent
+        OrderStatusEvent.objects.create(order=order, status='pending', by=request.user)
         for pid, item in cart.items():
             try:
                 product = Product.objects.get(pk=int(pid))
@@ -295,5 +340,6 @@ def checkout(request):
         'cart_items': items, 'subtotal': subtotal,
         'shipping': shipping, 'promo': promo, 'discount': discount,
         'loyalty_discount': loyalty_discount, 'loyalty_details': loyalty_details,
-        'total': total,
-    })
+        'total': total, 'pay': pay, 'form': form, 'errors': errors,
+        'cities': ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Garoua', 'Maroua', 'Ngaoundéré', 'Bertoua', 'Kribi', 'Limbé', 'Buea', 'Ebolowa'],
+    }, status=400 if errors else 200)

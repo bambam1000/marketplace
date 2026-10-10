@@ -68,23 +68,17 @@ def my_subscription(request):
 
 @login_required
 def payment_config(request):
-    config, _ = PaymentConfig.objects.get_or_create(user=request.user)
+    """Ancienne adresse : les moyens de paiement se règlent dans Paramètres > Paiements."""
+    from django.urls import reverse
+    from .payments import save_config
     if request.method == 'POST':
-        config.momo_enabled = 'momo_enabled' in request.POST
-        config.momo_number = request.POST.get('momo_number', '')
-        config.momo_name = request.POST.get('momo_name', '')
-        config.om_enabled = 'om_enabled' in request.POST
-        config.om_number = request.POST.get('om_number', '')
-        config.om_name = request.POST.get('om_name', '')
-        config.bank_enabled = 'bank_enabled' in request.POST
-        config.bank_name = request.POST.get('bank_name', '')
-        config.bank_account_number = request.POST.get('bank_account_number', '')
-        config.bank_account_name = request.POST.get('bank_account_name', '')
-        config.cash_enabled = 'cash_enabled' in request.POST
-        config.save()
-        messages.success(request, 'Configuration de paiement mise à jour !')
-        return redirect('billing:payment_config')
-    return render(request, 'billing/payment_config.html', {'config': config})
+        config, _ = PaymentConfig.objects.get_or_create(user=request.user)
+        errors = save_config(config, request.POST)
+        for e in errors:
+            messages.error(request, e)
+        if not errors:
+            messages.success(request, 'Moyens de paiement enregistrés.')
+    return redirect(reverse('dashboard:settings') + '?tab=payments')
 
 
 @login_required

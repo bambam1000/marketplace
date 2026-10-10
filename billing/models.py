@@ -118,7 +118,7 @@ class PaymentConfig(models.Model):
     bank_account_number = models.CharField(max_length=50, blank=True)
     bank_account_name = models.CharField(max_length=100, blank=True)
     # Cash
-    cash_enabled = models.BooleanField(default=True)
+    cash_enabled = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Config paiement: {self.user.username}"
