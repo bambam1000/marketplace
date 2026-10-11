@@ -4,8 +4,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 
+from billing import online_views as payment_views
 from whatsapp import views as whatsapp_views
-from config import pwa
+from config import pwa, captcha
 
 admin.site.site_header = 'Comptoir — Administration'
 admin.site.site_title = 'Comptoir'
@@ -15,6 +16,9 @@ urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     # Appelé par Evolution API (serveur à serveur) : hors préfixe de langue
     path('whatsapp/webhook/', whatsapp_views.webhook, name='whatsapp_webhook'),
+    # Notifications des prestataires de paiement (Notch Pay…) : hors préfixe de langue
+    path('paiements/webhook/<str:provider>/<str:token>/', payment_views.webhook, name='payments_webhook'),
+    path('captcha/<str:scope>.png', captcha.image, name='captcha'),
     # Application installable (PWA) : à la racine, hors préfixe de langue
     path('manifest.webmanifest', pwa.manifest, name='pwa_manifest'),
     path('sw.js', pwa.service_worker, name='pwa_sw'),
@@ -38,6 +42,7 @@ urlpatterns += i18n_patterns(
     path('pos/', include('pos.urls')),
     path('dashboard/whatsapp/', include('whatsapp.urls')),
     path('dashboard/dropshipping/', include('dropship.urls')),
+    path('paiement/', include('billing.online_urls')),
     path('', include('catalog.home_urls')),
 )
 if settings.DEBUG:

@@ -70,14 +70,15 @@ c = Client()
 # ===== 1. Inscription / Connexion =====
 r = c.post('/fr/compte/inscription/', {
     'username': f'acheteur{TS}', 'email': 'acheteur_btest@test.com',
-    'password': 'testpass123', 'role': 'buyer',
+    'password': 'testpass123', 'role': 'buyer', 'accept_terms': '1',
     'first_name': 'Jean', 'last_name': 'Test',
 })
 check('Inscription acheteur (redirection 302)', r.status_code == 302, f'-> {r.status_code}')
 check('Utilisateur créé avec rôle buyer', User.objects.filter(username=f'acheteur{TS}', role='buyer').exists())
 
 c.get('/fr/compte/deconnexion/')
-r = c.post('/fr/compte/connexion/', {'username': f'acheteur{TS}', 'password': 'testpass123'})
+c.get('/captcha/login.png')
+r = c.post('/fr/compte/connexion/', {'captcha': c.session['captcha']['login']['code'], 'username': f'acheteur{TS}', 'password': 'testpass123'})
 check('Connexion (redirection 302)', r.status_code == 302, f'-> {r.status_code}')
 
 # ===== 2. Pages publiques du catalogue =====

@@ -45,7 +45,7 @@ def check(name, condition):
 # 1. Inscription
 r = c.post('/fr/compte/inscription/', {
     'username': 'acheteur_test', 'email': 'acheteur@test.com',
-    'password': 'testpass123', 'role': 'buyer',
+    'password': 'testpass123', 'role': 'buyer', 'accept_terms': '1',
     'first_name': 'Jean', 'last_name': 'Test',
 })
 check('Inscription acheteur (redirection)', r.status_code == 302)
@@ -53,7 +53,8 @@ check('Utilisateur créé avec rôle buyer', User.objects.filter(username='achet
 
 # 2. Déconnexion + Connexion
 c.get('/fr/compte/deconnexion/')
-r = c.post('/fr/compte/connexion/', {'username': 'acheteur_test', 'password': 'testpass123'})
+c.get('/captcha/login.png')
+r = c.post('/fr/compte/connexion/', {'captcha': c.session['captcha']['login']['code'], 'username': 'acheteur_test', 'password': 'testpass123'})
 check('Connexion (redirection)', r.status_code == 302)
 
 # 3. Catalogue

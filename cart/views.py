@@ -341,6 +341,9 @@ def checkout(request):
         from whatsapp.services import notify_order_placed
         notify_order_placed(order)
 
+        if order.payment_method == 'online':
+            # Paiement en ligne : directement sur la page de paiement
+            return redirect('orders:pay', order_number=order.order_number)
         messages.success(request, f'Commande {order.order_number} créée !')
         return redirect('orders:success', order_number=order.order_number)
 

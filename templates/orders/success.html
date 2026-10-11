@@ -29,7 +29,13 @@
         <p>Merci ! Votre commande <strong>{{ order.order_number }}</strong> a été transmise {% if store_count > 1 %}aux {{ store_count }} boutiques{% else %}à la boutique{% endif %}.<br>Vous êtes prévenu à chaque étape.</p>
     </div>
 
-    {% if pay_info and order.payment_method != 'cash' %}
+    {% if pay_info and order.payment_method == 'online' %}
+    <div class="ok-card ok-pay" style="text-align:center;">
+        <h2 style="justify-content:center;"><i class="fa-solid fa-bolt"></i> Paiement en ligne à finaliser</h2>
+        <p style="font-size:13.5px;color:var(--text2);margin:6px 0 14px;line-height:1.6;">Payez par MTN MoMo, Orange Money ou carte sur une page sécurisée. Votre commande est confirmée dès que le paiement est reçu.</p>
+        <a href="{% url 'orders:pay' order.order_number %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-lock"></i> Payer {{ order.total_amount|intcomma }} FCFA</a>
+    </div>
+    {% elif pay_info and order.payment_method != 'cash' %}
     <div class="ok-card ok-pay">
         <h2><i class="fa-solid {{ pay_method.icon }}"></i> Dernière étape : le paiement par {{ pay_method.short }}</h2>
         {% for s, amount, d in pay_info %}

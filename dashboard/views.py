@@ -3030,7 +3030,7 @@ def dash_settings(request):
                 django_messages.success(request, 'Informations du compte enregistrées.')
 
         tab = section if section in ('invoicing', 'payments', 'notifications', 'account') else 'invoicing'
-        return redirect(reverse('dashboard:settings') + f'?tab={tab}')
+        return redirect(reverse('dashboard:settings') + f'?tab={tab}' + ('&manual=1' if section == 'payments' else ''))
 
     from messaging.models import NotificationPreference
     from billing.models import PaymentConfig
@@ -3038,6 +3038,11 @@ def dash_settings(request):
     notif_prefs, _ = NotificationPreference.objects.get_or_create(user=request.user)
     pay_cfg = PaymentConfig.objects.filter(user=store.owner).first() or PaymentConfig(user=store.owner)
     active = config_methods(pay_cfg) if pay_cfg.pk else {}
+    from billing.models import PaymentGateway
+    gws = list(PaymentGateway.objects.filter(store=store))
+    online_gw = next((g for g in gws if g.live and g.is_active), None) or next((g for g in gws if g.ready), None) or (gws[0] if gws else None)
+    if online_gw and online_gw.live and online_gw.is_active:
+        active = {'online': {}, **active}
     tab = request.GET.get('tab')
 
     return render(request, 'dashboard/settings.html', {
@@ -3045,6 +3050,10 @@ def dash_settings(request):
         'invoice_settings': invoice_settings,
         'notif_prefs': notif_prefs,
         'pay_cfg': pay_cfg,
+        'online_gw': online_gw,
+        # Paiements manuels repliés quand le paiement en ligne est actif, sauf juste après les avoir modifiés
+        'manual_open': request.GET.get('manual') == '1',
+        'manual_active': [METHODS[c]['short'] for c in METHODS if c != 'online' and c in active],
         'pay_active': [METHODS[c] for c in METHODS if c in active],
         'tab': tab if tab in ('invoicing', 'payments', 'notifications', 'account') else ('invoicing' if active else 'payments'),
     })

@@ -316,25 +316,21 @@ def about(request):
 
 def contact(request):
     if request.method == 'POST':
-        name = request.POST.get('name', '').strip()
-        email = request.POST.get('email', '').strip()
-        phone = request.POST.get('phone', '').strip()
-        subject = request.POST.get('subject', '').strip()
-        message = request.POST.get('message', '').strip()
-
-        if name and email and subject and message:
-            ContactMessage.objects.create(
-                name=name,
-                email=email,
-                phone=phone,
-                subject=subject,
-                message=message
-            )
+        from config.captcha import verify
+        form = {k: request.POST.get(k, '').strip() for k in ('name', 'email', 'phone', 'subject', 'message')}
+        if request.POST.get('website'):
+            # Champ invisible rempli : robot. On fait comme si tout allait bien, sans rien enregistrer.
             messages.success(request, '✅ Message envoyé avec succès ! Nous vous répondrons sous 24h.')
-        else:
+            return redirect('contact')
+        if not (form['name'] and form['email'] and form['subject'] and form['message']):
             messages.error(request, '❌ Veuillez remplir tous les champs obligatoires.')
-
-        return redirect('contact')
+        elif not verify(request, 'contact'):
+            messages.error(request, "❌ Code de vérification incorrect : recopiez les caractères de la nouvelle image.")
+        else:
+            ContactMessage.objects.create(**form)
+            messages.success(request, '✅ Message envoyé avec succès ! Nous vous répondrons sous 24h.')
+            return redirect('contact')
+        return render(request, 'catalog/contact.html', {'form': form}, status=400)
     return render(request, 'catalog/contact.html')
 
 def faq(request):

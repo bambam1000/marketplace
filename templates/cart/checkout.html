@@ -146,7 +146,11 @@
                         <span class="txt"><strong>{{ m.label }}</strong><span>{{ m.hint }}</span></span>
                         <span class="dot"></span>
                     </label>
-                    {% if m.code != 'cash' %}
+                    {% if m.code == 'online' %}
+                    <div class="pay-detail">
+                        <div style="font-size:12.5px;line-height:1.6;"><i class="fa-solid fa-lock" style="color:#039855;"></i> Après avoir confirmé, vous choisissez votre moyen de paiement puis payez sur une page sécurisée{% if m.stores|length > 1 %}, boutique par boutique{% endif %}. {% if m.stores.0.1.providers|length > 1 or 'stripe' in m.stores.0.1.providers %}Mobile Money ou carte bancaire, y compris les cartes internationales (Visa, Mastercard).{% else %}Choisissez MTN MoMo, Orange Money ou carte.{% endif %}{% if m.stores|length > 1 %} Votre panier contient {{ m.stores|length }} boutiques : vous paierez la part de chacune, l'une après l'autre.{% endif %}</div>
+                    </div>
+                    {% elif m.code != 'cash' %}
                     <div class="pay-detail">
                         {% for s, d in m.stores %}
                         <div class="st"><span>{% if m.stores|length > 1 %}<strong>{{ s.name }}</strong> · {% endif %}{% if m.code == 'transfer' %}{{ d.bank }}{% else %}Numéro{% endif %}{% if d.name %} — {{ d.name }}{% endif %}</span><span class="num">{{ d.number }}</span></div>

@@ -7,6 +7,7 @@ urlpatterns = [
     path('inscription-vendeur/', views.register_seller_view, name='register_seller'),
     path('deconnexion/', views.logout_view, name='logout'),
     path('profil/', views.profile_view, name='profile'),
+    path('conditions/', views.terms_view, name='terms'),
     path('confidentialite/', views.privacy_view, name='privacy'),
     path('mot-de-passe-oublie/', views.password_reset_view, name='password_reset'),
     path('reinitialiser/<uidb64>/<token>/', views.password_reset_confirm_view, name='password_reset_confirm'),

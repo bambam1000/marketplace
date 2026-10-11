@@ -1,0 +1,22 @@
+{# Captcha : {% include 'includes/captcha.html' with scope='login' %} #}
+<div class="form-group captcha-box">
+    {% if label %}<label for="captcha-{{ scope }}">{{ label }} <span style="color:#f04438;">*</span></label>{% endif %}
+    <div class="captcha-row">
+        <img src="{% url 'captcha' scope %}?r={% now 'U' %}" alt="Code de vérification" class="captcha-img" id="captcha-img-{{ scope }}" width="180" height="56">
+        <button type="button" class="captcha-new" title="Afficher une autre image" aria-label="Afficher une autre image"
+                onclick="var i=document.getElementById('captcha-img-{{ scope }}');i.src=i.src.split('?')[0]+'?r='+Date.now();var f=document.getElementById('captcha-{{ scope }}');f.value='';f.focus();">
+            <i class="fa-solid fa-rotate-right"></i></button>
+    </div>
+    <input type="text" name="captcha" id="captcha-{{ scope }}" class="form-control captcha-input" required maxlength="8"
+           autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Recopiez les 5 caractères de l'image">
+    <div class="captcha-hint">Majuscules ou minuscules, peu importe. Illisible ? Cliquez sur <i class="fa-solid fa-rotate-right"></i> pour une autre image.</div>
+</div>
+<style>
+.captcha-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.captcha-img { display: block; border: 1.5px solid #eaecf0; border-radius: 8px; max-width: calc(100% - 52px); height: auto; }
+.captcha-new { width: 44px; height: 44px; flex: none; border: 1.5px solid #eaecf0; border-radius: 8px; background: #fff; color: #475467; cursor: pointer; font-size: 15px; }
+.captcha-new:hover { border-color: #ff6a00; color: #ff6a00; }
+.captcha-input { text-transform: uppercase; letter-spacing: 3px; font-weight: 600; }
+.captcha-input::placeholder { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.captcha-hint { font-size: 11.5px; color: #98a2b3; margin-top: 5px; }
+</style>

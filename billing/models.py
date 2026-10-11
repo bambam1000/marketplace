@@ -184,3 +184,82 @@ class ProductBoost(models.Model):
         if self.clicks > 0:
             return round(int(self.budget) / self.clicks)
         return 0
+
+
+class PaymentGateway(models.Model):
+    """Compte de paiement en ligne d'une boutique (ses propres clés, chez son prestataire).
+    L'argent des clients arrive directement sur le compte du vendeur."""
+    PROVIDER_CHOICES = [('notchpay', 'Notch Pay'), ('stripe', 'Stripe')]
+    store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='payment_gateways')
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='notchpay')
+    is_active = models.BooleanField(default=True)
+    public_key_enc = models.TextField(blank=True, help_text="Clé d'API chiffrée (clé publique Notch Pay, clé secrète Stripe)")
+    webhook_secret_enc = models.TextField(blank=True)
+    key_hint = models.CharField(max_length=8, blank=True)
+    is_test = models.BooleanField(default=True, help_text='Clés de test : aucun argent réel')
+    webhook_token = models.CharField(max_length=40, unique=True, help_text='Identifie la boutique dans l\'adresse de notification')
+    connected_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.CharField(max_length=300, blank=True)
+    last_webhook_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('store', 'provider')
+
+    def __str__(self):
+        return f'{self.get_provider_display()} · {self.store}'
+
+    def save(self, *args, **kwargs):
+        if not self.webhook_token:
+            import secrets
+            self.webhook_token = secrets.token_urlsafe(24)
+        super().save(*args, **kwargs)
+
+    @property
+    def ready(self):
+        return self.is_active and bool(self.public_key_enc)
+
+    @property
+    def live(self):
+        """Utilisable par les clients : clés réelles uniquement (le mode test ne débite rien)."""
+        return self.ready and not self.is_test
+
+
+class OnlinePayment(models.Model):
+    """Paiement en ligne de la part d'une boutique dans une commande (ou paiement d'essai du vendeur)."""
+    STATUS_CHOICES = [
+        ('pending', 'En attente'),
+        ('paid', 'Payé'),
+        ('failed', 'Échoué'),
+        ('cancelled', 'Annulé'),
+        ('expired', 'Expiré'),
+    ]
+    reference = models.CharField(max_length=40, unique=True, editable=False)
+    gateway = models.ForeignKey(PaymentGateway, on_delete=models.PROTECT, related_name='payments')
+    order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='online_payments', null=True, blank=True)
+    store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='online_payments')
+    payer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    amount = models.DecimalField(max_digits=15, decimal_places=0)
+    currency = models.CharField(max_length=3, default='XAF')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    is_test = models.BooleanField(default=False)
+    provider_ref = models.CharField(max_length=100, blank=True)
+    checkout_url = models.URLField(max_length=500, blank=True)
+    channel = models.CharField(max_length=50, blank=True, help_text='Moyen utilisé (MoMo, Orange Money, carte…)')
+    last_error = models.CharField(max_length=300, blank=True)
+    raw = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.reference
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            import uuid
+            self.reference = f'CPT-{uuid.uuid4().hex[:16].upper()}'
+        super().save(*args, **kwargs)

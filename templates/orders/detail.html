@@ -164,7 +164,13 @@
             </div>
             {% endif %}
 
-            {% if pay_info and order.payment_method != 'cash' %}
+            {% if pay_info and order.payment_method == 'online' %}
+    <div class="od-card od-pay" style="text-align:center;">
+        <h2 style="justify-content:center;"><i class="fa-solid fa-bolt"></i> Paiement en ligne à finaliser</h2>
+        <p style="font-size:13.5px;color:var(--text2);margin:6px 0 14px;line-height:1.6;">Payez par MTN MoMo, Orange Money ou carte sur une page sécurisée. Votre commande est confirmée dès que le paiement est reçu.</p>
+        <a href="{% url 'orders:pay' order.order_number %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-lock"></i> Payer {{ order.total_amount|intcomma }} FCFA</a>
+    </div>
+    {% elif pay_info and order.payment_method != 'cash' %}
             <div class="od-card od-pay">
                 <h2><i class="fa-solid {{ pay_method.icon }}"></i> Paiement à effectuer — {{ pay_method.label }}</h2>
                 {% for s, amount, d in pay_info %}

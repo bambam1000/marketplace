@@ -10,6 +10,8 @@ from .models import PaymentConfig
 
 # Code = valeur enregistrée dans Order.payment_method
 METHODS = OrderedDict([
+    ('online', {'label': 'Paiement en ligne (Mobile Money, carte)', 'short': 'En ligne', 'icon': 'fa-bolt',
+                'hint': 'Vous payez tout de suite par MTN MoMo, Orange Money ou carte, sur une page sécurisée. La commande est confirmée automatiquement.'}),
     ('momo', {'label': 'MTN Mobile Money', 'short': 'MTN MoMo', 'icon': 'fa-mobile-screen-button',
               'hint': 'Après validation, envoyez le montant au numéro MoMo de la boutique.'}),
     ('om', {'label': 'Orange Money', 'short': 'Orange Money', 'icon': 'fa-mobile-screen',
@@ -38,7 +40,12 @@ def config_methods(cfg):
 
 
 def store_methods(store):
-    return config_methods(PaymentConfig.objects.filter(user_id=store.owner_id).first())
+    methods = config_methods(PaymentConfig.objects.filter(user_id=store.owner_id).first())
+    from .online import gateways_of
+    gws = gateways_of(store)
+    if gws:
+        methods = {'online': {'provider': gws[0].get_provider_display(), 'providers': [g.provider for g in gws]}, **methods}
+    return methods
 
 
 def checkout_options(stores, no_cash=False):

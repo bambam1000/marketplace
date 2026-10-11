@@ -223,10 +223,38 @@
         Tant que vous n'en activez pas au moins un, les clients ne peuvent pas commander vos produits sur le site.</div></div>
     {% endif %}
     <p style="font-size:13px;color:var(--dash-text3);margin-bottom:14px;max-width:760px;line-height:1.6;">
-        Seuls les moyens activés ici sont proposés à vos clients au moment de commander. Vos numéros et votre compte bancaire
-        leur sont affichés au moment de commander, puis rappelés sur leur commande : ils vous paient directement. Si un panier contient les produits de
+        Seuls les moyens activés ici sont proposés à vos clients au moment de commander. Si un panier contient les produits de
         plusieurs boutiques, le client ne voit que les moyens acceptés par toutes.
     </p>
+    <a href="{% url 'payments:settings' %}" class="pay-online">
+        <span class="pay-m-ico" style="background:#fff4ec;color:#ff6a00;"><i class="fa-solid fa-bolt"></i></span>
+        <span style="flex:1;min-width:0;"><strong>Paiement en ligne automatique</strong>
+            {% if online_gw.live and online_gw.is_active %}<span class="po-b ok">Actif</span>{% elif online_gw.ready and not online_gw.is_active %}<span class="po-b">En pause</span>{% elif online_gw.ready %}<span class="po-b warn">Mode test</span>{% else %}<span class="po-b new">Nouveau</span>{% endif %}
+            <span class="d">Vos clients paient par MoMo, Orange Money ou carte (Notch Pay), ou par carte internationale (Stripe, pour les vendeurs à l'étranger). L'argent arrive sur votre compte et la commande est confirmée toute seule.</span></span>
+        <span class="go">{% if online_gw.ready %}Gérer{% else %}Configurer{% endif %} <i class="fa-solid fa-arrow-right"></i></span>
+    </a>
+    <style>
+    .pay-online { display: flex; gap: 14px; align-items: center; border: 1.5px solid #fbc59b; background: #fffaf5; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; text-decoration: none; color: inherit; max-width: 760px; }
+    .pay-online:hover { border-color: var(--dash-accent); }
+    .pay-online strong { font-size: 14.5px; }
+    .pay-online .d { display: block; font-size: 12.5px; color: var(--dash-text2); margin-top: 3px; line-height: 1.5; }
+    .pay-online .go { font-weight: 700; font-size: 13px; color: var(--dash-accent); white-space: nowrap; }
+    .po-b { font-size: 10.5px; font-weight: 700; border-radius: 50px; padding: 1px 8px; margin-left: 6px; background: #f2f4f7; color: #475467; vertical-align: 2px; }
+    .po-b.ok { background: #ecfdf3; color: #067647; } .po-b.warn { background: #fff4e5; color: #b54708; } .po-b.new { background: var(--dash-accent); color: #fff; }
+    @media (max-width: 600px) { .pay-online { flex-wrap: wrap; } }
+    </style>
+    {% with online_on=online_gw.live|default_if_none:False %}
+    {% if online_on and online_gw.is_active %}
+    <details class="pay-manual" {% if manual_open %}open{% endif %}>
+        <summary><span><strong>Paiements manuels</strong> <span class="po-b">facultatif</span>
+            <span class="d">En complément du paiement en ligne : paiement à la livraison, virement pour les professionnels, ou MoMo / Orange Money envoyés directement sur votre numéro.{% if manual_active %} Actuellement activés : {{ manual_active|join:", " }}.{% else %} Aucun activé.{% endif %}</span></span>
+            <span class="go">Afficher <i class="fa-solid fa-chevron-down"></i></span></summary>
+        {% if pay_cfg.momo_enabled or pay_cfg.om_enabled %}
+        <div class="pay-status warn" style="margin:12px 0 0;"><i class="fa-solid fa-circle-info"></i><div>Avec MTN MoMo ou Orange Money <strong>manuels</strong>, le client vous envoie l'argent lui-même : vous devez vérifier chaque transfert et confirmer la commande à la main. Le paiement en ligne accepte déjà MoMo et Orange Money avec confirmation automatique : vous pouvez désactiver les versions manuelles ci-dessous.</div></div>
+        {% endif %}
+    {% else %}
+    <div class="set-section-title" style="margin-bottom:8px;">Paiements manuels</div>
+    {% endif %}
     <form method="post" id="payForm">
         {% csrf_token %}
         <input type="hidden" name="section" value="payments">
@@ -278,8 +306,22 @@
                 </label>
             </div>
         </div>
-        <button type="submit" class="btn btn-orange" style="margin-top:16px;"><i class="fa-solid fa-check"></i> Enregistrer les moyens de paiement</button>
+        <button type="submit" class="btn btn-orange" style="margin-top:16px;"><i class="fa-solid fa-check"></i> Enregistrer les paiements manuels</button>
     </form>
+    {% if online_on and online_gw.is_active %}</details>{% endif %}
+    {% endwith %}
+    <style>
+    .pay-manual { max-width: 760px; border: 1px solid var(--dash-border); border-radius: 12px; background: #fff; padding: 0 16px; }
+    .pay-manual[open] { padding-bottom: 16px; }
+    .pay-manual summary { cursor: pointer; list-style: none; display: flex; gap: 14px; align-items: center; padding: 14px 0; }
+    .pay-manual summary::-webkit-details-marker { display: none; }
+    .pay-manual summary strong { font-size: 14px; }
+    .pay-manual summary .d { display: block; font-size: 12.5px; color: var(--dash-text2); margin-top: 3px; line-height: 1.5; }
+    .pay-manual summary .go { margin-left: auto; font-weight: 700; font-size: 13px; color: var(--dash-accent); white-space: nowrap; }
+    .pay-manual summary .go i { transition: transform .2s; }
+    .pay-manual[open] summary .go i { transform: rotate(180deg); }
+    .pay-manual #payForm .pay-list { margin-top: 12px; }
+    </style>
 </div>
 
 <!-- ═══ COMPTE ═══ -->

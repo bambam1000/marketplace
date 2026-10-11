@@ -16,6 +16,11 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect('home')
     if request.method == 'POST':
+        from config.captcha import verify
+        # Le captcha passe avant le mot de passe : un robot ne peut pas tester des mots de passe en série
+        if not verify(request, 'login'):
+            messages.error(request, "Code de vérification incorrect : recopiez les caractères de la nouvelle image.")
+            return render(request, 'accounts/login.html', {'username': request.POST.get('username', '')}, status=400)
         user = authenticate(request, username=request.POST.get('username'), password=request.POST.get('password'))
         if user:
             login(request, user)
@@ -26,6 +31,7 @@ def login_view(request):
                 return redirect(nxt)
             return redirect('home')
         messages.error(request, 'Identifiants invalides.')
+        return render(request, 'accounts/login.html', {'username': request.POST.get('username', '')}, status=400)
     return render(request, 'accounts/login.html')
 
 def register_view(request):
@@ -39,6 +45,8 @@ def register_view(request):
         pw_error = password_problem(password, username or '', email or '')
         if not (username or '').strip() or not (email or '').strip():
             messages.error(request, "Indiquez un nom d'utilisateur et une adresse e-mail.")
+        elif not request.POST.get('accept_terms'):
+            messages.error(request, "Pour créer votre compte, acceptez les conditions d'utilisation et la politique de confidentialité.")
         elif pw_error:
             messages.error(request, pw_error)
         elif User.objects.filter(username=username).exists():
@@ -53,6 +61,7 @@ def register_view(request):
                 first_name=request.POST.get('first_name', ''),
                 last_name=request.POST.get('last_name', ''),
                 phone=phone,
+                terms_accepted_at=timezone.now(),
             )
             if role == 'seller':
                 from store.models import Store
@@ -212,6 +221,11 @@ def profile_view(request):
         'form': form, 'errors': errors, 'section': section,
     }
     return render(request, 'accounts/profile.html', context, status=400 if errors else 200)
+
+
+def terms_view(request):
+    """Conditions générales d'utilisation"""
+    return render(request, 'accounts/terms.html', {'current_date': timezone.now()})
 
 
 def privacy_view(request):

@@ -1,0 +1,203 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Paiement en ligne{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.ad-head h1 .ad-pill { font-family: "Inter", -apple-system, "Segoe UI", sans-serif; letter-spacing: 0; vertical-align: 4px; }
+.po-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.po-grid > * { min-width: 0; }
+.po-field { margin-bottom: 14px; }
+.po-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.po-field input { width: 100%; padding: 9px 11px; border: 1.5px solid var(--dash-border); border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
+.po-field input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.po-field .hint { font-size: 12px; color: var(--dash-text3); margin-top: 4px; line-height: 1.5; }
+.po-alert { display: flex; gap: 12px; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.6; margin-bottom: 14px; }
+.po-alert i { margin-top: 3px; }
+.po-alert.info { background: #eff8ff; border: 1px solid #b2ddff; color: #194185; }
+.po-alert.warn { background: #fff4e5; border: 1px solid #fbd5a5; color: #7a4100; }
+.po-alert.ok { background: #ecfdf3; border: 1px solid #abefc6; color: #05603a; }
+.po-alert.err { background: #fef3f2; border: 1px solid #fecdca; color: #912018; }
+.po-alert a { color: inherit; font-weight: 700; }
+.po-guide summary { cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 14px; }
+.po-guide summary::-webkit-details-marker { display: none; }
+.po-guide summary .chev { margin-left: auto; transition: transform .2s; }
+.po-guide[open] summary .chev { transform: rotate(180deg); }
+.po-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 14px 0; }
+.po-flow div { border: 1px solid var(--dash-border); border-radius: 10px; padding: 10px; font-size: 12.5px; color: var(--dash-text2); line-height: 1.5; }
+.po-flow b { display: block; color: var(--dash-text); font-size: 13px; margin-bottom: 2px; }
+.po-flow i { color: var(--dash-accent); font-size: 17px; display: block; margin-bottom: 6px; }
+.po-steps { list-style: none; padding: 0; margin: 12px 0 0; counter-reset: s; }
+.po-steps li { position: relative; padding: 0 0 14px 40px; font-size: 13px; line-height: 1.65; border-left: 2px solid var(--dash-border); margin-left: 13px; }
+.po-steps li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.po-steps li::before { counter-increment: s; content: counter(s); position: absolute; left: -14px; top: -1px; width: 26px; height: 26px; border-radius: 50%; background: var(--dash-accent); color: #fff; font-weight: 800; font-size: 12px; display: grid; place-items: center; }
+.po-steps li > strong:first-child { display: block; font-size: 13.5px; }
+.po-path { font-size: 12px; font-weight: 600; background: var(--dash-bg); border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+.po-copy { display: flex; gap: 6px; }
+.po-copy input { flex: 1; min-width: 0; padding: 8px 10px; border: 1.5px solid var(--dash-border); border-radius: 8px; font-size: 12.5px; font-family: ui-monospace, monospace; background: var(--dash-bg); }
+.po-stat { display: flex; justify-content: space-between; font-size: 13.5px; padding: 7px 0; border-bottom: 1px dashed var(--dash-border); }
+.po-stat:last-child { border-bottom: none; }
+@media (max-width: 1000px) { .po-grid { grid-template-columns: minmax(0, 1fr); } .po-flow { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .po-flow { grid-template-columns: 1fr; } }
+.po-tabs { display: flex; gap: 10px; margin: 0 0 16px; flex-wrap: wrap; }
+.po-tab { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border: 1.5px solid var(--dash-border); border-radius: 10px; background: #fff; text-decoration: none; color: var(--dash-text); min-width: 230px; }
+.po-tab:hover { border-color: #fbc59b; }
+.po-tab.on { border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.po-tab .lg { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+.po-tab strong { display: block; font-size: 14px; }
+.po-tab small { font-size: 11.5px; color: var(--dash-text3); }
+.po-tab .ad-pill { margin-left: auto; }
+</style>
+
+<a href="{% url 'dashboard:settings' %}?tab=payments" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:10px;"><i class="fa-solid fa-arrow-left"></i> Moyens de paiement</a>
+<div class="ad-head">
+    <div><h1><i class="fa-solid fa-bolt"></i> Paiement en ligne</h1>
+        <p>Connectez votre propre compte de paiement : l'argent de vos clients arrive directement chez vous et les commandes payées sont confirmées toutes seules.</p></div>
+</div>
+
+<nav class="po-tabs" aria-label="Prestataires">
+    {% for code, label, g in tabs %}
+    <a href="{% url 'payments:settings_provider' code %}" class="po-tab {% if code == provider %}on{% endif %}">
+        <span class="lg" style="{% if code == 'stripe' %}background:#f0efff;color:#635bff;{% else %}background:#fff4ec;color:#ff6a00;{% endif %}"><i class="fa-solid {% if code == 'stripe' %}fa-credit-card{% else %}fa-mobile-screen-button{% endif %}"></i></span>
+        <span><strong>{{ label }}</strong><small>{% if code == 'stripe' %}Cartes internationales · vendeurs à l'étranger{% else %}MoMo, Orange Money, cartes · Afrique{% endif %}</small></span>
+        {% if g.ready and not g.is_active %}<span class="ad-pill gray">En pause</span>{% elif g.live %}<span class="ad-pill green">Actif</span>{% elif g.ready %}<span class="ad-pill orange">Test</span>{% else %}<span class="ad-pill gray">—</span>{% endif %}
+    </a>
+    {% endfor %}
+</nav>
+
+{% if gw.live and gw.is_active %}
+<div class="po-alert ok"><i class="fa-solid fa-circle-check"></i><div><strong>{{ form.name }} est proposé à vos clients.</strong> Les commandes payées sont confirmées automatiquement et vous êtes prévenu à chaque paiement.</div></div>
+{% elif gw.ready and gw.is_test %}
+<div class="po-alert warn"><i class="fa-solid fa-flask"></i><div><strong>Mode test :</strong> vos clients ne voient pas encore {{ form.name }} (aucun argent réel ne circule en test). Faites un paiement d'essai, puis remplacez la clé de test par votre <strong>clé réelle</strong>.</div></div>
+{% endif %}
+{% if gw.last_error %}<div class="po-alert err"><i class="fa-solid fa-circle-exclamation"></i><div>{{ gw.last_error }}</div></div>{% endif %}
+
+<section class="ad-card">
+    <div class="ad-card-body">
+        <details class="po-guide" {% if not gw.live %}open{% endif %}>
+            <summary><i class="fa-solid fa-circle-question" style="color:#175cd3;"></i> Comment ça marche avec {{ form.name }} ? Guide pas à pas <i class="fa-solid fa-chevron-down chev"></i></summary>
+            {% if provider == 'stripe' %}
+            <div class="po-flow">
+                <div><i class="fa-solid fa-cart-shopping"></i><b>1. Le client commande</b>et choisit « Carte internationale ».</div>
+                <div><i class="fa-solid fa-credit-card"></i><b>2. Il paie</b>sur la page sécurisée de Stripe : Visa, Mastercard, Apple Pay, Google Pay.</div>
+                <div><i class="fa-solid fa-circle-check"></i><b>3. C'est confirmé</b>tout seul : la commande passe « payée » et vous êtes prévenu.</div>
+                <div><i class="fa-solid fa-building-columns"></i><b>4. Stripe vous verse</b>l'argent sur votre compte bancaire, converti dans votre devise.</div>
+            </div>
+            <div class="po-alert info" style="margin-bottom:0;"><i class="fa-solid fa-earth-europe"></i><div><strong>Pour qui ?</strong> Stripe s'adresse aux vendeurs installés dans un pays où Stripe est ouvert (France, Belgique, Canada, États-Unis, Royaume-Uni…, liste sur <a href="https://stripe.com/global" target="_blank" rel="noopener noreferrer">stripe.com/global</a>), ou qui y ont une entreprise. Stripe n'accepte pas encore les comptes d'entreprises installées au Cameroun : dans ce cas, utilisez Notch Pay. Les prix sont facturés en francs CFA ; Stripe convertit automatiquement vers la devise de votre banque.</div></div>
+            <ol class="po-steps">
+                <li><strong>Créez votre compte Stripe (gratuit)</strong>
+                    Sur <a href="https://dashboard.stripe.com/register" target="_blank" rel="noopener noreferrer" style="color:var(--dash-accent);font-weight:600;">dashboard.stripe.com/register</a>, inscrivez-vous et confirmez votre e-mail. Vous démarrez en <strong>mode test</strong> (« Test mode » en haut à droite).</li>
+                <li><strong>Copiez votre clé secrète de test</strong>
+                    Dans Stripe : <span class="po-path">Développeurs › Clés API</span>. Cliquez sur « Révéler la clé de test » à côté de la <strong>clé secrète</strong> (elle commence par <code>sk_test_</code>), copiez-la, collez-la ci-dessous et cliquez sur <strong>Connecter</strong>. N'utilisez pas la clé publiable <code>pk_</code> : elle ne permet pas de créer des paiements.</li>
+                <li><strong>Faites un paiement d'essai de {{ test_amount|intcomma }} F</strong>
+                    Bouton <strong>Paiement d'essai</strong> à droite. Sur la page Stripe, utilisez la carte de test <code>4242 4242 4242 4242</code>, une date future (ex. 12/34) et n'importe quel code (ex. 123). Vous revenez ici et le paiement apparaît dans la liste.</li>
+                <li><strong>Ajoutez l'adresse de notification (webhook)</strong>
+                    Dans Stripe : <span class="po-path">Développeurs › Webhooks › Ajouter une destination</span>. Collez l'<strong>adresse de notification</strong> donnée à droite et choisissez les événements <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code> et <code>checkout.session.expired</code>. Copiez ensuite le <strong>secret de signature</strong> (<code>whsec_…</code>) et collez-le ci-dessous.</li>
+                <li><strong>Passez en réel</strong>
+                    Activez votre compte dans Stripe (« Activer les paiements » : informations sur votre entreprise, pièce d'identité, compte bancaire). Désactivez le mode test, copiez la <strong>clé secrète réelle</strong> (<code>sk_live_</code>) et collez-la ici, puis recréez le webhook en mode réel et collez son nouveau secret. Le paiement par carte apparaît alors chez vos clients.</li>
+                <li><strong>Recevez votre argent</strong>
+                    Stripe verse automatiquement vos encaissements sur votre compte bancaire (en général sous 2 à 7 jours). Suivez-les dans <span class="po-path">Stripe › Soldes</span>. Stripe prélève une commission par paiement (voir leurs tarifs).</li>
+            </ol>
+            {% else %}
+            <div class="po-flow">
+                <div><i class="fa-solid fa-cart-shopping"></i><b>1. Le client commande</b>et choisit « Paiement en ligne ».</div>
+                <div><i class="fa-solid fa-mobile-screen-button"></i><b>2. Il paie</b>sur la page sécurisée de Notch Pay : MoMo, Orange Money ou carte.</div>
+                <div><i class="fa-solid fa-circle-check"></i><b>3. C'est confirmé</b>tout seul : la commande passe « payée » et vous êtes prévenu.</div>
+                <div><i class="fa-solid fa-building-columns"></i><b>4. Vous retirez</b>votre argent depuis Notch Pay vers votre MoMo, OM ou banque.</div>
+            </div>
+            <p style="font-size:13px;color:var(--dash-text2);margin:0;line-height:1.6;"><strong>Notch Pay</strong> est un service de paiement camerounais. Comptoir ne touche jamais à votre argent : il va directement de votre client à votre compte Notch Pay. Notch Pay prélève une petite commission par paiement (voir leurs tarifs). Vendeur installé à l'étranger ? Voyez l'onglet <a href="{% url 'payments:settings_provider' 'stripe' %}" style="color:var(--dash-accent);font-weight:600;">Stripe</a>.</p>
+            <ol class="po-steps">
+                <li><strong>Créez votre compte Notch Pay (gratuit)</strong>
+                    Sur <a href="https://business.notchpay.co" target="_blank" rel="noopener noreferrer" style="color:var(--dash-accent);font-weight:600;">business.notchpay.co</a>, inscrivez-vous avec votre e-mail et confirmez-le. Vous commencez en <strong>mode test</strong> (sandbox).</li>
+                <li><strong>Copiez votre clé publique de test</strong>
+                    Dans Notch Pay : <span class="po-path">Settings › API Keys</span>. Copiez la <strong>clé publique</strong> (elle commence par <code>pk_test_</code>), pas la clé privée. Collez-la ci-dessous et cliquez sur <strong>Connecter</strong>.</li>
+                <li><strong>Faites un paiement d'essai de {{ test_amount|intcomma }} F</strong>
+                    Bouton <strong>Paiement d'essai</strong> à droite. Sur la page Notch Pay, choisissez MTN et utilisez le numéro de test <code>670000000</code> (paiement réussi) ou <code>670000001</code> (solde insuffisant). Vous revenez ici et le paiement apparaît dans la liste.</li>
+                <li><strong>Ajoutez l'adresse de notification (webhook)</strong>
+                    Dans Notch Pay : <span class="po-path">Settings › Webhooks › Add Endpoint</span>. Collez l'<strong>adresse de notification</strong> donnée à droite et cochez les événements de paiement (<code>payment.*</code>). Copiez ensuite la <strong>clé de hachage</strong> (« hash ») et collez-la ci-dessous : Comptoir vérifiera que chaque notification vient bien de Notch Pay. Ainsi, une commande est confirmée même si le client ferme la page avant de revenir.</li>
+                <li><strong>Passez en réel</strong>
+                    Dans Notch Pay, activez votre compte réel (« Activate account ») en envoyant les documents demandés (pièce d'identité, informations sur votre activité). Une fois validé, copiez la <strong>clé publique réelle</strong> (sans « test ») et collez-la ici à la place de la clé de test, ainsi que la clé de hachage du mode réel. Le paiement en ligne apparaît alors chez vos clients.</li>
+                <li><strong>Retirez votre argent</strong>
+                    Les paiements arrivent sur votre solde Notch Pay. Retirez-les vers votre Mobile Money, Orange Money ou votre banque depuis <span class="po-path">Notch Pay › Transfers</span>.</li>
+            </ol>
+            {% endif %}
+        </details>
+    </div>
+</section>
+
+<div class="po-grid">
+    <div>
+        <form method="post" class="ad-card" autocomplete="off">{% csrf_token %}
+            <div class="ad-card-head"><h2><i class="fa-solid fa-key"></i> Votre compte {{ form.name }}</h2>{% if gw.ready %}<span class="ad-pill {% if gw.is_test %}orange{% else %}green{% endif %}">{% if gw.is_test %}Clé de test{% else %}Clé réelle{% endif %} •••• {{ gw.key_hint }}</span>{% endif %}</div>
+            <div class="ad-card-body">
+                <div class="po-field"><label for="pk">{{ form.key_label }}</label>
+                    <input id="pk" name="public_key" type="password" maxlength="300" autocomplete="new-password" placeholder="{% if gw.ready %}•••• {{ gw.key_hint }} (laisser vide pour garder){% else %}{{ form.key_placeholder }}{% endif %}">
+                    <div class="hint">{% if provider == 'stripe' %}Stripe › Développeurs › Clés API.{% else %}Notch Pay › Settings › API Keys.{% endif %} Comptoir vérifie la clé auprès de {{ form.name }} avant de l'enregistrer ; elle est chiffrée et n'est plus jamais réaffichée.</div></div>
+                <div class="po-field"><label for="wh">{{ form.secret_label }} <span style="font-weight:400;color:var(--dash-text3);">(conseillé)</span></label>
+                    <input id="wh" name="webhook_secret" type="password" maxlength="300" autocomplete="new-password" placeholder="{% if gw.webhook_secret_enc %}•••• enregistré (laisser vide pour garder){% else %}{{ form.secret_placeholder }}{% endif %}">
+                    <div class="hint">Sert à vérifier que les notifications viennent bien de {{ form.name }} (étape 4 du guide).</div></div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="ad-btn primary" name="action" value="save" style="padding:9px 16px;font-size:13px;"><i class="fa-solid fa-plug"></i> {% if gw.ready %}Enregistrer{% else %}Connecter{% endif %}</button>
+                    {% if gw.ready %}
+                    <button class="ad-btn" name="action" value="toggle" formnovalidate style="padding:9px 14px;font-size:13px;"><i class="fa-solid {% if gw.is_active %}fa-pause{% else %}fa-play{% endif %}"></i> {% if gw.is_active %}Mettre en pause{% else %}Réactiver{% endif %}</button>
+                    <button class="ad-btn danger" name="action" value="disconnect" formnovalidate style="padding:9px 14px;font-size:13px;" onclick="return confirm('Déconnecter {{ form.name }} ? Vos clients ne pourront plus l\'utiliser.');"><i class="fa-solid fa-link-slash"></i> Déconnecter</button>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-list"></i> Paiements reçus</h2>
+                <form method="get" class="ad-search"><select name="status" onchange="this.form.submit()" aria-label="Filtrer"><option value="">Tous</option>{% for c, l in statuses %}<option value="{{ c }}" {% if status == c %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></form></div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Date</th><th>Commande</th><th class="num">Montant</th><th>Via</th><th>Statut</th><th></th></tr></thead>
+                <tbody>
+                {% for p in page %}
+                <tr>
+                    <td class="muted">{{ p.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>{% if p.order %}<a href="{% url 'dashboard:order_detail' p.order.order_number %}" style="color:var(--dash-accent);font-weight:600;">{{ p.order.order_number }}</a>{% else %}<span class="muted">Paiement d'essai</span>{% endif %}<div class="muted" style="font-size:11.5px;">{{ p.reference }}</div></td>
+                    <td class="num"><strong>{{ p.amount|intcomma }} F</strong></td>
+                    <td class="muted">{{ p.gateway.get_provider_display }}{% if p.channel %}<div style="font-size:11.5px;">{{ p.channel }}</div>{% endif %}</td>
+                    <td><span class="ad-pill {% if p.status == 'paid' %}green{% elif p.status == 'pending' %}orange{% else %}gray{% endif %}">{{ p.get_status_display }}</span>
+                        {% if p.last_error %}<div class="muted" style="font-size:11.5px;color:#b42318;">{{ p.last_error|truncatechars:80 }}</div>{% endif %}</td>
+                    <td>{% if p.status == 'pending' %}<form method="post">{% csrf_token %}<input type="hidden" name="payment" value="{{ p.pk }}"><button class="ad-btn" name="action" value="refresh" title="Demander l'état au prestataire"><i class="fa-solid fa-rotate"></i></button></form>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6"><div class="ad-empty"><i class="fa-solid fa-receipt"></i>Aucun paiement pour l'instant.</div></td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% include 'dashboard/admin/_pages.html' %}
+        </section>
+    </div>
+
+    <aside>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-chart-simple"></i> 30 derniers jours</h2></div>
+            <div class="ad-card-body">
+                <div class="po-stat"><span>Encaissé en ligne</span><strong>{{ stats.total|default:0|intcomma }} F</strong></div>
+                <div class="po-stat"><span>Paiements réussis</span><strong>{{ stats.n }}</strong></div>
+            </div>
+        </section>
+        {% if gw.ready %}
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-flask"></i> Paiement d'essai</h2></div>
+            <div class="ad-card-body">
+                <p style="font-size:12.5px;color:var(--dash-text2);margin:0 0 10px;line-height:1.55;">Payez-vous {{ test_amount|intcomma }} F pour vérifier que tout fonctionne.{% if gw.is_test %} En mode test, rien n'est débité : {% if provider == 'stripe' %}carte <code>4242 4242 4242 4242</code>{% else %}numéro <code>670000000</code>{% endif %}.{% else %} <strong>Attention : en mode réel, {{ test_amount|intcomma }} F sont vraiment débités</strong> (et arrivent sur votre compte).{% endif %}</p>
+                <form method="post">{% csrf_token %}<button class="ad-btn primary" name="action" value="test" style="width:100%;justify-content:center;padding:9px;"><i class="fa-solid fa-play"></i> Faire un paiement d'essai</button></form>
+            </div>
+        </section>
+        {% endif %}
+        {% if gw %}
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-bell"></i> Adresse de notification</h2></div>
+            <div class="ad-card-body">
+                <div class="po-copy"><input id="whUrl" value="{{ webhook_url }}" readonly aria-label="Adresse de notification"><button type="button" class="ad-btn" onclick="var i=document.getElementById('whUrl');i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).then(function(){},function(){document.execCommand('copy');});this.innerHTML='<i class=\'fa-solid fa-check\'></i>';"><i class="fa-regular fa-copy"></i></button></div>
+                <p style="font-size:12px;color:var(--dash-text3);margin:8px 0 0;line-height:1.5;">À coller dans {% if provider == 'stripe' %}Stripe › Développeurs › Webhooks{% else %}Notch Pay › Settings › Webhooks{% endif %}. Propre à votre boutique : ne la partagez pas.
+                {% if gw.last_webhook_at %}<br><i class="fa-solid fa-circle-check" style="color:#039855;"></i> Dernière notification reçue le {{ gw.last_webhook_at|date:"d/m/Y à H:i" }}.{% endif %}</p>
+                {% if '127.0.0.1' in webhook_url or 'localhost' in webhook_url %}<div class="po-alert warn" style="margin:10px 0 0;"><i class="fa-solid fa-triangle-exclamation"></i><div>Cette adresse est locale : {{ form.name }} ne peut pas la joindre. Elle sera correcte une fois le site en ligne avec son nom de domaine. En attendant, les paiements sont confirmés quand le client revient sur Comptoir.</div></div>{% endif %}
+            </div>
+        </section>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

@@ -20,6 +20,7 @@ class Order(models.Model):
         ('cash', 'Cash à la livraison'),
         ('card', 'Carte bancaire'),
         ('transfer', 'Virement bancaire'),
+        ('online', 'Paiement en ligne'),
     ]
 
     order_number = models.CharField(max_length=20, unique=True, editable=False)

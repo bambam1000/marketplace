@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Conditions d'utilisation — Comptoir{% endblock %}
+{% block content %}
+<style>
+.terms-hero { background: linear-gradient(135deg, var(--orange) 0%, #e67e22 100%); color: #fff; padding: 3.5rem 1rem 2.5rem; margin-bottom: 2.5rem; text-align: center; }
+.terms-hero h1 { font-size: 2.2rem; margin-bottom: .5rem; font-weight: 700; }
+.terms-hero .date { opacity: .9; font-size: .95rem; }
+.terms-wrap { max-width: 900px; margin: 0 auto; padding: 0 1rem 4rem; }
+.terms-toc { background: #fff; border: 1px solid #f0f0f0; border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+.terms-toc strong { display: block; margin-bottom: .6rem; font-size: 14px; }
+.terms-toc ol { columns: 2; column-gap: 2rem; padding-left: 1.2rem; font-size: 13.5px; line-height: 1.9; }
+.terms-toc a { color: var(--orange); text-decoration: none; }
+.terms-toc a:hover { text-decoration: underline; }
+.terms-section { background: #fff; border: 1px solid #f0f0f0; border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,.04); scroll-margin-top: 90px; }
+.terms-section h2 { color: var(--orange); font-size: 1.2rem; margin-bottom: .9rem; display: flex; gap: .6rem; align-items: center; }
+.terms-section p { color: var(--text2); line-height: 1.75; margin-bottom: .8rem; font-size: 14.5px; }
+.terms-section ul { padding-left: 1.2rem; margin-bottom: .8rem; }
+.terms-section li { color: var(--text2); line-height: 1.75; margin-bottom: .35rem; font-size: 14.5px; }
+.terms-section li strong, .terms-section p strong { color: var(--text1); }
+.terms-section a { color: var(--orange); font-weight: 500; }
+.terms-note { background: linear-gradient(135deg, #fff3e6 0%, #ffe8cc 100%); border-left: 4px solid var(--orange); padding: 1rem 1.25rem; border-radius: 8px; font-size: 14px; line-height: 1.7; color: var(--text1); margin-bottom: 1.5rem; }
+@media (max-width: 640px) {
+    .terms-hero h1 { font-size: 1.6rem; }
+    .terms-toc ol { columns: 1; }
+    .terms-section { padding: 1.25rem; }
+}
+</style>
+
+<div class="terms-hero">
+    <div class="container">
+        <h1>Conditions d'utilisation</h1>
+        <p class="date">Dernière mise à jour : {{ current_date|date:"d F Y" }}</p>
+    </div>
+</div>
+
+<div class="terms-wrap">
+    <div class="terms-note">
+        <strong>En bref :</strong> Comptoir met en relation des acheteurs et des boutiques indépendantes. Chaque boutique vend ses propres produits,
+        fixe ses prix, choisit ses moyens de paiement et assure sa livraison. En créant un compte, vous acceptez les règles ci-dessous
+        ainsi que notre <a href="{% url 'accounts:privacy' %}">politique de confidentialité</a>.
+    </div>
+
+    <nav class="terms-toc">
+        <strong>Sommaire</strong>
+        <ol>
+            <li><a href="#objet">Objet</a></li>
+            <li><a href="#compte">Votre compte</a></li>
+            <li><a href="#acheteurs">Acheter sur Comptoir</a></li>
+            <li><a href="#paiements">Paiements</a></li>
+            <li><a href="#livraison">Livraison et retours</a></li>
+            <li><a href="#vendeurs">Vendre sur Comptoir</a></li>
+            <li><a href="#interdits">Contenus et produits interdits</a></li>
+            <li><a href="#avis">Avis et messages</a></li>
+            <li><a href="#responsabilite">Responsabilités</a></li>
+            <li><a href="#suspension">Suspension et fermeture</a></li>
+            <li><a href="#modifications">Modifications</a></li>
+            <li><a href="#droit">Droit applicable et contact</a></li>
+        </ol>
+    </nav>
+
+    <section class="terms-section" id="objet">
+        <h2>1. Objet</h2>
+        <p>Les présentes conditions encadrent l'utilisation de la plateforme Comptoir, place de marché en ligne qui permet à des boutiques
+        indépendantes (les « vendeurs ») de présenter et vendre leurs produits à des clients (les « acheteurs »).</p>
+        <p>Comptoir fournit l'outil : catalogue, panier, commandes, messagerie, tableau de bord des boutiques. Comptoir n'est pas le vendeur
+        des produits proposés par les boutiques : le contrat de vente est conclu entre l'acheteur et la boutique.</p>
+    </section>
+
+    <section class="terms-section" id="compte">
+        <h2>2. Votre compte</h2>
+        <ul>
+            <li>L'inscription est gratuite. Vous devez fournir des informations exactes et les tenir à jour.</li>
+            <li>Vous êtes responsable de la confidentialité de votre mot de passe et de toute activité réalisée depuis votre compte.
+                Prévenez-nous sans attendre en cas d'utilisation non autorisée.</li>
+            <li>Un compte est personnel. Les vendeurs peuvent inviter des membres d'équipe ; ils restent responsables des actions de ces membres.</li>
+            <li>Vous devez avoir l'âge légal pour conclure un contrat dans votre pays, ou agir avec l'accord de votre représentant légal.</li>
+        </ul>
+    </section>
+
+    <section class="terms-section" id="acheteurs">
+        <h2>3. Acheter sur Comptoir</h2>
+        <ul>
+            <li>Le prix, la description, la disponibilité et les photos d'un produit sont fournis par la boutique, qui en est responsable.</li>
+            <li>Le montant total (produits, livraison, réductions) est affiché avant la validation de la commande. Valider la commande vous engage à la payer.</li>
+            <li>Un panier peut contenir des produits de plusieurs boutiques : chacune prépare et expédie sa partie.</li>
+            <li>Vous suivez chaque commande dans <a href="{% url 'orders:list' %}">Mes commandes</a> et pouvez écrire à la boutique depuis la messagerie.</li>
+        </ul>
+    </section>
+
+    <section class="terms-section" id="paiements">
+        <h2>4. Paiements</h2>
+        <p>Chaque boutique choisit les moyens de paiement qu'elle accepte : paiement en ligne (Mobile Money, cartes), MTN MoMo ou Orange Money
+        envoyé directement à la boutique, virement, ou paiement à la livraison.</p>
+        <ul>
+            <li><strong>Paiement en ligne :</strong> il est traité par un prestataire de paiement (par exemple Notch Pay ou Stripe) sur le compte de la boutique.
+                Comptoir ne voit ni ne conserve vos numéros de carte. La commande est marquée payée seulement après confirmation du prestataire.</li>
+            <li><strong>Paiements manuels :</strong> vous payez directement la boutique, avec les coordonnées affichées sur votre commande. La boutique confirme la réception.</li>
+            <li>Ne payez jamais en dehors des moyens affichés sur la plateforme : Comptoir ne pourrait pas vous aider en cas de litige.</li>
+        </ul>
+    </section>
+
+    <section class="terms-section" id="livraison">
+        <h2>5. Livraison, annulation et retours</h2>
+        <ul>
+            <li>Les délais et frais de livraison sont indiqués par la boutique et rappelés avant la validation de la commande.</li>
+            <li>Tant qu'une commande n'est pas expédiée, vous pouvez demander à la boutique de la modifier ou de l'annuler.</li>
+            <li>Les retours et remboursements sont traités par la boutique selon ses conditions et la loi applicable.
+                En cas de désaccord, <a href="{% url 'contact' %}">contactez-nous</a> : nous aidons les deux parties à trouver une solution.</li>
+        </ul>
+    </section>
+
+    <section class="terms-section" id="vendeurs">
+        <h2>6. Vendre sur Comptoir</h2>
+        <ul>
+            <li>Le vendeur s'engage à proposer des produits qu'il a le droit de vendre, décrits honnêtement, avec des prix et des stocks à jour.</li>
+            <li>Il traite les commandes reçues dans des délais raisonnables, assure la livraison annoncée et répond aux messages de ses clients.</li>
+            <li>Il est seul responsable du respect de ses obligations légales, fiscales et commerciales (factures, garanties, déclarations).</li>
+            <li>Les clés de paiement ou de fournisseur (par exemple CJ Dropshipping) qu'il enregistre restent les siennes : il est responsable
+                des contrats qui le lient à ces prestataires. Comptoir les conserve chiffrées et ne les utilise que pour les fonctions qu'il active.</li>
+            <li>En dropshipping, le vendeur reste le vendeur pour l'acheteur : il répond des délais, de la qualité et du service après-vente.</li>
+        </ul>
+    </section>
+
+    <section class="terms-section" id="interdits">
+        <h2>7. Contenus et produits interdits</h2>
+        <p>Il est interdit de publier, vendre ou acheter sur Comptoir :</p>
+        <ul>
+            <li>des produits illégaux, contrefaits, volés ou dangereux, des armes, des stupéfiants ou des médicaments soumis à prescription ;</li>
+            <li>des contenus trompeurs, injurieux, discriminatoires, à caractère sexuel ou portant atteinte aux droits d'autrui ;</li>
+            <li>tout moyen de contourner la plateforme pour tromper un utilisateur, ou d'en perturber le fonctionnement (robots, envois massifs, intrusion).</li>
+        </ul>
+    </section>
+
+    <section class="terms-section" id="avis">
+        <h2>8. Avis et messages</h2>
+        <p>Les avis doivent refléter une expérience réelle. Comptoir peut retirer un avis ou un message contraire à ces conditions.
+        La messagerie sert aux échanges liés aux produits et aux commandes ; elle ne doit pas servir à la publicité non sollicitée.</p>
+    </section>
+
+    <section class="terms-section" id="responsabilite">
+        <h2>9. Responsabilités</h2>
+        <p>Comptoir s'efforce de garder la plateforme disponible et sécurisée, sans pouvoir garantir l'absence totale d'interruption.
+        Comptoir n'est pas partie aux ventes conclues entre acheteurs et boutiques et ne peut être tenu responsable de l'exécution
+        d'une vente par une boutique, sans préjudice de l'aide qu'il apporte pour régler les litiges.</p>
+    </section>
+
+    <section class="terms-section" id="suspension">
+        <h2>10. Suspension et fermeture</h2>
+        <p>Comptoir peut suspendre ou fermer un compte ou une boutique qui ne respecte pas ces conditions, après avertissement sauf urgence
+        (fraude, danger pour les utilisateurs). Vous pouvez fermer votre compte à tout moment en nous <a href="{% url 'contact' %}">contactant</a> ;
+        les données de transaction sont conservées pendant la durée prévue par la loi.</p>
+    </section>
+
+    <section class="terms-section" id="modifications">
+        <h2>11. Modifications</h2>
+        <p>Ces conditions peuvent évoluer. La nouvelle version est publiée sur cette page avec sa date de mise à jour.
+        En continuant à utiliser Comptoir après cette date, vous acceptez la nouvelle version.</p>
+    </section>
+
+    <section class="terms-section" id="droit">
+        <h2>12. Droit applicable et contact</h2>
+        <p>Ces conditions sont soumises au droit camerounais. En cas de litige, une solution amiable est recherchée en priorité.</p>
+        <p>Une question sur ces conditions ? <a href="{% url 'contact' %}">Écrivez-nous</a>.</p>
+    </section>
+</div>
+{% endblock %}

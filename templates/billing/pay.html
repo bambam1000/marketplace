@@ -1,0 +1,99 @@
+{% extends 'base.html' %}{% load humanize %}
+{% block title %}Payer la commande {{ order.order_number }}{% endblock %}
+{% block extra_css %}
+<style>
+.py-wrap { max-width: 620px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+.py-head { text-align: center; margin-bottom: 1.5rem; }
+.py-head .ico { width: 64px; height: 64px; border-radius: 50%; background: #fff4ec; color: var(--orange); display: grid; place-items: center; font-size: 26px; margin: 0 auto 12px; }
+.py-head .ico.ok { background: #ecfdf3; color: #039855; }
+.py-head h1 { font-size: 1.5rem; margin: 0 0 6px; }
+.py-head p { color: var(--text2); font-size: 14px; margin: 0; line-height: 1.6; }
+.py-card { background: #fff; border: 1px solid var(--border, #eaecf0); border-radius: 14px; padding: 18px; margin-bottom: 14px; }
+.py-part { display: flex; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border, #eaecf0); }
+.py-part:last-child { border-bottom: none; padding-bottom: 0; }
+.py-part:first-child { padding-top: 0; }
+.py-part .st { flex: 1; min-width: 0; }
+.py-part .st strong { display: block; font-size: 15px; }
+.py-part .st span { font-size: 12.5px; color: var(--text3); }
+.py-part .amt { font-weight: 800; font-size: 17px; white-space: nowrap; }
+.py-done { color: #039855; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.py-total { display: flex; justify-content: space-between; font-size: 14px; padding-top: 12px; margin-top: 4px; border-top: 1px dashed var(--border, #eaecf0); }
+.py-part.has-opts { border-bottom: none; padding-bottom: 10px; }
+.py-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 0 14px; border-bottom: 1px solid var(--border, #eaecf0); }
+.py-opts:last-child { border-bottom: none; padding-bottom: 0; }
+.py-opt { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; padding: 11px 12px; border: 1.5px solid var(--border, #eaecf0); border-radius: 10px; background: #fff; cursor: pointer; font-family: inherit; color: inherit; }
+.py-opt:hover { border-color: var(--orange); background: #fffaf5; }
+.py-opt > i:first-child { font-size: 18px; color: var(--orange); width: 22px; text-align: center; }
+.py-opt strong { display: block; font-size: 13.5px; }
+.py-opt small { font-size: 11.5px; color: var(--text3); }
+@media (max-width: 520px) { .py-opts { grid-template-columns: 1fr; } }
+.py-ways { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.py-ways span { font-size: 12px; background: var(--bg, #f6f7f9); border-radius: 50px; padding: 4px 10px; color: var(--text2); }
+.py-safe { font-size: 12.5px; color: var(--text3); text-align: center; line-height: 1.6; margin-top: 10px; }
+.py-warn { background: #fff4e5; border: 1px solid #fbd5a5; color: #7a4100; border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 14px; line-height: 1.6; }
+@media (max-width: 520px) { .py-part { flex-wrap: wrap; } .py-part form, .py-part .py-done { width: 100%; } .py-part form .btn { width: 100%; justify-content: center; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="py-wrap">
+    <div class="py-head">
+        {% if order.is_paid %}
+        <div class="ico ok"><i class="fa-solid fa-circle-check"></i></div>
+        <h1>Commande payée</h1>
+        <p>Merci ! Votre paiement pour la commande <strong>{{ order.order_number }}</strong> est confirmé.<br>La boutique prépare votre commande.</p>
+        {% else %}
+        <div class="ico"><i class="fa-solid fa-lock"></i></div>
+        <h1>Payer votre commande</h1>
+        <p>Commande <strong>{{ order.order_number }}</strong>.{% if parts|length > 1 %} Elle contient les produits de {{ parts|length }} boutiques : chacune encaisse sa part, payez-les l'une après l'autre.{% else %} Le paiement se fait sur une page sécurisée.{% endif %}</p>
+        {% endif %}
+    </div>
+
+    {% if not can_pay and not order.is_paid %}
+    <div class="py-warn"><i class="fa-solid fa-triangle-exclamation"></i> Cette commande ne peut plus être payée en ligne{% if order.status == 'cancelled' %} : elle a été annulée{% endif %}.</div>
+    {% endif %}
+
+    <div class="py-card">
+        {% for p in parts %}
+        <div class="py-part{% if can_pay and not p.paid and p.options|length > 1 %} has-opts{% endif %}">
+            <div class="st"><strong>{{ p.store.name }}</strong>
+                <span>{% if p.paid %}Payé le {{ p.paid.paid_at|date:"d/m/Y à H:i" }}{% if p.paid.channel %} · {{ p.paid.channel }}{% endif %}
+                {% elif p.last.status == 'pending' %}Paiement commencé, en attente de confirmation
+                {% elif p.last and p.last.status != 'paid' %}Dernier essai : {{ p.last.get_status_display|lower }}
+                {% elif not p.gateway %}Paiement en ligne indisponible pour cette boutique{% else %}À payer{% endif %}</span></div>
+            <div class="amt">{{ p.amount|intcomma }} F</div>
+            {% if p.paid %}<span class="py-done"><i class="fa-solid fa-circle-check"></i> Payé</span>
+            {% elif can_pay and p.options|length == 1 %}
+            <form method="post">{% csrf_token %}<input type="hidden" name="store" value="{{ p.store.pk }}"><input type="hidden" name="provider" value="{{ p.options.0.provider }}">
+                <button class="btn btn-orange" data-go><i class="fa-solid fa-lock"></i> {% if p.last %}Réessayer{% else %}Payer{% endif %}</button></form>
+            {% endif %}
+        </div>
+        {% if can_pay and not p.paid and p.options|length > 1 %}
+        <div class="py-opts">
+            {% for o in p.options %}
+            <form method="post">{% csrf_token %}<input type="hidden" name="store" value="{{ p.store.pk }}"><input type="hidden" name="provider" value="{{ o.provider }}">
+                <button class="py-opt" data-go><i class="fa-solid {{ o.icon }}"></i><span><strong>{{ o.label }}</strong><small>{{ o.hint }}</small></span><i class="fa-solid fa-chevron-right" style="margin-left:auto;font-size:12px;"></i></button></form>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% if parts|length > 1 %}
+        <div class="py-total"><span>Total de la commande</span><strong>{{ order.total_amount|intcomma }} FCFA</strong></div>
+        {% if left and not order.is_paid %}<div class="py-total" style="border:none;padding-top:4px;margin:0;"><span>Reste à payer</span><strong style="color:var(--orange);">{{ left|intcomma }} FCFA</strong></div>{% endif %}
+        {% endif %}
+    </div>
+
+    {% if can_pay %}
+    <div class="py-ways"><span><i class="fa-solid fa-mobile-screen-button"></i> MTN MoMo</span><span><i class="fa-solid fa-mobile-screen"></i> Orange Money</span><span><i class="fa-regular fa-credit-card"></i> Carte bancaire</span>{% if has_stripe %}<span><i class="fa-brands fa-cc-visa"></i> Visa / Mastercard internationales</span>{% endif %}</div>
+    <p class="py-safe"><i class="fa-solid fa-shield-halved" style="color:#039855;"></i> Vous êtes redirigé vers la page sécurisée du service de paiement. Comptoir ne voit jamais votre code Mobile Money ni votre carte. Sur mobile, validez ensuite la demande qui s'affiche sur votre téléphone.</p>
+    {% endif %}
+    <div style="text-align:center;margin-top:18px;"><a href="{% url 'orders:detail' order.order_number %}" style="font-size:13.5px;color:var(--text2);">Voir le détail de la commande</a></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelectorAll('[data-go]').forEach(function(b) {
+    b.form.addEventListener('submit', function() { setTimeout(function() { b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Ouverture…'; }, 0); });
+});
+{% if waiting %}setTimeout(function() { location.reload(); }, 8000);{% endif %}
+</script>
+{% endblock %}

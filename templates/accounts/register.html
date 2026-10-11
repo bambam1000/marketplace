@@ -68,6 +68,12 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
 .phone-prefix { padding: 11px 12px; border: 1.5px solid #eaecf0; border-right: none; border-radius: 8px 0 0 8px; background: #f9fafb; font-size: 13px; font-weight: 600; color: #475467; font-family: inherit; }
 .phone-group .form-control { border-radius: 0 8px 8px 0; }
 
+.terms-check { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; color: #475467; margin: 4px 0 16px; cursor: pointer; }
+.terms-check input { width: 17px; height: 17px; flex: none; margin-top: 1px; accent-color: #ff6a00; cursor: pointer; }
+.terms-check a { color: #ff6a00; font-weight: 600; text-decoration: none; }
+.terms-check a:hover { text-decoration: underline; }
+.terms-check.invalid { color: #b42318; }
+.terms-check.invalid input { outline: 2px solid #f04438; outline-offset: 1px; }
 @media (max-width: 860px) {
     .auth-left { display: none; }
 }
@@ -134,6 +140,11 @@ body { font-family: 'Inter', sans-serif; background: #fff; }
                 <div class="form-group" id="store-field" style="display:none;">
                     <input type="text" name="store_name" class="form-control" placeholder="Nom de votre boutique">
                 </div>
+                <label class="terms-check">
+                    <input type="checkbox" name="accept_terms" value="1" required>
+                    <span>J'ai lu et j'accepte les <a href="{% url 'accounts:terms' %}" target="_blank" rel="noopener">conditions d'utilisation</a>
+                    et la <a href="{% url 'accounts:privacy' %}" target="_blank" rel="noopener">politique de confidentialité</a>. <span style="color:#f04438;">*</span></span>
+                </label>
                 <button type="submit" class="btn-auth">Créer mon compte</button>
             </form>
 
@@ -210,6 +221,9 @@ document.querySelector('form').addEventListener('submit', function(e) {
             hasError = true;
         }
     });
+    var terms = document.querySelector('[name=accept_terms]');
+    terms.closest('.terms-check').classList.toggle('invalid', !terms.checked);
+    if (!terms.checked) hasError = true;
     if (hasError) e.preventDefault();
 });
 </script>
