@@ -1,0 +1,97 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Catalogue CJ · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+<style>
+.cj-search { display: flex; gap: 8px; margin-bottom: 16px; }
+.cj-search input { flex: 1; padding: 11px 14px; border: 1.5px solid var(--dash-border); border-radius: 10px; font-size: 14.5px; font-family: inherit; }
+.cj-search input:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.cj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.cj-card { position: relative; background: #fff; border: 1.5px solid var(--dash-border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.cj-card:hover { border-color: #fbc59b; }
+.cj-card input { position: absolute; top: 10px; left: 10px; width: 20px; height: 20px; accent-color: var(--dash-accent); z-index: 1; }
+.cj-card:has(input:checked) { border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.cj-card img { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--dash-bg); display: block; }
+.cj-card .b { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.cj-card .n { font-size: 13px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 35px; }
+.cj-card .p { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 12px; color: var(--dash-text3); margin-top: auto; }
+.cj-card .p strong { font-size: 15px; color: var(--dash-accent); }
+.cj-card .known { position: absolute; top: 8px; right: 8px; }
+.cj-bar { position: sticky; bottom: 0; z-index: 5; background: #fff; border: 1px solid var(--dash-border); border-radius: 12px; box-shadow: 0 -6px 20px rgba(16,24,40,.08); padding: 12px 14px; margin-top: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cj-bar select { padding: 9px 10px; border: 1.5px solid var(--dash-border); border-radius: 8px; font-family: inherit; font-size: 13.5px; max-width: 260px; }
+.cj-bar .count { font-weight: 700; font-size: 13.5px; }
+.cj-pages { display: flex; justify-content: center; gap: 8px; align-items: center; margin-top: 16px; font-size: 13px; color: var(--dash-text3); }
+@media (max-width: 600px) { .cj-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } .cj-bar select { max-width: none; flex: 1; } }
+</style>
+
+<form class="cj-search" method="get" role="search">
+    <input type="search" name="q" value="{{ q }}" placeholder="Rechercher chez CJ, en anglais : watch, earbuds, backpack…" aria-label="Rechercher dans le catalogue CJ" autofocus>
+    <button class="ad-btn primary" style="padding:0 18px;"><i class="fa-solid fa-magnifying-glass"></i> Rechercher</button>
+</form>
+
+{% if error %}<div class="ds-alert err"><i class="fa-solid fa-circle-exclamation"></i><div>{{ error }}</div></div>{% endif %}
+
+{% if not q %}
+<section class="ad-card"><div class="ad-empty" style="padding:40px 20px;"><i class="fa-solid fa-boxes-packing"></i>
+    Cherchez un produit dans le catalogue CJ (plusieurs centaines de milliers d'articles).<br>
+    <span style="font-size:12.5px;">Le prix de vente estimé applique vos réglages ({{ conn.markup|floatformat:"-2" }} × coût, taux {{ conn.exchange_rate|floatformat:"-2" }} F){% if conn.include_shipping %}, hors port : le port vers {{ conn.ship_to_country }} est ajouté à l'import{% endif %}.</span></div></section>
+{% elif result %}
+<form method="post" id="cjForm">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <p style="font-size:13px;color:var(--dash-text3);margin:0 0 12px;">{{ result.total|intcomma }} résultat{{ result.total|pluralize }} pour « {{ q }} »{% if result.pages > 1 %} · page {{ page_no }} sur {{ result.pages|intcomma }}{% endif %}</p>
+    {% if result.items %}
+    <div class="cj-grid">
+        {% for it in result.items %}
+        <label class="cj-card">
+            <input type="checkbox" name="pids" value="{{ it.pid }}" class="pick" aria-label="Choisir {{ it.name }}">
+            {% if it.known %}<span class="ad-pill green known">Déjà importé</span>{% endif %}
+            {% if it.image %}<img src="{{ it.image }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<img alt="">{% endif %}
+            <div class="b">
+                <div class="n" title="{{ it.name }}">{{ it.name }}</div>
+                <div class="muted" style="font-size:11.5px;">{{ it.category|default:"" }}{% if it.stock %} · stock {{ it.stock|intcomma }}{% endif %}</div>
+                <div class="p"><span>{{ it.cost }} $</span><span>vente ≈ <strong>{{ it.estimate|intcomma }} F</strong></span></div>
+            </div>
+        </label>
+        {% endfor %}
+    </div>
+    <div class="cj-bar">
+        <span class="count"><span id="nSel">0</span> / {{ max_import }} choisi(s)</span>
+        <select name="category" required aria-label="Catégorie Comptoir">
+            <option value="">Ranger dans la catégorie…</option>
+            {% for c in categories %}<option value="{{ c.pk }}">{% if c.parent %}{{ c.parent.name }} › {% endif %}{{ c.name }}</option>{% endfor %}
+        </select>
+        <label class="ds-check" style="padding:0;"><input type="checkbox" name="publish"><span>Mettre en ligne tout de suite</span></label>
+        <button class="ad-btn primary" id="cjGo" style="margin-left:auto;padding:10px 16px;" disabled><i class="fa-solid fa-download"></i> Importer</button>
+    </div>
+    <p style="font-size:12px;color:var(--dash-text3);margin-top:10px;">Les produits arrivent avec leur nom anglais, leurs photos, leurs variantes (couleurs, tailles) et le stock CJ. Laissez-les hors ligne le temps de traduire nom et description.</p>
+    {% else %}
+    <section class="ad-card"><div class="ad-empty"><i class="fa-solid fa-magnifying-glass"></i>Aucun produit. Essayez un autre mot, en anglais.</div></section>
+    {% endif %}
+</form>
+{% if result.pages > 1 %}
+<nav class="cj-pages" aria-label="Pages">
+    {% if page_no > 1 %}<a class="ad-btn" href="?q={{ q|urlencode }}&page={{ page_no|add:'-1' }}"><i class="fa-solid fa-chevron-left"></i> Précédente</a>{% endif %}
+    <span>Page {{ page_no }}</span>
+    {% if page_no < result.pages %}<a class="ad-btn" href="?q={{ q|urlencode }}&page={{ page_no|add:'1' }}">Suivante <i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+</nav>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var form = document.getElementById('cjForm');
+    if (!form) return;
+    var max = {{ max_import }}, go = document.getElementById('cjGo'), n = document.getElementById('nSel');
+    function update() {
+        var picks = form.querySelectorAll('.pick'), on = form.querySelectorAll('.pick:checked').length;
+        n.textContent = on;
+        go.disabled = on === 0;
+        picks.forEach(function(c) { if (!c.checked) c.disabled = on >= max; });
+    }
+    form.addEventListener('change', update);
+    form.addEventListener('submit', function() { go.disabled = true; go.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Import en cours…'; });
+    update();
+})();
+</script>
+{% endblock %}

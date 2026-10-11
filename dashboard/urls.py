@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, admin_views
 app_name = 'dashboard'
 urlpatterns = [
     path('', views.index, name='index'),
@@ -58,20 +58,26 @@ urlpatterns = [
     path('assistant/demander/', views.dash_assistant_ask, name='assistant_ask'),
     path('assistant/<int:pk>/supprimer/', views.dash_assistant_delete, name='assistant_delete'),
     # Admin only
-    path('utilisateurs/', views.admin_users, name='users'),
-    path('utilisateurs/<int:pk>/', views.admin_user_detail, name='user_detail'),
-    path('utilisateurs/<int:pk>/toggle/', views.admin_toggle_user, name='toggle_user'),
-    path('vendeurs/', views.admin_sellers, name='sellers'),
-    path('vendeurs/<int:pk>/verify/', views.admin_verify_seller, name='verify_seller'),
-    path('versements/', views.admin_payouts, name='payouts'),
-    path('versements/<int:pk>/process/', views.admin_process_payout, name='process_payout'),
-    path('plateforme/', views.admin_platform_stats, name='platform_stats'),
+    path('utilisateurs/', admin_views.users, name='users'),
+    path('utilisateurs/<int:pk>/', admin_views.user_detail, name='user_detail'),
+    path('utilisateurs/<int:pk>/action/', admin_views.user_action, name='toggle_user'),
+    path('vendeurs/', admin_views.stores, name='sellers'),
+    path('vendeurs/<int:pk>/action/', admin_views.store_action, name='admin_store_action'),
+    path('versements/', admin_views.payouts, name='payouts'),
+    path('versements/<int:pk>/process/', admin_views.payout_action, name='process_payout'),
+    path('plateforme/', admin_views.revenue, name='platform_stats'),
+    path('admin/commandes/', admin_views.orders, name='admin_orders'),
+    path('admin/produits/', admin_views.products, name='admin_products'),
+    path('admin/produits/<int:pk>/action/', admin_views.product_action, name='admin_product_action'),
+    path('admin/avis/', admin_views.reviews, name='admin_reviews'),
+    path('admin/messages/', admin_views.contact_messages, name='admin_messages'),
+    path('admin/abonnements/', admin_views.subscriptions, name='admin_subscriptions'),
     path('bannieres/', views.admin_banners, name='banners'),
     path('bannieres/ajouter/', views.admin_banner_edit, name='banner_add'),
     path('bannieres/<int:pk>/', views.admin_banner_edit, name='banner_edit'),
     path('bannieres/<int:pk>/supprimer/', views.admin_banner_delete, name='banner_delete'),
-    path('categories/', views.categories, name='categories'),
-    path('categories/ajouter/', views.category_add, name='category_add'),
-    path('categories/<int:pk>/', views.category_edit, name='category_edit'),
-    path('categories/<int:pk>/supprimer/', views.category_delete, name='category_delete'),
+    path('categories/', admin_views.categories, name='categories'),
+    path('categories/ajouter/', admin_views.category_form, name='category_add'),
+    path('categories/<int:pk>/', admin_views.category_form, name='category_edit'),
+    path('categories/<int:pk>/supprimer/', admin_views.category_delete, name='category_delete'),
 ]

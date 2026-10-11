@@ -1,0 +1,215 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Réglages · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+<style>
+.st-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.st-calc { position: sticky; top: 80px; }
+.st-calc .ln { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 7px 0; border-bottom: 1px dashed var(--dash-border); }
+.st-calc .ln:last-of-type { border-bottom: none; }
+.st-calc .tot { font-size: 18px; font-weight: 800; color: var(--dash-accent); }
+@media (max-width: 1000px) { .st-grid { grid-template-columns: 1fr; } .st-calc { position: static; } }
+</style>
+{% if conn.provider == 'cj' %}
+<style>
+.cj-guide { border: 1px solid #b2ddff; background: #f5faff; border-radius: 10px; margin-bottom: 18px; }
+.cj-guide summary { cursor: pointer; padding: 12px 14px; font-weight: 700; font-size: 13.5px; color: #194185; list-style: none; display: flex; gap: 8px; align-items: center; }
+.cj-guide summary::-webkit-details-marker { display: none; }
+.cj-guide summary .chev { margin-left: auto; transition: transform .2s; }
+.cj-guide[open] summary .chev { transform: rotate(180deg); }
+.cj-guide .in { padding: 0 14px 14px; font-size: 13px; color: #1d2939; line-height: 1.6; }
+.cj-flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 4px 0 14px; counter-reset: st; }
+.cj-flow div { background: #fff; border: 1px solid #d1e9ff; border-radius: 8px; padding: 10px; font-size: 12.5px; }
+.cj-flow div::before { counter-increment: st; content: counter(st); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--dash-accent); color: #fff; font-weight: 800; font-size: 12px; margin-bottom: 6px; }
+.cj-flow strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.cj-flow span { color: var(--dash-text3); }
+.cj-money { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cj-money div { background: #fff; border-radius: 8px; padding: 10px; border: 1px solid #d1e9ff; font-size: 12.5px; }
+.cj-money b { display: block; font-size: 13px; }
+.cj-sec { border-top: 1px solid var(--dash-border); padding-top: 16px; margin-top: 6px; }
+.cj-sec h3 { font-family: inherit; font-size: 14px; font-weight: 700; margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
+.cj-sec h3 .n { width: 22px; height: 22px; border-radius: 50%; background: #fff4ec; color: var(--dash-accent); display: inline-grid; place-items: center; font-size: 12px; font-weight: 800; }
+.cj-sec > p { font-size: 12.5px; color: var(--dash-text2); margin: 0 0 12px; }
+.cj-steps { margin: 6px 0 12px; padding-left: 20px; font-size: 13px; line-height: 1.7; }
+@media (max-width: 900px) { .cj-flow, .cj-money { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .cj-flow, .cj-money { grid-template-columns: 1fr; } }
+</style>
+<form method="post" class="ad-card" id="cj" autocomplete="off">{% csrf_token %}
+    <div class="ad-card-head"><h2><i class="fa-solid fa-plug"></i> Connexion directe CJ Dropshipping</h2>
+        {% if conn.api_ready %}<span class="ad-pill green"><i class="fa-solid fa-circle-check"></i> Connecté</span>{% else %}<span class="ad-pill gray">Non connecté</span>{% endif %}</div>
+    <div class="ad-card-body">
+        {% if conn.api_error %}<div class="ds-alert err"><i class="fa-solid fa-circle-exclamation"></i><div>{{ conn.api_error }}</div></div>{% endif %}
+
+        <details class="cj-guide" {% if not conn.api_ready %}open{% endif %}>
+            <summary><i class="fa-solid fa-circle-question"></i> Comment ça marche ? <i class="fa-solid fa-chevron-down chev"></i></summary>
+            <div class="in">
+                <p style="margin:0 0 10px;">CJ Dropshipping est un grossiste chinois qui stocke les produits et les envoie <strong>directement chez vos clients</strong>. Vous n'achetez rien à l'avance et vous ne gérez aucun stock : vous vendez sur Comptoir, CJ expédie.</p>
+                <div class="cj-flow">
+                    <div><strong>Vous connectez CJ</strong><span>Avec votre clé d'API, une seule fois (étape 1 ci-dessous).</span></div>
+                    <div><strong>Vous choisissez des produits</strong><span>Onglet « Catalogue CJ » : photos, variantes, stock et prix arrivent tout seuls.</span></div>
+                    <div><strong>Le client commande et paie</strong><span>Par Mobile Money ou carte. Le paiement à la livraison est désactivé pour ces produits.</span></div>
+                    <div><strong>La commande part chez CJ</strong><span>Automatiquement, ou avec le bouton « Transmettre à CJ ». Vous payez CJ.</span></div>
+                    <div><strong>CJ expédie au client</strong><span>Le numéro de suivi arrive ici et le client est prévenu. Livraison en {{ conn.delivery_min_days }} à {{ conn.delivery_max_days }} jours.</span></div>
+                </div>
+                <div class="cj-money">
+                    <div><b><i class="fa-solid fa-arrow-down" style="color:#067647;"></i> Le client vous paie</b>votre prix de vente (ex. 14 700 F).</div>
+                    <div><b><i class="fa-solid fa-arrow-up" style="color:#d92d20;"></i> Vous payez CJ</b>le produit et le port, en dollars (ex. 12 $).</div>
+                    <div><b><i class="fa-solid fa-coins" style="color:var(--dash-accent);"></i> Vous gardez la différence</b>c'est votre marge, réglée dans « Calcul des prix de vente » plus bas.</div>
+                </div>
+            </div>
+        </details>
+
+        <div class="cj-sec" style="border-top:none;padding-top:0;margin-top:0;">
+            <h3><span class="n">1</span> Votre compte CJ</h3>
+            {% if not conn.api_ready %}
+            <p>La clé d'API permet à Comptoir de travailler avec CJ en votre nom. Pour l'obtenir :</p>
+            <ol class="cj-steps">
+                <li>Créez un compte gratuit sur <a href="https://cjdropshipping.com" target="_blank" rel="noopener noreferrer" style="color:var(--dash-accent);font-weight:600;">cjdropshipping.com</a> (ou connectez-vous).</li>
+                <li>Ouvrez le menu <strong>My CJ</strong> › <strong>Authorization</strong> › <strong>API</strong>.</li>
+                <li>Cliquez sur <strong>Generate</strong>, puis copiez la clé (elle ressemble à <code>CJ1234567@api@a1b2c3…</code>).</li>
+                <li>Collez-la ci-dessous et cliquez sur <strong>Connecter mon compte CJ</strong> : Comptoir vérifie tout de suite qu'elle fonctionne.</li>
+            </ol>
+            {% else %}<p>Votre compte CJ est relié. Pour changer de compte, collez une nouvelle clé ; sinon laissez le champ vide.</p>{% endif %}
+            <div class="ds-field" style="max-width:480px;"><label for="cjKey">Clé d'API CJ</label><input id="cjKey" name="api_key" type="password" maxlength="300" placeholder="{% if conn.api_ready %}•••• {{ conn.api_key_hint }} (laisser vide pour garder){% else %}CJ1234567@api@…{% endif %}" autocomplete="new-password">
+                <div class="hint">{% if conn.api_ready %}Connecté depuis le {{ conn.api_connected_at|date:"d/m/Y" }}.{% if conn.token_expires_at %} La connexion se renouvelle toute seule (prochaine échéance le {{ conn.token_expires_at|date:"d/m/Y" }}).{% endif %}{% else %}Elle est chiffrée avant d'être enregistrée et n'est plus jamais réaffichée. Ne la partagez avec personne.{% endif %}</div></div>
+        </div>
+
+        <div class="cj-sec">
+            <h3><span class="n">2</span> Livraison</h3>
+            <p>Où habitent vos clients, et comment CJ leur envoie les colis. Le pays sert à calculer le port et à vérifier que CJ livre bien chez vous.</p>
+            <div class="ds-row">
+                <div class="ds-field"><label for="cjCtry">Pays de livraison de vos clients</label>
+                    <select id="cjCtry" name="ship_to_country">
+                        <optgroup label="Les plus courants">{% for c, n in countries.frequent %}<option value="{{ c }}" {% if conn.ship_to_country == c %}selected{% endif %}>{{ n }}</option>{% endfor %}</optgroup>
+                        <optgroup label="Tous les pays (de A à Z)">{% for c, n in countries.all %}<option value="{{ c }}" {% if conn.ship_to_country == c and c not in frequent_codes %}selected{% endif %}>{{ n }}</option>{% endfor %}</optgroup>
+                    </select>
+                    <div class="hint">En général, le pays de votre boutique. Tous les colis de ce fournisseur partiront vers ce pays.</div></div>
+                <div class="ds-field"><label for="cjLog">Mode de livraison CJ</label><input id="cjLog" name="logistic_name" value="{{ conn.logistic_name }}" maxlength="100" placeholder="CJPacket Ordinary" list="cjLogs">
+                    <datalist id="cjLogs"><option value="CJPacket Ordinary"><option value="CJPacket Sensitive"><option value="CJPacket Liquid"><option value="YunExpress"><option value="DHL"></datalist>
+                    <div class="hint">Le transporteur utilisé par CJ. « CJPacket Ordinary » est le plus courant et le moins cher. S'il ne livre pas votre pays, le moins cher disponible sert au calcul du port.</div></div>
+            </div>
+            <label class="ds-check"><input type="checkbox" name="include_shipping" {% if conn.include_shipping %}checked{% endif %}><span>Inclure le port CJ dans le coût de revient (conseillé)<small>À l'import, Comptoir demande à CJ le prix du port vers {{ ship_country }} et l'ajoute au coût du produit : votre prix de vente couvre la livraison et votre marge reste juste. Décochez seulement si vous facturez la livraison à part.</small></span></label>
+        </div>
+
+        <div class="cj-sec">
+            <h3><span class="n">3</span> Commandes et paiement de CJ</h3>
+            <p>Une commande n'est envoyée à CJ que lorsque <strong>le client a payé</strong> : vous ne payez jamais CJ pour une commande impayée.</p>
+            <label class="ds-check"><input type="checkbox" name="auto_send" {% if conn.auto_send %}checked{% endif %}><span>Transmettre automatiquement les commandes payées<small><strong>Coché :</strong> dès que vous confirmez le paiement du client, la commande part chez CJ avec son adresse, sans autre action. <strong>Décoché :</strong> vous vérifiez chaque commande et cliquez sur « Transmettre à CJ » (onglet Commandes).</small></span></label>
+            <label class="ds-check"><input type="checkbox" name="pay_from_balance" {% if conn.pay_from_balance %}checked{% endif %}><span>Payer CJ avec le solde de mon compte CJ<small><strong>Coché :</strong> CJ se paie sur votre solde (rechargez-le à l'avance sur cjdropshipping.com, rubrique « Wallet ») et le colis part sans attendre. <strong>Décoché :</strong> la commande est créée chez CJ « à payer » ; connectez-vous à CJ pour la régler, sinon elle ne part pas.</small></span></label>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+            <button class="ad-btn primary" name="action" value="cj_save" style="padding:9px 16px;font-size:13px;"><i class="fa-solid fa-plug"></i> {% if conn.api_ready %}Enregistrer{% else %}Connecter mon compte CJ{% endif %}</button>
+            {% if conn.api_ready %}<a class="ad-btn" href="{% url 'dropship:cj_catalog' warehouse.pk %}" style="padding:9px 14px;font-size:13px;"><i class="fa-solid fa-magnifying-glass"></i> Parcourir le catalogue CJ</a>
+            <button class="ad-btn danger" name="action" value="cj_disconnect" formnovalidate style="padding:9px 14px;font-size:13px;" onclick="return confirm('Déconnecter CJ ? La clé sera effacée. Vos produits restent en ligne.');"><i class="fa-solid fa-link-slash"></i> Déconnecter</button>{% endif %}
+        </div>
+    </div>
+</form>
+{% endif %}
+{% if errors %}<div class="ds-alert err"><i class="fa-solid fa-circle-exclamation"></i><div>Certains champs sont à corriger.</div></div>{% endif %}
+<form method="post" class="st-grid" id="stForm">{% csrf_token %}
+    <div>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-truck-plane"></i> Fournisseur</h2></div>
+            <div class="ad-card-body">
+                <div class="ds-row">
+                    <div class="ds-field {% if errors.name %}err{% endif %}"><label for="sName">Nom</label><input id="sName" name="name" value="{{ conn.name }}" maxlength="150" required>{% if errors.name %}<div class="msg">{{ errors.name }}</div>{% endif %}</div>
+                    <div class="ds-field"><label for="sProv">Type de connexion</label><select id="sProv" name="provider">{% for c, l in providers %}<option value="{{ c }}" {% if conn.provider == c %}selected{% endif %}>{{ l }}{% if c == 'aliexpress' %} (bientôt){% elif c == 'cj' %} (connexion directe){% endif %}</option>{% endfor %}</select>
+                        <div class="hint">{% if conn.provider == 'cj' %}Connexion directe : voir le bloc « Connexion directe CJ » ci-dessus.{% else %}CJ Dropshipping : choisissez-le et enregistrez pour le connecter directement.{% endif %}</div></div>
+                </div>
+                <div class="ds-row">
+                    <div class="ds-field"><label for="sCountry">Expédie depuis</label><input id="sCountry" name="country" value="{{ conn.country }}" maxlength="100" placeholder="Chine"></div>
+                    <div class="ds-field"><label for="sMail">E-mail du fournisseur</label><input id="sMail" type="email" name="contact_email" value="{{ conn.contact_email }}"></div>
+                    <div class="ds-field"><label for="sTel">Téléphone / WhatsApp</label><input id="sTel" name="contact_phone" value="{{ conn.contact_phone }}" maxlength="30"></div>
+                </div>
+                <div class="ds-field"><label for="sNotes">Notes internes</label><textarea id="sNotes" name="notes" rows="2" placeholder="Conditions, contact, minimum de commande…">{{ conn.notes }}</textarea></div>
+                {% if conn.name != warehouse.name %}<label class="ds-check"><input type="checkbox" name="rename_warehouse" checked><span>Renommer aussi l'entrepôt « {{ warehouse.name }} »</span></label>{% endif %}
+            </div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-calculator"></i> Calcul des prix de vente</h2></div>
+            <div class="ad-card-body">
+                <p style="font-size:13px;color:var(--dash-text2);margin:0 0 14px;">Coût de revient = prix fournisseur × taux de change + frais par article. Prix de vente = coût de revient × coefficient, arrondi au-dessus.</p>
+                <div class="ds-row">
+                    <div class="ds-field"><label for="sCur">Devise des prix du fournisseur</label><select id="sCur" name="currency">{% for c, l in currencies %}<option value="{{ c }}" {% if conn.currency == c %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+                    <div class="ds-field {% if errors.exchange_rate %}err{% endif %}" id="rateField"><label for="sRate">Taux : francs pour 1 <span id="curLabel">{{ conn.currency }}</span></label><input id="sRate" name="exchange_rate" value="{{ conn.exchange_rate|floatformat:'-4' }}" inputmode="decimal">{% if errors.exchange_rate %}<div class="msg">{{ errors.exchange_rate }}</div>{% else %}<div class="hint">Mettez un taux un peu au-dessus du cours pour couvrir les frais de change.</div>{% endif %}</div>
+                </div>
+                <div class="ds-row">
+                    <div class="ds-field {% if errors.fixed_fee %}err{% endif %}"><label for="sFee">Frais par article (F)</label><input id="sFee" name="fixed_fee" value="{{ conn.fixed_fee|floatformat:0 }}" inputmode="numeric">{% if errors.fixed_fee %}<div class="msg">{{ errors.fixed_fee }}</div>{% else %}<div class="hint">Transport, douane, emballage.</div>{% endif %}</div>
+                    <div class="ds-field {% if errors.markup %}err{% endif %}"><label for="sMk">Coefficient</label><input id="sMk" name="markup" value="{{ conn.markup|floatformat:'-2' }}" inputmode="decimal">{% if errors.markup %}<div class="msg">{{ errors.markup }}</div>{% else %}<div class="hint">1,8 = vous vendez 1,8 fois le coût.</div>{% endif %}</div>
+                    <div class="ds-field {% if errors.round_to %}err{% endif %}"><label for="sRnd">Arrondir à (F)</label><input id="sRnd" name="round_to" value="{{ conn.round_to }}" inputmode="numeric">{% if errors.round_to %}<div class="msg">{{ errors.round_to }}</div>{% endif %}</div>
+                    <div class="ds-field {% if errors.min_margin_pct %}err{% endif %}"><label for="sMin">Alerte marge sous (%)</label><input id="sMin" name="min_margin_pct" value="{{ conn.min_margin_pct }}" inputmode="numeric">{% if errors.min_margin_pct %}<div class="msg">{{ errors.min_margin_pct }}</div>{% endif %}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-clock"></i> Délai de livraison affiché aux clients</h2></div>
+            <div class="ad-card-body">
+                <div class="ds-row">
+                    <div class="ds-field {% if errors.delivery_min_days %}err{% endif %}"><label for="sD1">Minimum (jours)</label><input id="sD1" name="delivery_min_days" value="{{ conn.delivery_min_days }}" inputmode="numeric">{% if errors.delivery_min_days %}<div class="msg">{{ errors.delivery_min_days }}</div>{% endif %}</div>
+                    <div class="ds-field {% if errors.delivery_max_days %}err{% endif %}"><label for="sD2">Maximum (jours)</label><input id="sD2" name="delivery_max_days" value="{{ conn.delivery_max_days }}" inputmode="numeric">{% if errors.delivery_max_days %}<div class="msg">{{ errors.delivery_max_days }}</div>{% endif %}</div>
+                </div>
+                <div class="hint" style="font-size:12px;color:var(--dash-text3);">Affiché sur la fiche de chaque produit de ce fournisseur, avec la mention « paiement à la livraison indisponible ».</div>
+            </div>
+        </section>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="submit" class="ad-btn primary" style="padding:10px 18px;font-size:13.5px;"><i class="fa-solid fa-check"></i> Enregistrer</button>
+        </div>
+    </div>
+
+    <aside class="ad-card st-calc">
+        <div class="ad-card-head"><h2><i class="fa-solid fa-flask"></i> Exemple</h2></div>
+        <div class="ad-card-body">
+            <div class="ds-field" style="margin-bottom:8px;"><label for="exCost">Prix fournisseur (<span class="exCur">{{ conn.currency }}</span>)</label><input id="exCost" value="{{ example.cost|default:10 }}" inputmode="decimal"></div>
+            <div class="ln"><span>Converti en francs</span><strong id="exConv">—</strong></div>
+            <div class="ln"><span>+ frais par article</span><strong id="exFee">—</strong></div>
+            <div class="ln"><span>Coût de revient</span><strong id="exLanded">—</strong></div>
+            <div class="ln"><span>Prix de vente</span><span class="tot" id="exSale">—</span></div>
+            <div class="ln"><span>Votre marge</span><strong id="exMargin">—</strong></div>
+            <div class="ds-alert warn" id="exWarn" style="display:none;margin:10px 0 0;"><i class="fa-solid fa-triangle-exclamation"></i><div>Marge sous votre seuil d'alerte.</div></div>
+        </div>
+    </aside>
+</form>
+
+
+{% if auto_count %}
+<section class="ad-card">
+    <div class="ad-card-head"><h2><i class="fa-solid fa-rotate"></i> Appliquer aux produits déjà importés</h2></div>
+    <div class="ad-card-body" style="display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;">
+        <p style="font-size:13px;color:var(--dash-text2);margin:0;max-width:620px;">Changer les réglages ne modifie pas les prix déjà en ligne. Recalculez les {{ auto_count }} produit{{ auto_count|pluralize }} dont le prix est calculé automatiquement (les prix fixés dans le fichier ne bougent pas).</p>
+        <form method="post" onsubmit="return confirm('Recalculer le prix de vente de {{ auto_count }} produit{{ auto_count|pluralize }} avec les réglages enregistrés ?');">{% csrf_token %}<button class="ad-btn" name="action" value="reprice"><i class="fa-solid fa-rotate"></i> Recalculer les prix</button></form>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var f = document.getElementById('stForm');
+    var num = function(v) { v = String(v || '').replace(/\s/g, '').replace(',', '.'); var n = parseFloat(v); return isNaN(n) ? 0 : n; };
+    var fmt = function(n) { return Math.round(n).toLocaleString('fr-FR').replace(/ /g, ' ') + ' F'; };
+    function calc() {
+        var cur = f.currency.value, xaf = cur === 'XAF';
+        document.getElementById('rateField').style.display = xaf ? 'none' : '';
+        document.getElementById('curLabel').textContent = cur;
+        document.querySelectorAll('.exCur').forEach(function(e) { e.textContent = xaf ? 'F' : cur; });
+        var rate = xaf ? 1 : num(f.exchange_rate.value), fee = num(f.fixed_fee.value), mk = num(f.markup.value),
+            step = Math.max(1, num(f.round_to.value)), cost = num(document.getElementById('exCost').value);
+        var conv = cost * rate, landed = Math.ceil(conv + fee), sale = Math.ceil(landed * mk / step) * step;
+        var margin = sale > 0 ? Math.floor((sale - landed) / sale * 100) : 0;
+        document.getElementById('exConv').textContent = fmt(conv);
+        document.getElementById('exFee').textContent = fmt(fee);
+        document.getElementById('exLanded').textContent = fmt(landed);
+        document.getElementById('exSale').textContent = fmt(sale);
+        document.getElementById('exMargin').textContent = fmt(sale - landed) + ' (' + margin + ' %)';
+        document.getElementById('exWarn').style.display = margin < num(f.min_margin_pct.value) ? '' : 'none';
+    }
+    f.addEventListener('input', calc);
+    document.getElementById('exCost').addEventListener('input', calc);
+    calc();
+})();
+</script>
+{% endblock %}

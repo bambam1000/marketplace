@@ -1,0 +1,102 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Associer les colonnes · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+<style>
+.mp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.mp-row { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--dash-border); }
+.mp-row:last-child { border-bottom: none; }
+.mp-row .lb { font-size: 13.5px; font-weight: 600; }
+.mp-row .lb .req { color: #d92d20; }
+.mp-row select { width: 100%; padding: 8px 10px; border: 1.5px solid var(--dash-border); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; }
+.mp-row select.set { border-color: #75e0a7; background: #f6fef9; }
+.mp-row select.miss { border-color: #fda29b; }
+.mp-prev td { font-size: 12.5px; }
+.mp-prev .bad td { background: #fef3f2; }
+.mp-sticky { position: sticky; top: 80px; }
+@media (max-width: 1000px) { .mp-grid { grid-template-columns: 1fr; } .mp-sticky { position: static; } }
+@media (max-width: 560px) { .mp-row { grid-template-columns: 1fr; gap: 4px; } }
+</style>
+<p style="font-size:13px;color:var(--dash-text2);margin:-4px 0 14px;"><i class="fa-solid fa-file-lines" style="color:var(--dash-accent);"></i> <strong>{{ imp.filename }}</strong> · {{ n_rows|intcomma }} produit{{ n_rows|pluralize }}{% if n_existing %} · dont {{ n_existing }} déjà importé{{ n_existing|pluralize }}{% endif %}</p>
+{% for e in errors %}<div class="ds-alert err"><i class="fa-solid fa-circle-exclamation"></i><div>{{ e }}</div></div>{% endfor %}
+
+<form method="post" id="mapForm">{% csrf_token %}
+<div class="mp-grid">
+    <div>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-table-columns"></i> 1. Quelle colonne contient quoi ?</h2><span style="font-size:12px;color:var(--dash-text3);">Devinées d'après les titres : vérifiez.</span></div>
+            <div class="ad-card-body" style="padding-top:6px;padding-bottom:6px;">
+                {% for code, label, req, sel in field_rows %}
+                <div class="mp-row">
+                    <label class="lb" for="m_{{ code }}">{{ label }}{% if req %} <span class="req">*</span>{% endif %}</label>
+                    <select id="m_{{ code }}" name="map_{{ code }}" class="{% if sel is not None %}set{% elif req %}miss{% endif %}" onchange="this.className = this.value ? 'set' : ({{ req|yesno:'true,false' }} ? 'miss' : '')">
+                        <option value="">{% if req %}— Choisir une colonne —{% else %}— Aucune —{% endif %}</option>
+                        {% for i, h, sample in header_samples %}<option value="{{ i }}" {% if sel == i %}selected{% endif %}>{{ h|truncatechars:40 }}{% if sample %} · ex. {{ sample }}{% endif %}</option>{% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-eye"></i> 3. Aperçu</h2>
+                <button type="submit" name="action" value="preview" class="ad-btn" formnovalidate><i class="fa-solid fa-rotate"></i> Mettre à jour l'aperçu</button></div>
+            {% if preview %}
+            <div class="ad-table-wrap"><table class="ad-table mp-prev">
+                <thead><tr><th>Ligne</th><th>Produit</th><th class="num">Prix fournisseur</th><th class="num">Coût de revient</th><th class="num">Prix de vente</th><th class="num">Marge</th><th class="num">Stock</th></tr></thead>
+                <tbody>
+                {% for n, v, err in preview %}
+                {% if err %}
+                <tr class="bad"><td class="muted">{{ n }}</td><td colspan="6" style="color:#b42318;"><i class="fa-solid fa-circle-exclamation"></i> {{ err }} : ligne ignorée</td></tr>
+                {% else %}
+                <tr>
+                    <td class="muted">{{ n }}</td>
+                    <td><strong style="white-space:normal;">{{ v.name|truncatechars:60 }}</strong><div class="muted">{{ v.sku }}{% if v.category %} · {{ v.category }}{% endif %}</div></td>
+                    <td class="num">{{ v.cost_value|floatformat:"-2" }} {{ conn.currency }}</td>
+                    <td class="num">{{ v.landed|intcomma }} F</td>
+                    <td class="num"><strong>{{ v.sale|intcomma }} F</strong>{% if v.fixed_price %}<div class="muted">fixé dans le fichier</div>{% endif %}</td>
+                    <td class="num"><span class="ad-pill {% if v.margin < conn.min_margin_pct %}red{% else %}green{% endif %}">{{ v.margin }} %</span></td>
+                    <td class="num">{% if v.stock_value is not None %}{{ v.stock_value }}{% else %}<span class="muted">{{ opts.default_stock }} (défaut)</span>{% endif %}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+                </tbody>
+            </table></div>
+            {% if n_rows > preview|length %}<div class="muted" style="font-size:12px;color:var(--dash-text3);padding:10px 18px;">Les {{ preview|length }} premières lignes sur {{ n_rows|intcomma }}.</div>{% endif %}
+            {% else %}
+            <div class="ad-empty"><i class="fa-solid fa-table"></i>Associez la référence, le nom et le prix fournisseur pour voir l'aperçu.</div>
+            {% endif %}
+        </section>
+    </div>
+
+    <aside class="mp-sticky">
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-sliders"></i> 2. Options</h2></div>
+            <div class="ad-card-body">
+                <div class="ds-field"><label for="oCat">Catégorie par défaut <span style="color:#d92d20;">*</span></label>
+                    <select id="oCat" name="default_category" required><option value="">— Choisir —</option>{% for c in categories %}<option value="{{ c.pk }}" {% if opts.default_category|stringformat:"s" == c.pk|stringformat:"s" %}selected{% endif %}>{% if c.parent %}{{ c.parent.name }} › {% endif %}{{ c.name }}</option>{% endfor %}</select>
+                    <div class="hint">Pour les produits sans catégorie, ou dont la catégorie n'existe pas sur Comptoir.</div></div>
+                <div class="ds-field"><label for="oStock">Stock si la colonne est vide</label><input id="oStock" name="default_stock" value="{{ opts.default_stock }}" inputmode="numeric"></div>
+                <label class="ds-check"><input type="checkbox" name="publish" {% if opts.publish %}checked{% endif %}><span>Mettre en ligne les nouveaux produits<small>Sinon ils restent hors ligne pour que vous les vérifiiez.</small></span></label>
+                <label class="ds-check"><input type="checkbox" name="update_existing" {% if opts.update_existing %}checked{% endif %}><span>Mettre à jour les produits déjà importés<small>Prix et stock, reconnus par la référence. Noms et descriptions ne sont pas touchés.</small></span></label>
+                <label class="ds-check"><input type="checkbox" name="zero_missing" {% if opts.zero_missing %}checked{% endif %}><span>Stock à zéro pour les produits absents du fichier<small>À cocher si le fichier contient tout le catalogue du fournisseur.</small></span></label>
+                <button type="submit" name="action" value="run" class="ad-btn primary" id="runBtn" style="width:100%;justify-content:center;padding:11px;font-size:13.5px;margin-top:10px;"><i class="fa-solid fa-file-import"></i> Importer {{ n_rows|intcomma }} produit{{ n_rows|pluralize }}</button>
+                <a href="{% url 'dropship:import' warehouse.pk %}" style="display:block;text-align:center;font-size:12.5px;color:var(--dash-text3);margin-top:10px;">Choisir un autre fichier</a>
+            </div>
+        </section>
+    </aside>
+</div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('mapForm').addEventListener('submit', function(e) {
+    if (e.submitter && e.submitter.value === 'run') {
+        e.submitter.disabled = true;
+        e.submitter.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Import en cours, ne fermez pas la page…';
+        var h = document.createElement('input'); h.type = 'hidden'; h.name = 'action'; h.value = 'run'; this.appendChild(h);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Boutiques{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-store"></i> Boutiques</h1>
+        <p>Vérifiez les vendeurs, suspendez une boutique qui ne respecte pas les règles. Une boutique suspendue disparaît du site avec ses produits.</p>
+    </div>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs" aria-label="Filtre">
+        {% for code, label, n in tabs %}<a href="?{% if code %}f={{ code }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if f == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}
+    </nav>
+    <form class="ad-search" method="get">{% if f %}<input type="hidden" name="f" value="{{ f }}">{% endif %}<input type="search" name="q" value="{{ q }}" placeholder="Boutique, vendeur, e-mail, ville"></form>
+</div>
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Boutique</th><th>Vendeur</th><th>Formule</th><th class="num">Produits</th><th class="num">Commandes</th><th class="num">Ventes payées</th><th>État</th><th></th></tr></thead>
+        <tbody>
+        {% for s in page %}
+        <tr>
+            <td><div class="ad-who">{% if s.logo %}<img class="ad-thumb" src="{{ s.logo.url }}" alt="">{% else %}<span class="ad-thumb">{{ s.name|first|upper }}</span>{% endif %}<div><strong>{{ s.name }}</strong><span class="muted">{{ s.city }} · depuis {{ s.created_at|date:"m/Y" }}</span></div></div></td>
+            <td><a href="{% url 'dashboard:user_detail' s.owner_id %}" style="color:var(--dash-text);font-weight:600;">{{ s.owner.display_name }}</a><div class="muted">{{ s.owner.email|default:"—" }}</div></td>
+            <td>{% if s.owner.subscription %}<span class="ad-pill {% if s.owner.subscription.status == 'active' %}blue{% else %}gray{% endif %}">{{ s.owner.subscription.plan.name }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="num">{{ s.n_products }}</td>
+            <td class="num">{{ s.n_orders }}</td>
+            <td class="num"><strong>{{ s.sales|floatformat:0|intcomma }} F</strong></td>
+            <td>
+                {% if not s.is_active %}<span class="ad-pill red">Suspendue</span>
+                {% elif s.is_verified %}<span class="ad-pill green"><i class="fa-solid fa-circle-check"></i> Vérifiée</span>
+                {% else %}<span class="ad-pill orange">À vérifier</span>{% endif %}
+            </td>
+            <td><div class="ad-acts">
+                <a class="ad-btn" href="{% url 'store:detail' s.slug %}" target="_blank" rel="noopener" title="Voir la boutique sur le site"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                {% if s.is_active %}
+                <form method="post" action="{% url 'dashboard:admin_store_action' s.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    {% if s.is_verified %}<button class="ad-btn" name="action" value="unverify">Retirer le badge</button>{% else %}<button class="ad-btn primary" name="action" value="verify"><i class="fa-solid fa-check"></i> Vérifier</button>{% endif %}
+                </form>
+                <button type="button" class="ad-btn danger" data-suspend="{{ s.pk }}" data-name="{{ s.name }}">Suspendre</button>
+                {% else %}
+                <form method="post" action="{% url 'dashboard:admin_store_action' s.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="ad-btn primary" name="action" value="activate">Réactiver</button></form>
+                {% endif %}
+            </div></td>
+        </tr>
+        {% empty %}<tr><td colspan="8"><div class="ad-empty"><i class="fa-solid fa-store"></i>Aucune boutique ne correspond.</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+
+<div class="ad-modal" id="suspendModal" role="dialog" aria-modal="true">
+    <form method="post" id="suspendForm">{% csrf_token %}
+        <input type="hidden" name="action" value="suspend"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <h3>Suspendre « <span id="suspendName"></span> » ?</h3>
+        <p>La boutique et tous ses produits seront masqués du site. Le vendeur est prévenu par notification et par e-mail.</p>
+        <textarea name="reason" rows="3" maxlength="300" placeholder="Motif communiqué au vendeur (facultatif)"></textarea>
+        <div class="ad-acts"><button type="button" class="ad-btn" data-close>Annuler</button><button type="submit" class="ad-btn danger">Suspendre la boutique</button></div>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+    var m = document.getElementById('suspendModal'), f = document.getElementById('suspendForm');
+    var base = "{% url 'dashboard:admin_store_action' 0 %}";
+    document.querySelectorAll('[data-suspend]').forEach(function(b) {
+        b.addEventListener('click', function() {
+            f.action = base.replace('/0/', '/' + b.dataset.suspend + '/');
+            document.getElementById('suspendName').textContent = b.dataset.name;
+            m.classList.add('open'); f.querySelector('textarea').focus();
+        });
+    });
+    m.addEventListener('click', function(e) { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('open'); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') m.classList.remove('open'); });
+})();
+</script>
+{% endblock %}

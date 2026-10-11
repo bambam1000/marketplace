@@ -1,0 +1,107 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}{{ u.display_name }}{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.ud-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start; }
+.ud-id { text-align: center; padding: 22px 18px; }
+.ud-av { width: 78px; height: 78px; border-radius: 50%; background: var(--dash-accent); color: #fff; font-size: 26px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; object-fit: cover; margin-bottom: 10px; }
+.ud-id h2 { font-family: inherit; font-size: 18px; margin: 0; }
+.ud-info { text-align: left; margin-top: 16px; border-top: 1px solid var(--dash-border); padding-top: 12px; }
+.ud-info div { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 5px 0; }
+.ud-info span { color: var(--dash-text3); }
+.ud-info strong { text-align: right; word-break: break-word; }
+.ud-actions { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border-top: 1px solid var(--dash-border); }
+.ud-actions form { display: flex; gap: 8px; margin: 0; }
+.ud-actions .ad-btn { justify-content: center; flex: 1; padding: 8px 10px; }
+.ud-actions select { flex: 1; padding: 7px 10px; border: 1.5px solid var(--dash-border); border-radius: 7px; font-family: inherit; }
+@media (max-width: 1000px) { .ud-grid { grid-template-columns: 1fr; } }
+</style>
+<a href="{% url 'dashboard:users' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Utilisateurs</a>
+
+<div class="ud-grid">
+    <aside class="ad-card">
+        <div class="ud-id">
+            {% if u.avatar %}<img class="ud-av" src="{{ u.avatar.url }}" alt="">{% else %}<span class="ud-av">{{ u.initials }}</span>{% endif %}
+            <h2>{{ u.display_name }}</h2>
+            <div style="font-size:13px;color:var(--dash-text3);">@{{ u.username }}</div>
+            <div style="margin-top:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+                {% if u.is_superuser %}<span class="ad-pill blue">Superadmin</span>{% else %}<span class="ad-pill {% if u.role == 'seller' %}orange{% elif u.role == 'admin' %}blue{% else %}gray{% endif %}">{{ u.get_role_display }}</span>{% endif %}
+                {% if u.is_active %}<span class="ad-pill green">Actif</span>{% else %}<span class="ad-pill red">Désactivé</span>{% endif %}
+                {% if u.is_verified %}<span class="ad-pill green"><i class="fa-solid fa-circle-check"></i> Vérifié</span>{% endif %}
+            </div>
+            <div class="ud-info">
+                <div><span>E-mail</span><strong>{{ u.email|default:"—" }}</strong></div>
+                <div><span>Téléphone</span><strong>{{ u.phone|default:"—" }}</strong></div>
+                <div><span>Ville</span><strong>{{ u.city|default:"—" }}</strong></div>
+                <div><span>Inscrit le</span><strong>{{ u.date_joined|date:"d/m/Y" }}</strong></div>
+                <div><span>Dernière connexion</span><strong>{% if u.last_login %}{{ u.last_login|naturaltime }}{% else %}Jamais{% endif %}</strong></div>
+            </div>
+        </div>
+        {% if is_self %}
+        <div class="ud-actions"><p style="font-size:12.5px;color:var(--dash-text3);margin:0;">C'est votre compte : modifiez-le depuis « Mon profil ».</p></div>
+        {% else %}
+        <div class="ud-actions">
+            <form method="post" action="{% url 'dashboard:toggle_user' u.pk %}">{% csrf_token %}
+                <select name="role" aria-label="Type de compte">{% for code, label in roles %}<option value="{{ code }}" {% if u.role == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                <button class="ad-btn" name="action" value="set_role" style="flex:0 0 auto;" onclick="return confirm('Changer le type de ce compte ?');">Changer</button>
+            </form>
+            <form method="post" action="{% url 'dashboard:toggle_user' u.pk %}">{% csrf_token %}
+                {% if u.is_verified %}<button class="ad-btn" name="action" value="unverify">Retirer la vérification</button>{% else %}<button class="ad-btn" name="action" value="verify"><i class="fa-solid fa-circle-check"></i> Marquer vérifié</button>{% endif %}
+            </form>
+            <form method="post" action="{% url 'dashboard:toggle_user' u.pk %}">{% csrf_token %}
+                {% if u.is_active %}<button class="ad-btn danger" name="action" value="deactivate" onclick="return confirm('Désactiver ce compte ? La personne ne pourra plus se connecter.');"><i class="fa-solid fa-user-slash"></i> Désactiver le compte</button>
+                {% else %}<button class="ad-btn primary" name="action" value="activate">Réactiver le compte</button>{% endif %}
+            </form>
+        </div>
+        {% endif %}
+    </aside>
+
+    <div>
+        <div class="ad-kpis">
+            <div class="ad-kpi"><div class="l"><i class="fa-solid fa-bag-shopping"></i> Achats</div><div class="v">{{ stats.orders }}</div><div class="s">{{ stats.spent|floatformat:0|intcomma }} F payés</div></div>
+            {% if stores %}
+            <div class="ad-kpi"><div class="l"><i class="fa-solid fa-store"></i> Ventes</div><div class="v">{{ stats.sales_orders }}</div><div class="s">{{ stats.sales|floatformat:0|intcomma }} F encaissés</div></div>
+            <div class="ad-kpi"><div class="l"><i class="fa-solid fa-wallet"></i> Portefeuille</div><div class="v">{{ wallet.balance|default:0|floatformat:0|intcomma }} F</div><div class="s">{{ wallet.pending_balance|default:0|floatformat:0|intcomma }} F en attente de versement</div></div>
+            <div class="ad-kpi"><div class="l"><i class="fa-solid fa-gem"></i> Abonnement</div><div class="v" style="font-size:18px;">{{ subscription.plan.name|default:"Aucun" }}</div><div class="s">{% if subscription %}{{ subscription.get_status_display }} · échéance {{ subscription.end_date|date:"d/m/Y" }}{% else %}—{% endif %}</div></div>
+            {% endif %}
+        </div>
+
+        {% if stores %}
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-store"></i> Boutique{{ stores|length|pluralize }}</h2><a href="{% url 'dashboard:sellers' %}?q={{ u.username|urlencode }}">Gérer</a></div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Boutique</th><th>Ville</th><th>État</th><th></th></tr></thead>
+                <tbody>{% for s in stores %}<tr><td><strong>{{ s.name }}</strong></td><td class="muted">{{ s.city }}</td><td>{% if not s.is_active %}<span class="ad-pill red">Suspendue</span>{% elif s.is_verified %}<span class="ad-pill green">Vérifiée</span>{% else %}<span class="ad-pill orange">À vérifier</span>{% endif %}</td><td><div class="ad-acts"><a class="ad-btn" href="{% url 'store:detail' s.slug %}" target="_blank" rel="noopener">Voir sur le site</a></div></td></tr>{% endfor %}</tbody>
+            </table></div>
+        </section>
+        {% endif %}
+
+        {% if memberships %}
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-id-badge"></i> Employé dans</h2></div>
+            <div class="ad-card-body" style="font-size:13.5px;">{% for m in memberships %}<div style="padding:4px 0;"><strong>{{ m.store.name }}</strong> — {{ m.role.name|default:"Employé" }}{% if not m.is_active %} <span class="ad-pill gray">inactif</span>{% endif %}</div>{% endfor %}</div>
+        </section>
+        {% endif %}
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-receipt"></i> Dernières commandes passées</h2>{% if stats.orders %}<a href="{% url 'dashboard:admin_orders' %}?q={{ u.username|urlencode }}">Toutes</a>{% endif %}</div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Commande</th><th>Date</th><th class="num">Montant</th><th>Statut</th></tr></thead>
+                <tbody>{% for o in orders %}<tr><td><a href="{% url 'dashboard:order_detail' o.order_number %}" style="font-weight:700;color:var(--dash-text);">{{ o.order_number }}</a></td><td class="muted">{{ o.created_at|date:"d/m/Y" }}</td><td class="num"><strong>{{ o.total_amount|intcomma }} F</strong></td><td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td></tr>
+                {% empty %}<tr><td colspan="4"><div class="ad-empty" style="padding:1.5rem;">Aucune commande.</div></td></tr>{% endfor %}</tbody>
+            </table></div>
+        </section>
+
+        {% if transactions %}
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-money-bill-transfer"></i> Mouvements financiers</h2></div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Type</th><th>Référence</th><th>Date</th><th class="num">Montant</th><th>Statut</th></tr></thead>
+                <tbody>{% for t in transactions %}<tr><td>{{ t.get_type_display }}</td><td class="muted">{{ t.reference|default:"—" }}</td><td class="muted">{{ t.created_at|date:"d/m/Y" }}</td><td class="num"><strong>{{ t.amount|floatformat:0|intcomma }} F</strong></td><td><span class="ad-pill {% if t.status == 'completed' %}green{% elif t.status == 'cancelled' or t.status == 'failed' %}gray{% else %}orange{% endif %}">{{ t.get_status_display }}</span></td></tr>{% endfor %}</tbody>
+            </table></div>
+        </section>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

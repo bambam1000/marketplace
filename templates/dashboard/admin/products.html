@@ -1,0 +1,75 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Produits{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-tag"></i> Produits</h1>
+        <p>Modérez le catalogue de toutes les boutiques : retirez un produit non conforme, mettez en avant les meilleurs sur l'accueil.</p>
+    </div>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs" aria-label="Filtre">
+        {% for code, label, n in tabs %}<a href="?{% if code %}f={{ code }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}{% if cat %}&category={{ cat }}{% endif %}" class="{% if f == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}
+    </nav>
+    <form class="ad-search" method="get">
+        {% if f %}<input type="hidden" name="f" value="{{ f }}">{% endif %}
+        <select name="category" onchange="this.form.submit()" aria-label="Catégorie"><option value="">Toutes catégories</option>{% for c in categories %}<option value="{{ c.pk }}" {% if cat == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select>
+        <input type="search" name="q" value="{{ q }}" placeholder="Produit, boutique, référence">
+    </form>
+</div>
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Produit</th><th>Boutique</th><th>Catégorie</th><th class="num">Prix</th><th class="num">Stock</th><th class="num">Ventes</th><th>État</th><th></th></tr></thead>
+        <tbody>
+        {% for p in page %}
+        <tr>
+            <td><div class="ad-who">{% if p.image %}<img class="ad-thumb" src="{{ p.image.url }}" alt="">{% else %}<span class="ad-thumb"><i class="fa-regular fa-image"></i></span>{% endif %}<div><strong title="{{ p.name }}">{{ p.name }}</strong><span class="muted">ajouté le {{ p.created_at|date:"d/m/Y" }}</span></div></div></td>
+            <td>{{ p.store.name }}{% if not p.store.is_active %} <span class="ad-pill red">suspendue</span>{% endif %}</td>
+            <td class="muted">{{ p.category.name }}</td>
+            <td class="num">{{ p.price|intcomma }} F</td>
+            <td class="num" {% if not p.stock %}style="color:#b42318;font-weight:700;"{% endif %}>{{ p.stock }}</td>
+            <td class="num">{{ p.orders_count }}</td>
+            <td>{% if p.is_active %}<span class="ad-pill green">En ligne</span>{% else %}<span class="ad-pill gray">Désactivé</span>{% endif %}{% if p.is_featured %} <span class="ad-pill blue"><i class="fa-solid fa-star"></i> À la une</span>{% endif %}</td>
+            <td><div class="ad-acts">
+                {% if p.is_active and p.store.is_active %}<a class="ad-btn" href="{{ p.get_absolute_url }}" target="_blank" rel="noopener" title="Voir sur le site"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>{% endif %}
+                <form method="post" action="{% url 'dashboard:admin_product_action' p.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    {% if p.is_featured %}<button class="ad-btn" name="action" value="unfeature" title="Retirer de la une" aria-label="Retirer de la une"><i class="fa-solid fa-star" style="color:#f5a623;"></i></button>{% elif p.is_active %}<button class="ad-btn" name="action" value="feature" title="Mettre à la une sur l'accueil" aria-label="Mettre à la une"><i class="fa-regular fa-star"></i></button>{% endif %}
+                    {% if not p.is_active %}<button class="ad-btn primary" name="action" value="activate">Remettre</button>{% endif %}
+                </form>
+                {% if p.is_active %}<button type="button" class="ad-btn danger" data-remove="{{ p.pk }}" data-name="{{ p.name }}" title="Retirer du site" aria-label="Retirer du site"><i class="fa-solid fa-ban"></i></button>{% endif %}
+            </div></td>
+        </tr>
+        {% empty %}<tr><td colspan="8"><div class="ad-empty"><i class="fa-solid fa-tag"></i>Aucun produit ne correspond.</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+
+<div class="ad-modal" id="removeModal" role="dialog" aria-modal="true">
+    <form method="post" id="removeForm">{% csrf_token %}
+        <input type="hidden" name="action" value="deactivate"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <h3>Retirer « <span id="removeName"></span> » du site ?</h3>
+        <p>Le produit n'est plus visible ni commandable. La boutique est prévenue et peut le corriger.</p>
+        <textarea name="reason" rows="3" maxlength="300" placeholder="Motif communiqué à la boutique : contrefaçon, photo trompeuse, produit interdit…"></textarea>
+        <div class="ad-acts"><button type="button" class="ad-btn" data-close>Annuler</button><button type="submit" class="ad-btn danger">Retirer le produit</button></div>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+    var m = document.getElementById('removeModal'), f = document.getElementById('removeForm');
+    var base = "{% url 'dashboard:admin_product_action' 0 %}";
+    document.querySelectorAll('[data-remove]').forEach(function(b) {
+        b.addEventListener('click', function() {
+            f.action = base.replace('/0/', '/' + b.dataset.remove + '/');
+            document.getElementById('removeName').textContent = b.dataset.name;
+            m.classList.add('open'); f.querySelector('textarea').focus();
+        });
+    });
+    m.addEventListener('click', function(e) { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('open'); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') m.classList.remove('open'); });
+})();
+</script>
+{% endblock %}

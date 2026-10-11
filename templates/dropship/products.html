@@ -1,0 +1,66 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Produits · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+{% if counts.images %}
+<div class="ds-alert info"><i class="fa-regular fa-image"></i><div style="flex:1;">{{ counts.images }} produit{{ counts.images|pluralize }} attend{{ counts.images|pluralize:",ent" }} encore ses images.</div>
+    {% if can_edit %}<form method="post" action="{% url 'dropship:fetch_images' warehouse.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="ad-btn primary"><i class="fa-solid fa-download"></i> Récupérer les images</button></form>{% endif %}</div>
+{% endif %}
+{% if conn.api_ready and can_edit and counts.all %}
+<div class="ds-alert info"><i class="fa-solid fa-plug"></i><div style="flex:1;">Connecté à CJ : prix, stocks et variantes se mettent à jour chaque nuit{% if conn.last_sync_at %} (dernière fois le {{ conn.last_sync_at|date:"d/m à H:i" }}){% endif %}.</div>
+    <form method="post" style="display:flex;gap:8px;">{% csrf_token %}<input type="hidden" name="scope" value="all"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="ad-btn" name="action" value="sync"><i class="fa-solid fa-rotate"></i> Synchroniser maintenant</button><a class="ad-btn primary" href="{% url 'dropship:cj_catalog' warehouse.pk %}"><i class="fa-solid fa-plus"></i> Ajouter depuis CJ</a></form></div>
+{% endif %}
+<div class="ad-bar">
+    <nav class="ad-tabs">{% for code, label, n in tabs %}<a href="?{% if code %}f={{ code }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if f == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}</nav>
+    <form class="ad-search" method="get">{% if f %}<input type="hidden" name="f" value="{{ f }}">{% endif %}<input type="search" name="q" value="{{ q }}" placeholder="Nom ou référence fournisseur"></form>
+</div>
+<form method="post" id="bulk">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+<section class="ad-card">
+    {% if can_edit and page %}
+    <div class="ad-card-head" style="padding:10px 18px;">
+        <label class="ds-check" style="padding:0;"><input type="checkbox" id="all"> <span>Tout cocher</span></label>
+        <div class="ad-acts">
+            <button class="ad-btn" name="action" value="publish"><i class="fa-solid fa-eye"></i> Mettre en ligne</button>
+            <button class="ad-btn" name="action" value="unpublish"><i class="fa-solid fa-eye-slash"></i> Retirer du site</button>
+            {% if conn.api_ready %}<button class="ad-btn" name="action" value="sync"><i class="fa-solid fa-rotate"></i> Synchroniser</button>{% endif %}
+            <button class="ad-btn" name="action" value="reprice" title="Prix de vente = coût de revient × {{ conn.markup|floatformat:'-2' }}"><i class="fa-solid fa-calculator"></i> Recalculer le prix</button>
+        </div>
+    </div>
+    {% endif %}
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr>{% if can_edit %}<th></th>{% endif %}<th>Produit</th><th>Réf. fournisseur</th><th class="num">Coût de revient</th><th class="num">Prix de vente</th><th class="num">Marge</th><th class="num">Stock</th><th>Statut</th><th></th></tr></thead>
+        <tbody>
+        {% for sp in page %}{% with p=sp.product %}
+        <tr>
+            {% if can_edit %}<td data-label="" style="width:30px;"><input type="checkbox" name="ids" value="{{ sp.pk }}" class="pick" aria-label="Sélectionner {{ p.name }}"></td>{% endif %}
+            <td><div class="ad-who">{% if p.image %}<img class="ad-thumb" src="{{ p.image.url }}" alt="">{% else %}<span class="ad-thumb"><i class="fa-regular fa-image"></i></span>{% endif %}<div><strong>{{ p.name }}</strong><span class="muted">{{ p.category.name }}</span></div></div></td>
+            <td class="muted">{% if sp.supplier_url %}<a href="{{ sp.supplier_url }}" target="_blank" rel="noopener noreferrer" style="color:inherit;">{{ sp.supplier_sku }} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:10px;"></i></a>{% else %}{{ sp.supplier_sku }}{% endif %}</td>
+            <td class="num">{{ sp.landed|floatformat:0|intcomma }} F<div class="muted">{{ sp.cost|floatformat:"-2" }}{% if sp.shipping_cost %} + {{ sp.shipping_cost|floatformat:"-2" }} port{% endif %} {{ conn.currency }}</div></td>
+            <td class="num"><strong>{{ p.price|intcomma }} F</strong>{% if not sp.auto_price %}<div class="muted">prix fixé</div>{% endif %}</td>
+            <td class="num"><span class="ad-pill {% if sp.low %}red{% else %}green{% endif %}">{{ sp.margin }} %</span></td>
+            <td class="num">{% if p.stock %}{{ p.stock|intcomma }}{% else %}<span class="ad-pill red">Rupture</span>{% endif %}</td>
+            <td>{% if p.is_active %}<span class="ad-pill green">En ligne</span>{% else %}<span class="ad-pill gray">Hors ligne</span>{% endif %}{% if sp.image_urls %} <span class="ad-pill orange" title="Images en attente"><i class="fa-regular fa-image"></i></span>{% endif %}</td>
+            <td><div class="ad-acts">
+                {% if p.is_active %}<a class="ad-btn" href="{{ p.get_absolute_url }}" target="_blank" rel="noopener" title="Voir sur le site"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>{% endif %}
+                <a class="ad-btn" href="{% url 'dashboard:product_edit' p.pk %}">Modifier</a>
+            </div></td>
+        </tr>
+        {% endwith %}{% empty %}
+        <tr><td colspan="9"><div class="ad-empty"><i class="fa-solid fa-tags"></i>{% if q or f %}Aucun produit ne correspond.{% else %}Aucun produit pour ce fournisseur. {% if conn.api_ready %}<a href="{% url 'dropship:cj_catalog' warehouse.pk %}" style="color:var(--dash-accent);font-weight:600;">Choisissez des produits dans le catalogue CJ</a>{% else %}<a href="{% url 'dropship:import' warehouse.pk %}" style="color:var(--dash-accent);font-weight:600;">Importez son catalogue</a>{% endif %}.{% endif %}</div></td></tr>
+        {% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+</form>
+<p style="font-size:12px;color:var(--dash-text3);">Marge = (prix de vente − coût de revient) / prix de vente. En rouge sous {{ conn.min_margin_pct }} %, votre seuil d'alerte. « Recalculer le prix » applique vos réglages et remet le prix en calcul automatique.</p>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var all = document.getElementById('all');
+    if (all) all.addEventListener('change', function() { document.querySelectorAll('.pick').forEach(function(c) { c.checked = all.checked; }); });
+})();
+</script>
+{% endblock %}

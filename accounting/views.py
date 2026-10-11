@@ -135,30 +135,6 @@ def payout_request(request):
 
 
 @login_required
-def expenses_view(request):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        messages.error(request, 'Accès réservé aux administrateurs.')
-        return redirect('accounting:dashboard')
-    expenses = Expense.objects.all()
-    if request.method == 'POST':
-        Expense.objects.create(
-            category=request.POST.get('category'),
-            description=request.POST.get('description'),
-            amount=int(request.POST.get('amount', 0)),
-            date=request.POST.get('date', timezone.now().date()),
-            created_by=request.user,
-        )
-        messages.success(request, 'Dépense enregistrée !')
-        return redirect('accounting:expenses')
-    cat_totals = expenses.values('category').annotate(total=Sum('amount'))
-    return render(request, 'accounting/expenses.html', {
-        'expenses': expenses[:50],
-        'cat_totals': cat_totals,
-        'categories': Expense.CATEGORY_CHOICES,
-    })
-
-
-@login_required
 def financial_report(request):
     is_admin = request.user.is_superuser or request.user.role == 'admin'
     period = request.GET.get('period', '30')

@@ -109,6 +109,9 @@ def index(request):
     if not is_admin and store is None:
         django_messages.error(request, "Le tableau de bord est réservé aux vendeurs.")
         return redirect('home')
+    if is_admin and store is None:
+        from . import admin_views
+        return admin_views.home(request)
     scope_store = None if is_admin and store is None else store
     limit = access.member_warehouse_id(user, store) if store is not None else None
     can = lambda perm: is_admin or (store is not None and access.has_perm(user, store, perm))  # noqa: E731
@@ -1061,13 +1064,26 @@ def dash_warehouses(request):
         if not store:
             django_messages.error(request, "Vous devez avoir une boutique.")
             return redirect('dashboard:warehouses')
+        name = (request.POST.get('name') or '').strip()[:100]
+        code = (request.POST.get('code') or '').strip().upper()[:20]
+        kind = 'dropship' if request.POST.get('kind') == 'dropship' else 'own'
+        if not name or not code:
+            django_messages.error(request, "Indiquez le nom et le code de l'entrepôt.")
+            return redirect('dashboard:warehouses')
+        if store.warehouses.filter(code=code).exists():
+            django_messages.error(request, f'Le code « {code} » est déjà utilisé par un autre entrepôt.')
+            return redirect('dashboard:warehouses')
         wh = Warehouse.objects.create(
-            store=store,
-            name=request.POST.get('name'),
-            code=request.POST.get('code', '').upper(),
+            store=store, kind=kind, name=name, code=code,
             address=request.POST.get('address', ''),
-            city=request.POST.get('city', store.city),
+            city=request.POST.get('city') or store.city or 'Douala',
         )
+        if kind == 'dropship':
+            # Un fournisseur expédie lui-même : on règle tout de suite sa devise, ses prix et ses délais
+            from dropship.models import SupplierConnection
+            SupplierConnection.objects.create(warehouse=wh, name=name)
+            django_messages.success(request, f'Fournisseur « {name} » créé. Réglez sa devise, vos prix et ses délais, puis importez son catalogue.')
+            return redirect('dropship:settings', pk=wh.pk)
         # Lier à des boutiques supplémentaires du même propriétaire
         linked = request.POST.getlist('linked_stores')
         if linked:
@@ -1115,7 +1131,9 @@ def dash_warehouse_detail(request, pk):
     warehouse = get_object_or_404(Warehouse.objects.select_related('store', 'manager'), pk=pk)
     from pos import services as pos_services
     pos_scope = pos_services.scope_for(request.user)
-    pos_ok = bool(pos_scope and pos_scope.can_use and pos_scope.store == warehouse.store and pos_scope.warehouse_ok(warehouse.pk))
+    # Un fournisseur en dropshipping n'a pas de caisse : rien n'y est vendu au comptoir
+    pos_ok = bool(not warehouse.is_dropship and pos_scope and pos_scope.can_use and pos_scope.store == warehouse.store
+                  and pos_scope.warehouse_ok(warehouse.pk))
     perm = lambda p: _stock_access(request.user, warehouse.store, p, warehouse)  # noqa: E731
     can = {
         'stock': perm('stock.view'),
@@ -1179,7 +1197,8 @@ def dash_warehouse_detail(request, pk):
         'stocks': stocks,
         'search_query': q,
         'products': warehouse.store.products.filter(is_active=True),
-        'other_warehouses': warehouse.store.warehouses.filter(is_active=True).exclude(pk=warehouse.pk),
+        'other_warehouses': warehouse.store.warehouses.filter(is_active=True, kind='own').exclude(pk=warehouse.pk),
+        'dropship': _dropship_summary(warehouse) if warehouse.is_dropship else None,
         'pending_orders': pending_orders,
         'low_stock_count': low_stock_count,
         'out_of_stock_count': out_of_stock_count,
@@ -1187,6 +1206,22 @@ def dash_warehouse_detail(request, pk):
         'employees_count': employees_count,
         'can': can,
     })
+
+
+def _dropship_summary(warehouse):
+    """Chiffres du fournisseur affichés sur la page de l'entrepôt."""
+    from dropship.models import SupplierConnection
+    conn, _ = SupplierConnection.objects.get_or_create(warehouse=warehouse, defaults={'name': warehouse.name})
+    to_send = conn.orders.filter(status='to_send').exclude(order__status__in=('cancelled', 'refunded'))
+    return {
+        'conn': conn,
+        'products': conn.items.count(),
+        'to_send_paid': to_send.filter(order__is_paid=True).count(),
+        'to_send_unpaid': to_send.filter(order__is_paid=False).count(),
+        'in_transit': conn.orders.filter(status__in=('sent', 'shipped')).count(),
+        'to_cancel': conn.orders.filter(status='to_cancel').count(),
+        'images': conn.items.exclude(image_urls=[]).count(),
+    }
 
 
 @login_required
@@ -1770,6 +1805,9 @@ def dash_transfers(request):
         to_wh = get_object_or_404(Warehouse, pk=request.POST.get('to_warehouse') or 0, store=store)
         if from_wh == to_wh:
             django_messages.error(request, "Les deux entrepôts doivent être différents.")
+            return _safe_back(request, 'dashboard:transfers')
+        if from_wh.is_dropship or to_wh.is_dropship:
+            django_messages.error(request, "Le stock d'un fournisseur en dropshipping ne se transfère pas : il suit le stock du fournisseur.")
             return _safe_back(request, 'dashboard:transfers')
         # Un employé limité à un entrepôt ne peut transférer que depuis ou vers le sien
         if not (_stock_access(request.user, store, 'stock.transfer', from_wh)
@@ -3013,269 +3051,6 @@ def dash_settings(request):
 
 
 # ======== ADMIN USER MANAGEMENT ========
-@login_required
-def admin_users(request):
-    if not request.user.is_superuser and request.user.role != 'admin':
-        return redirect('dashboard:index')
-    users = User.objects.all().annotate(
-        order_count=Count('orders', distinct=True)
-    ).order_by('-date_joined')
-    role = request.GET.get('role')
-    if role: users = users.filter(role=role)
-    search = request.GET.get('q', '')
-    if search: users = users.filter(
-        Q(username__icontains=search) | Q(email__icontains=search) |
-        Q(first_name__icontains=search) | Q(last_name__icontains=search)
-    )
-    return render(request, 'dashboard/users.html', {
-        'users': users,
-        'total': User.objects.count(),
-        'buyers': User.objects.filter(role='buyer').count(),
-        'sellers': User.objects.filter(role='seller').count(),
-        'admins': User.objects.filter(role='admin').count(),
-        'verified': User.objects.filter(is_verified=True).count(),
-        'search': search, 'current_role': role,
-    })
-
-
-@login_required
-def admin_user_detail(request, pk):
-    if not request.user.is_superuser: return redirect('dashboard:index')
-    target = get_object_or_404(User, pk=pk)
-    orders = Order.objects.filter(buyer=target) if target.role == 'buyer' else Order.objects.none()
-    store = getattr(target, 'store', None) if target.is_seller else None
-    return render(request, 'dashboard/user_detail.html', {
-        'target': target, 'orders': orders, 'store': store,
-    })
-
-
-@login_required
-def admin_user_action(request, pk):
-    if not request.user.is_superuser: return redirect('dashboard:index')
-    target = get_object_or_404(User, pk=pk)
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        if action == 'verify':
-            target.is_verified = True
-            target.save()
-            django_messages.success(request, f'{target.display_name} vérifié.')
-        elif action == 'unverify':
-            target.is_verified = False
-            target.save()
-        elif action == 'deactivate':
-            target.is_active = False
-            target.save()
-            django_messages.warning(request, f'{target.display_name} désactivé.')
-        elif action == 'activate':
-            target.is_active = True
-            target.save()
-            django_messages.success(request, f'{target.display_name} réactivé.')
-        elif action == 'make_admin':
-            target.role = 'admin'
-            target.is_staff = True
-            target.save()
-            django_messages.success(request, f'{target.display_name} est maintenant admin.')
-        elif action == 'change_role':
-            new_role = request.POST.get('new_role')
-            if new_role: target.role = new_role; target.save()
-    return redirect('dashboard:user_detail', pk=pk)
-
-
-@login_required
-def admin_stores(request):
-    if not request.user.is_superuser: return redirect('dashboard:index')
-    stores = Store.objects.annotate(
-        product_cnt=Count('products'),
-        revenue=Sum(F('products__orderitem__price') * F('products__orderitem__quantity'),
-                     filter=Q(products__orderitem__order__is_paid=True))
-    ).order_by('-created_at')
-    return render(request, 'dashboard/stores.html', {'stores': stores})
-
-
-@login_required
-def admin_verify_store(request, pk):
-    if not request.user.is_superuser: return redirect('dashboard:index')
-    store = get_object_or_404(Store, pk=pk)
-    store.is_verified = not store.is_verified
-    store.save()
-    status = 'vérifiée' if store.is_verified else 'non vérifiée'
-    django_messages.success(request, f'Boutique {store.name} : {status}.')
-    return redirect('dashboard:stores')
-
-
-@login_required
-def analytics(request):
-    if not request.user.is_superuser: return redirect('dashboard:index')
-    now = timezone.now()
-    # Conversion funnel
-    total_visits = Product.objects.aggregate(t=Sum('views_count'))['t'] or 1
-    total_cart = Order.objects.count()
-    total_paid = Order.objects.filter(is_paid=True).count()
-    # Growth
-    this_month = Order.objects.filter(created_at__month=now.month, created_at__year=now.year, is_paid=True).aggregate(t=Sum('total_amount'))['t'] or 0
-    last_month = Order.objects.filter(created_at__month=(now.month - 1) or 12, is_paid=True).aggregate(t=Sum('total_amount'))['t'] or 1
-    growth = round((this_month - last_month) / max(last_month, 1) * 100, 1)
-    # Category performance
-    cat_perf = Category.objects.filter(parent__isnull=True).annotate(
-        rev=Sum(F('products__orderitem__price') * F('products__orderitem__quantity'),
-                filter=Q(products__orderitem__order__is_paid=True)),
-        cnt=Count('products__orderitem', filter=Q(products__orderitem__order__is_paid=True))
-    ).order_by('-rev')[:8]
-    cat_labels = [c.name for c in cat_perf]
-    cat_data = [int(c.rev or 0) for c in cat_perf]
-    return render(request, 'dashboard/analytics.html', {
-        'total_visits': total_visits, 'total_cart': total_cart,
-        'total_paid': total_paid, 'growth': growth,
-        'this_month': this_month, 'last_month': last_month,
-        'cat_labels': json.dumps(cat_labels), 'cat_data': json.dumps(cat_data),
-    })
-
-
-@login_required
-def admin_users(request):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    users = User.objects.all().order_by('-date_joined')
-    role = request.GET.get('role')
-    if role:
-        users = users.filter(role=role)
-    search = request.GET.get('q', '')
-    if search:
-        users = users.filter(
-            Q(username__icontains=search) | Q(email__icontains=search) |
-            Q(first_name__icontains=search) | Q(last_name__icontains=search)
-        )
-    return render(request, 'dashboard/users.html', {
-        'users': users, 'total': users.count(),
-        'buyers': User.objects.filter(role='buyer').count(),
-        'sellers_count': User.objects.filter(role='seller').count(),
-        'admins': User.objects.filter(role='admin').count(),
-    })
-
-
-@login_required
-def admin_user_detail(request, pk):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    u = get_object_or_404(User, pk=pk)
-    orders_qs = Order.objects.filter(buyer=u) if u.role == 'buyer' else Order.objects.filter(items__store__owner=u).distinct()
-    from accounting.models import Transaction, SellerWallet
-    txns = Transaction.objects.filter(user=u)[:20]
-    wallet = SellerWallet.objects.filter(user=u).first() if u.is_seller else None
-    from billing.models import Subscription
-    sub = Subscription.objects.filter(user=u).first()
-    return render(request, 'dashboard/user_detail.html', {
-        'profile_user': u, 'orders': orders_qs[:10],
-        'transactions': txns, 'wallet': wallet, 'subscription': sub,
-    })
-
-
-@login_required
-def admin_toggle_user(request, pk):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    u = get_object_or_404(User, pk=pk)
-    u.is_active = not u.is_active
-    u.save()
-    status = 'activé' if u.is_active else 'désactivé'
-    django_messages.success(request, f'Utilisateur {u.username} {status}.')
-    return redirect('dashboard:users')
-
-
-@login_required
-def admin_sellers(request):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    sellers = Store.objects.select_related('owner').all()
-    return render(request, 'dashboard/sellers.html', {'sellers': sellers})
-
-
-@login_required
-def admin_verify_seller(request, pk):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    store = get_object_or_404(Store, pk=pk)
-    store.is_verified = not store.is_verified
-    store.save()
-    store.owner.is_verified = store.is_verified
-    store.owner.save()
-    status = 'vérifié' if store.is_verified else 'non vérifié'
-    django_messages.success(request, f'{store.name} est maintenant {status}.')
-    return redirect('dashboard:sellers')
-
-
-@login_required
-def admin_payouts(request):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    from accounting.models import PayoutRequest
-    payouts = PayoutRequest.objects.select_related('user').all()
-    status = request.GET.get('status')
-    if status:
-        payouts = payouts.filter(status=status)
-    return render(request, 'dashboard/payouts.html', {'payouts': payouts})
-
-
-@login_required
-def admin_process_payout(request, pk):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    from accounting.models import PayoutRequest, SellerWallet, Transaction
-    payout = get_object_or_404(PayoutRequest, pk=pk)
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        if action == 'approve':
-            payout.status = 'completed'
-            payout.processed_at = timezone.now()
-            payout.save()
-            wallet = SellerWallet.objects.get(user=payout.user)
-            wallet.pending_balance -= payout.amount
-            wallet.total_withdrawn += payout.amount
-            wallet.save()
-            Transaction.objects.create(
-                user=payout.user, type='payout', amount=payout.amount,
-                status='completed', reference=f'Versement #{payout.pk}',
-            )
-            django_messages.success(request, f'Versement de {payout.amount:,.0f} F approuvé.')
-        elif action == 'reject':
-            payout.status = 'rejected'
-            payout.admin_notes = request.POST.get('notes', '')
-            payout.save()
-            wallet = SellerWallet.objects.get(user=payout.user)
-            wallet.pending_balance -= payout.amount
-            wallet.balance += payout.amount
-            wallet.save()
-            django_messages.info(request, 'Versement rejeté.')
-    return redirect('dashboard:payouts')
-
-
-@login_required
-def admin_platform_stats(request):
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-    from accounting.models import Transaction, Expense
-    from billing.models import Subscription, ProductBoost
-
-    total_users = User.objects.count()
-    active_subscriptions = Subscription.objects.filter(status='active').count()
-    total_sub_revenue = Transaction.objects.filter(type='subscription', status='completed').aggregate(t=Sum('amount'))['t'] or 0
-    total_boost_revenue = Transaction.objects.filter(type='boost', status='completed').aggregate(t=Sum('amount'))['t'] or 0
-    total_commissions = Transaction.objects.filter(type='commission', status='completed').aggregate(t=Sum('amount'))['t'] or 0
-    total_expenses = Expense.objects.aggregate(t=Sum('amount'))['t'] or 0
-    total_orders = Order.objects.count()
-    gmv = Order.objects.filter(is_paid=True).aggregate(t=Sum('total_amount'))['t'] or 0
-
-    return render(request, 'dashboard/platform_stats.html', {
-        'total_users': total_users,
-        'active_subscriptions': active_subscriptions,
-        'total_sub_revenue': total_sub_revenue,
-        'total_boost_revenue': total_boost_revenue,
-        'total_commissions': total_commissions,
-        'total_expenses': total_expenses,
-        'total_orders': total_orders,
-        'gmv': gmv,
-        'net_revenue': (total_sub_revenue or 0) + (total_boost_revenue or 0) + (total_commissions or 0) - (total_expenses or 0),
-    })
 
 
 @login_required
@@ -3331,90 +3106,4 @@ def admin_banner_delete(request, pk):
         django_messages.success(request, 'Bannière supprimée.')
     return redirect('dashboard:banners')
 
-@login_required
-def categories(request):
-    """Gestion des catégories"""
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
 
-    categories = Category.objects.all().order_by('order', 'name')
-    return render(request, 'dashboard/categories.html', {'categories': categories})
-
-@login_required
-def category_add(request):
-    """Ajouter une catégorie"""
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        icon = request.POST.get('icon', '📦')
-        parent_id = request.POST.get('parent')
-        order = request.POST.get('order', 0)
-        description = request.POST.get('description', '')
-
-        if name:
-            slug = slugify(name)
-            parent = Category.objects.get(pk=parent_id) if parent_id else None
-
-            Category.objects.create(
-                name=name,
-                slug=slug,
-                icon=icon,
-                parent=parent,
-                order=order,
-                description=description
-            )
-            django_messages.success(request, f'Catégorie "{name}" créée avec succès!')
-            return redirect('dashboard:categories')
-
-    parent_categories = Category.objects.filter(parent__isnull=True)
-    return render(request, 'dashboard/category_form.html', {
-        'parent_categories': parent_categories,
-        'title': 'Ajouter une catégorie'
-    })
-
-@login_required
-def category_edit(request, pk):
-    """Modifier une catégorie"""
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-
-    category = get_object_or_404(Category, pk=pk)
-
-    if request.method == 'POST':
-        category.name = request.POST.get('name')
-        category.slug = slugify(category.name)
-        category.icon = request.POST.get('icon', '📦')
-        category.description = request.POST.get('description', '')
-        category.order = request.POST.get('order', 0)
-
-        parent_id = request.POST.get('parent')
-        category.parent = Category.objects.get(pk=parent_id) if parent_id else None
-
-        category.save()
-        django_messages.success(request, f'Catégorie "{category.name}" modifiée!')
-        return redirect('dashboard:categories')
-
-    parent_categories = Category.objects.filter(parent__isnull=True).exclude(pk=category.pk)
-    return render(request, 'dashboard/category_form.html', {
-        'category': category,
-        'parent_categories': parent_categories,
-        'title': 'Modifier la catégorie'
-    })
-
-@login_required
-def category_delete(request, pk):
-    """Supprimer une catégorie"""
-    if not (request.user.is_superuser or request.user.role == 'admin'):
-        return redirect('dashboard:index')
-
-    category = get_object_or_404(Category, pk=pk)
-
-    if request.method == 'POST':
-        name = category.name
-        category.delete()
-        django_messages.success(request, f'Catégorie "{name}" supprimée!')
-        return redirect('dashboard:categories')
-
-    return render(request, 'dashboard/category_delete.html', {'category': category})

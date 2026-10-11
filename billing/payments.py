@@ -41,17 +41,27 @@ def store_methods(store):
     return config_methods(PaymentConfig.objects.filter(user_id=store.owner_id).first())
 
 
-def checkout_options(stores):
+def checkout_options(stores, no_cash=False):
     """Moyens proposables pour un panier.
 
-    Retourne {'methods': [...], 'missing': [boutiques sans aucun moyen], 'by_store': [(boutique, [libellés])]}.
+    Retourne {'methods': [...], 'missing': [boutiques sans aucun moyen], 'by_store': [(boutique, [libellés])],
+    'cash_only': [boutiques qui n'acceptent que la livraison alors qu'elle est exclue]}.
     Chaque élément de methods : {code, label, short, icon, hint, stores: [(boutique, détails)]}.
+    no_cash : le paiement à la livraison est retiré (panier avec des produits expédiés par un fournisseur).
     """
     per = OrderedDict((s, store_methods(s)) for s in stores)
+    cash_only = []
+    if no_cash:
+        for s, m in per.items():
+            if m and set(m) == {'cash'}:
+                cash_only.append(s)
+            m.pop('cash', None)
     common = [c for c in METHODS if per and all(c in m for m in per.values())]
     return {
         'methods': [{'code': c, **METHODS[c], 'stores': [(s, m[c]) for s, m in per.items()]} for c in common],
-        'missing': [s for s, m in per.items() if not m],
+        'missing': [s for s, m in per.items() if not m and s not in cash_only],
+        'cash_only': cash_only,
+        'no_cash': no_cash,
         'by_store': [(s, [METHODS[c]['short'] for c in METHODS if c in m]) for s, m in per.items()],
     }
 

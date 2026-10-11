@@ -1,0 +1,147 @@
+{% extends 'dashboard/base.html' %}{% load humanize admin_tags %}
+{% block title %}Vue d'ensemble{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.ah-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; }
+.ah-periods { display: inline-flex; background: var(--dash-card); border: 1px solid var(--dash-border); border-radius: 8px; padding: 3px; }
+.ah-periods a { padding: 6px 11px; border-radius: 6px; font-size: 12.5px; font-weight: 600; color: var(--dash-text2); text-decoration: none; }
+.ah-periods a.on { background: var(--dash-accent); color: #fff; }
+.ah-todo a { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--dash-border); color: inherit; text-decoration: none; }
+.ah-todo a:last-child { border-bottom: none; }
+.ah-todo a:hover { background: #fffaf5; }
+.ah-todo .ic { width: 34px; height: 34px; border-radius: 9px; background: var(--dash-bg); color: var(--dash-text3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ah-todo a.hot .ic { background: rgba(255,106,0,.12); color: var(--dash-accent); }
+.ah-todo .t { font-size: 13.5px; font-weight: 600; }
+.ah-todo .d { font-size: 12px; color: var(--dash-text3); }
+.ah-todo .n { margin-left: auto; font-size: 15px; font-weight: 800; color: var(--dash-text3); }
+.ah-todo a.hot .n { color: var(--dash-accent); }
+.ah-rank { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--dash-border); font-size: 13px; }
+.ah-rank:last-child { border-bottom: none; }
+.ah-rank .pos { width: 22px; height: 22px; border-radius: 50%; background: var(--dash-bg); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ah-rank .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ah-split { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+.ah-split div { background: var(--dash-bg); border-radius: 8px; padding: 10px 12px; }
+.ah-split span { display: block; font-size: 11.5px; color: var(--dash-text3); }
+.ah-split strong { font-size: 15px; }
+@media (max-width: 1100px) { .ah-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-shield-halved"></i> Administration de Comptoir</h1>
+        <p>{% now "l j F Y" %} · toute la plateforme</p>
+    </div>
+    <nav class="ah-periods" aria-label="Période">{% for k, label in periods %}<a href="?p={{ k }}" class="{% if period == k %}on{% endif %}">{{ label }}</a>{% endfor %}</nav>
+</div>
+
+<div class="ad-kpis">
+    {% for k in kpis %}
+    {% if k.url %}<a class="ad-kpi" href="{{ k.url }}">{% else %}<div class="ad-kpi">{% endif %}
+        <div class="l"><i class="fa-solid {{ k.icon }}"></i> {{ k.label }}</div>
+        <div class="v">{% if k.money %}{{ k.value|floatformat:0|intcomma }} F{% else %}{{ k.value|intcomma }}{% endif %}{% if k.evo is not None %}<span class="ad-evo {{ k.evo|evo_class }}">{% if k.evo >= 0 %}+{% endif %}{{ k.evo }} %</span>{% endif %}</div>
+        <div class="s">{{ k.sub }}</div>
+    {% if k.url %}</a>{% else %}</div>{% endif %}
+    {% endfor %}
+</div>
+
+<div class="ah-grid">
+    <div>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-chart-line"></i> Volume d'affaires et commandes</h2><a href="{% url 'dashboard:admin_orders' %}">Toutes les commandes</a></div>
+            <div class="ad-card-body" style="height:290px;"><canvas id="ahChart"></canvas></div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-receipt"></i> Dernières commandes</h2><a href="{% url 'dashboard:admin_orders' %}">Voir tout</a></div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Commande</th><th>Client</th><th>Boutique</th><th class="num">Montant</th><th>Statut</th></tr></thead>
+                <tbody>
+                {% for o in recent_orders %}
+                <tr>
+                    <td><a href="{% url 'dashboard:order_detail' o.order_number %}" style="font-weight:700;color:var(--dash-text);">{{ o.order_number }}</a><div class="muted">{{ o.created_at|date:"d/m H:i" }}</div></td>
+                    <td>{{ o.buyer.display_name }}</td>
+                    <td class="muted">{{ o.stores|join:", " }}</td>
+                    <td class="num"><strong>{{ o.total_amount|intcomma }} F</strong></td>
+                    <td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td>
+                </tr>
+                {% empty %}<tr><td colspan="5" class="ad-empty">Aucune commande.</td></tr>{% endfor %}
+                </tbody>
+            </table></div>
+        </section>
+    </div>
+
+    <div>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-list-check"></i> À traiter</h2><span style="font-size:12px;color:var(--dash-text3);">{{ todo_count }} point{{ todo_count|pluralize }}</span></div>
+            <div class="ah-todo">
+                {% for icon, title, n, url, desc in todo %}
+                <a href="{{ url }}" class="{% if n %}hot{% endif %}"><span class="ic"><i class="fa-solid {{ icon }}"></i></span><span><span class="t">{{ title }}</span><span class="d" style="display:block;">{{ desc }}</span></span><span class="n">{{ n }}</span></a>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-coins"></i> Revenus de la plateforme</h2><a href="{% url 'dashboard:platform_stats' %}">Détail</a></div>
+            <div class="ad-card-body">
+                <div style="font-size:24px;font-weight:800;">{{ revenue.total|floatformat:0|intcomma }} F</div>
+                <div style="font-size:12px;color:var(--dash-text3);">sur la période</div>
+                <div class="ah-split">
+                    <div><span>Commissions</span><strong>{{ revenue.commissions|floatformat:0|intcomma }}</strong></div>
+                    <div><span>Abonnements</span><strong>{{ revenue.subscriptions|floatformat:0|intcomma }}</strong></div>
+                    <div><span>Boosts</span><strong>{{ revenue.boosts|floatformat:0|intcomma }}</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-trophy"></i> Meilleures boutiques</h2><a href="{% url 'dashboard:sellers' %}">Boutiques</a></div>
+            <div class="ad-card-body" style="padding-top:6px;padding-bottom:6px;">
+                {% for s in top_stores %}<div class="ah-rank"><span class="pos">{{ forloop.counter }}</span><a class="nm" href="{% url 'store:detail' s.store__slug %}" target="_blank" rel="noopener" style="color:inherit;">{{ s.store__name }}</a><strong>{{ s.gmv|floatformat:0|intcomma }} F</strong></div>
+                {% empty %}<div class="ad-empty" style="padding:1.5rem;">Aucune vente sur la période.</div>{% endfor %}
+            </div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-folder-open"></i> Catégories qui vendent</h2></div>
+            <div class="ad-card-body" style="padding-top:6px;padding-bottom:6px;">
+                {% for c in top_categories %}<div class="ah-rank"><span class="pos">{{ forloop.counter }}</span><span class="nm">{{ c.product__category__name }}</span><strong>{{ c.gmv|floatformat:0|intcomma }} F</strong></div>
+                {% empty %}<div class="ad-empty" style="padding:1.5rem;">Aucune vente sur la période.</div>{% endfor %}
+            </div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-user-plus"></i> Derniers inscrits</h2><a href="{% url 'dashboard:users' %}">Utilisateurs</a></div>
+            <div class="ad-card-body" style="padding-top:6px;padding-bottom:6px;">
+                {% for u in recent_users %}<a class="ah-rank" href="{% url 'dashboard:user_detail' u.pk %}" style="color:inherit;text-decoration:none;"><span class="pos">{{ u.initials }}</span><span class="nm">{{ u.display_name }}</span><span class="ad-pill {% if u.role == 'seller' %}orange{% elif u.role == 'admin' %}blue{% else %}gray{% endif %}">{{ u.get_role_display }}</span><span style="font-size:12px;color:var(--dash-text3);">{{ u.date_joined|date:"d/m" }}</span></a>{% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{{ chart|json_script:"ah-data" }}
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+    var el = document.getElementById('ahChart');
+    if (!el || typeof Chart === 'undefined') return;
+    var d = JSON.parse(document.getElementById('ah-data').textContent);
+    var fmt = function(v) { return v >= 1000000 ? (v / 1000000).toFixed(1) + 'M' : v >= 1000 ? Math.round(v / 1000) + 'K' : v; };
+    new Chart(el, {
+        data: { labels: d.labels, datasets: [
+            { type: 'line', label: "Volume d'affaires (F)", data: d.gmv, borderColor: '#ff6a00', backgroundColor: 'rgba(255,106,0,.12)', fill: true, tension: .3, borderWidth: 2, pointRadius: d.labels.length > 40 ? 0 : 2, yAxisID: 'y' },
+            { type: 'bar', label: 'Commandes', data: d.orders, backgroundColor: 'rgba(46,144,250,.35)', borderRadius: 3, yAxisID: 'y1' }
+        ] },
+        options: {
+            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+            scales: {
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0, font: { size: 11 } } },
+                y: { beginAtZero: true, ticks: { callback: fmt, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,.05)' } },
+                y1: { beginAtZero: true, position: 'right', grid: { display: false }, ticks: { precision: 0, font: { size: 11 } } }
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}

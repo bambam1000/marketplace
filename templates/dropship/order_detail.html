@@ -1,0 +1,157 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}{{ so.reference }} · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+<style>
+.od-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.od-steps { display: flex; gap: 0; margin: 0 0 16px; }
+.od-steps div { flex: 1; text-align: center; font-size: 12px; color: var(--dash-text3); position: relative; padding-top: 30px; }
+.od-steps div::before { content: ''; position: absolute; top: 9px; left: 0; right: 0; height: 3px; background: var(--dash-border); }
+.od-steps div:first-child::before { left: 50%; } .od-steps div:last-child::before { right: 50%; }
+.od-steps div span { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 21px; height: 21px; border-radius: 50%; background: #fff; border: 3px solid var(--dash-border); z-index: 1; }
+.od-steps div.done { color: var(--dash-text); font-weight: 700; }
+.od-steps div.done::before, .od-steps div.done span { background: var(--dash-accent); border-color: var(--dash-accent); }
+.od-addr { font-size: 13.5px; line-height: 1.7; }
+.od-addr .copy { font-size: 12px; }
+.od-sum .ln { display: flex; justify-content: space-between; font-size: 13.5px; padding: 6px 0; }
+.od-sum .ln.tot { border-top: 1px solid var(--dash-border); margin-top: 4px; padding-top: 10px; font-weight: 800; }
+@media (max-width: 1000px) { .od-grid { grid-template-columns: 1fr; } }
+</style>
+<a href="{% url 'dropship:orders' warehouse.pk %}" class="ds-back"><i class="fa-solid fa-arrow-left"></i> Toutes les commandes du fournisseur</a>
+<div class="ad-head" style="margin-bottom:12px;">
+    <div><h1 style="font-size:18px;">{{ so.reference }} <span class="ad-pill {% if so.can_send or so.status == 'to_cancel' %}red{% elif so.status == 'delivered' %}green{% elif so.status == 'cancelled' %}gray{% else %}blue{% endif %}">{% if so.status == 'to_send' and not so.can_send %}Attend le paiement du client{% else %}{{ so.get_status_display }}{% endif %}</span></h1>
+        <p>Commande client <a href="{% url 'dashboard:order_detail' order.order_number %}" style="color:var(--dash-accent);font-weight:600;">{{ order.order_number }}</a> du {{ order.created_at|date:"d/m/Y à H:i" }} · {{ order.get_payment_method_display }}</p></div>
+    <a class="ad-btn" href="{% url 'dropship:order_sheet' warehouse.pk so.pk %}"><i class="fa-solid fa-file-excel"></i> Bon de commande</a>
+</div>
+
+{% if so.status != 'cancelled' and so.status != 'to_cancel' %}
+<div class="od-steps" aria-label="Avancement">
+    <div class="{% if order.is_paid %}done{% endif %}"><span></span>Payée par le client</div>
+    <div class="{% if so.status == 'sent' or so.status == 'shipped' or so.status == 'delivered' %}done{% endif %}"><span></span>Transmise</div>
+    <div class="{% if so.status == 'shipped' or so.status == 'delivered' %}done{% endif %}"><span></span>Expédiée</div>
+    <div class="{% if so.status == 'delivered' %}done{% endif %}"><span></span>Livrée</div>
+</div>
+{% endif %}
+
+{% if so.status == 'to_cancel' %}
+<div class="ds-alert err"><i class="fa-solid fa-triangle-exclamation"></i><div style="flex:1;">Le client a annulé alors que la commande était déjà transmise. Demandez à <strong>{{ conn.name }}</strong> l'annulation ou le remboursement{% if conn.contact_email or conn.contact_phone %} ({{ conn.contact_email }}{% if conn.contact_email and conn.contact_phone %} · {% endif %}{{ conn.contact_phone }}){% endif %}, puis confirmez ici.</div>
+    {% if can_manage %}<form method="post">{% csrf_token %}<button class="ad-btn primary" name="action" value="cancelled"><i class="fa-solid fa-check"></i> Annulation obtenue</button></form>{% endif %}</div>
+{% elif so.status == 'to_send' and not so.can_send and so.status != 'cancelled' %}
+<div class="ds-alert warn"><i class="fa-solid fa-hourglass-half"></i><div>Le client n'a pas encore payé. <strong>Ne payez pas le fournisseur maintenant</strong> : quand vous aurez reçu son paiement, confirmez la commande depuis <a href="{% url 'dashboard:order_detail' order.order_number %}">sa page</a>, puis revenez la transmettre.</div></div>
+{% endif %}
+{% if so.last_error and so.status == 'to_send' %}<div class="ds-alert err"><i class="fa-solid fa-plug-circle-exclamation"></i><div><strong>CJ a refusé la commande :</strong> {{ so.last_error }}</div></div>{% endif %}
+{% if others %}<div class="ds-alert info"><i class="fa-solid fa-boxes-stacked"></i><div>Cette commande contient aussi {{ others }} article{{ others|pluralize }} expédié{{ others|pluralize }} par vos soins depuis un autre entrepôt.</div></div>{% endif %}
+
+<div class="od-grid">
+    <div>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-box"></i> Articles à faire expédier</h2></div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Produit</th><th>Variante</th><th class="num">Qté</th><th class="num">Coût unitaire</th><th class="num">Vendu</th></tr></thead>
+                <tbody>
+                {% for l in lines %}
+                <tr>
+                    <td><div class="ad-who">{% if l.product.image %}<img class="ad-thumb" src="{{ l.product.image.url }}" alt="">{% else %}<span class="ad-thumb"><i class="fa-regular fa-image"></i></span>{% endif %}<div><strong>{{ l.product.name }}</strong>{% with sp=l.product.supplier_item %}{% if sp %}<span class="muted">réf. {{ sp.supplier_sku }}{% if sp.supplier_url %} · <a href="{{ sp.supplier_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--dash-accent);">fiche fournisseur</a>{% endif %}</span>{% endif %}{% endwith %}</div></div></td>
+                    <td class="muted">{{ l.color|default:"" }}{% if l.color and l.size %} · {% endif %}{{ l.size|default:"" }}{% if not l.color and not l.size %}—{% endif %}</td>
+                    <td class="num"><strong>{{ l.quantity }}</strong></td>
+                    <td class="num">{{ l.unit_cost|default:0|intcomma }} F</td>
+                    <td class="num">{{ l.subtotal|intcomma }} F</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table></div>
+        </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-location-dot"></i> Adresse à donner au fournisseur</h2><button type="button" class="ad-btn" onclick="copyAddr(this)"><i class="fa-regular fa-copy"></i> Copier</button></div>
+            <div class="ad-card-body od-addr" id="addr">{{ order.shipping_name }}<br>{{ order.shipping_phone }}<br>{{ order.shipping_address|linebreaksbr }}<br>{{ order.shipping_city }}, Cameroun</div>
+        </section>
+
+        {% if can_manage %}
+        <form method="post" class="ad-card">{% csrf_token %}
+            <div class="ad-card-head"><h2><i class="fa-regular fa-note-sticky"></i> Notes internes</h2></div>
+            <div class="ad-card-body"><div class="ds-field" style="margin-bottom:10px;"><textarea name="notes" rows="3" aria-label="Notes" placeholder="Échanges avec le fournisseur, montant payé, moyen de paiement…">{{ so.notes }}</textarea></div>
+            <button class="ad-btn" name="action" value="notes"><i class="fa-solid fa-check"></i> Enregistrer la note</button></div>
+        </form>
+        {% elif so.notes %}<section class="ad-card"><div class="ad-card-head"><h2>Notes</h2></div><div class="ad-card-body" style="font-size:13px;">{{ so.notes|linebreaksbr }}</div></section>{% endif %}
+    </div>
+
+    <aside>
+        <section class="ad-card od-sum">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-coins"></i> Marge sur cette commande</h2></div>
+            <div class="ad-card-body">
+                <div class="ln"><span>Vendu au client</span><strong>{{ sold|intcomma }} F</strong></div>
+                <div class="ln"><span>Coût de revient</span><span>− {{ so.cost|intcomma }} F</span></div>
+                <div class="ln tot"><span>Marge</span><span style="color:{% if margin < 0 %}#b42318{% else %}#067647{% endif %};">{{ margin|intcomma }} F</span></div>
+            </div>
+        </section>
+
+        {% if so.supplier_reference and conn.api_ready %}
+        <section class="ad-card od-sum">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-plug"></i> Chez CJ</h2>
+                {% if can_manage and so.status != 'delivered' and so.status != 'cancelled' %}<form method="post">{% csrf_token %}<button class="ad-btn" name="action" value="cj_refresh" title="Statut et numéro de suivi"><i class="fa-solid fa-rotate"></i> Actualiser</button></form>{% endif %}</div>
+            <div class="ad-card-body">
+                <div class="ln"><span>N° de commande CJ</span><strong>{{ so.supplier_reference }}</strong></div>
+                <div class="ln"><span>Statut CJ</span><span class="ad-pill {% if so.supplier_status == 'UNPAID' or so.supplier_status == 'CREATED' or so.supplier_status == 'IN_CART' %}orange{% elif so.supplier_status == 'CANCELLED' %}gray{% else %}blue{% endif %}">{{ so.supplier_status|default:"—" }}</span></div>
+                {% if so.supplier_amount %}<div class="ln"><span>Facturé par CJ</span><span>{{ so.supplier_amount }} $</span></div>{% endif %}
+                {% if so.synced_at %}<div class="ln"><span>Vérifié</span><span class="muted">{{ so.synced_at|date:"d/m H:i" }}</span></div>{% endif %}
+                {% if so.supplier_status == 'UNPAID' or so.supplier_status == 'CREATED' or so.supplier_status == 'IN_CART' %}<p style="font-size:12px;color:#b54708;margin:8px 0 0;">À payer dans votre espace CJ pour que le colis parte.</p>{% endif %}
+                {% if can_manage and so.status == 'to_cancel' %}<form method="post" onsubmit="return confirm('Supprimer la commande chez CJ ?');" style="margin-top:10px;">{% csrf_token %}<button class="ad-btn danger" name="action" value="cj_cancel" style="width:100%;justify-content:center;"><i class="fa-solid fa-xmark"></i> Supprimer chez CJ</button><div class="muted" style="font-size:11.5px;margin-top:4px;">Possible tant qu'elle n'est pas payée chez CJ ; sinon, ouvrez un litige chez CJ.</div></form>{% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if can_manage %}
+        {% if so.can_send and conn.api_ready %}
+        <form method="post" class="ad-card" onsubmit="var b=this.querySelector('button');setTimeout(function(){b.disabled=true;b.textContent='Envoi à CJ…';},0);"><input type="hidden" name="action" value="cj_send">{% csrf_token %}
+            <div class="ad-card-head"><h2><i class="fa-solid fa-bolt"></i> Transmettre à CJ</h2></div>
+            <div class="ad-card-body">
+                <p style="font-size:12.5px;color:var(--dash-text2);margin:0 0 12px;">La commande part chez CJ avec l'adresse du client et le mode de livraison « {{ conn.logistic_name }} ».{% if conn.pay_from_balance %} Elle est payée avec votre solde CJ.{% else %} Vous la payerez ensuite dans votre espace CJ.{% endif %}</p>
+                <button class="ad-btn primary" style="width:100%;justify-content:center;padding:10px;"><i class="fa-solid fa-paper-plane"></i> Transmettre à CJ maintenant</button>
+            </div>
+        </form>
+        {% endif %}
+        {% if so.can_send %}
+        <form method="post" class="ad-card">{% csrf_token %}
+            <div class="ad-card-head"><h2><i class="fa-solid fa-paper-plane"></i> {% if conn.api_ready %}Ou à la main{% else %}Transmettre au fournisseur{% endif %}</h2></div>
+            <div class="ad-card-body">
+                <p style="font-size:12.5px;color:var(--dash-text2);margin:0 0 12px;">Passez la commande chez {{ conn.name }} (envoyez-lui le bon de commande), payez-la, puis notez son numéro.</p>
+                <div class="ds-field"><label for="sRef">N° de commande chez le fournisseur</label><input id="sRef" name="supplier_reference" maxlength="100" placeholder="Facultatif"></div>
+                <div class="ds-field"><label for="sCost">Montant réellement payé (F)</label><input id="sCost" name="cost" value="{{ so.cost|floatformat:0 }}" inputmode="numeric"><div class="hint">Corrigez si le fournisseur a facturé un autre prix.</div></div>
+                <button class="ad-btn primary" name="action" value="sent" style="width:100%;justify-content:center;padding:10px;"><i class="fa-solid fa-check"></i> C'est fait : marquer transmise</button>
+            </div>
+        </form>
+        {% endif %}
+        {% if so.status == 'sent' or so.status == 'shipped' %}
+        <form method="post" class="ad-card">{% csrf_token %}
+            <div class="ad-card-head"><h2><i class="fa-solid fa-truck-fast"></i> {% if so.status == 'shipped' %}Suivi du colis{% else %}Le fournisseur a expédié ?{% endif %}</h2></div>
+            <div class="ad-card-body">
+                {% if so.supplier_reference %}<p style="font-size:12.5px;color:var(--dash-text3);margin:0 0 10px;">Commande fournisseur n° {{ so.supplier_reference }}{% if so.sent_at %}, transmise le {{ so.sent_at|date:"d/m/Y" }}{% endif %}.</p>{% endif %}
+                <div class="ds-field"><label for="tNum">Numéro de suivi</label><input id="tNum" name="tracking_number" value="{{ so.tracking_number }}" maxlength="100" required></div>
+                <div class="ds-field"><label for="tCar">Transporteur</label><input id="tCar" name="carrier" value="{{ so.carrier }}" maxlength="100" placeholder="Ex : DHL, YunExpress, CJPacket"></div>
+                <div class="ds-field"><label for="tUrl">Lien de suivi</label><input id="tUrl" name="tracking_url" value="{{ so.tracking_url }}" maxlength="500" placeholder="https://…"></div>
+                <button class="ad-btn primary" name="action" value="shipped" style="width:100%;justify-content:center;padding:10px;"><i class="fa-solid fa-check"></i> {% if so.status == 'shipped' %}Mettre à jour le suivi{% else %}Enregistrer et prévenir le client{% endif %}</button>
+                {% if so.status == 'shipped' %}<button class="ad-btn" name="action" value="delivered" formnovalidate style="width:100%;justify-content:center;padding:10px;margin-top:8px;"><i class="fa-solid fa-box-open"></i> Le client a reçu son colis</button>{% endif %}
+                {% if so.tracking_url %}<a href="{{ so.tracking_url }}" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;font-size:12.5px;margin-top:10px;color:var(--dash-accent);">Suivre le colis <i class="fa-solid fa-arrow-up-right-from-square"></i></a>{% endif %}
+            </div>
+        </form>
+        {% endif %}
+        {% if so.status == 'to_send' or so.status == 'sent' %}
+        <form method="post" onsubmit="return confirm('Annuler la commande fournisseur {{ so.reference }} ? La commande du client, elle, ne change pas.');" style="text-align:center;">{% csrf_token %}<button class="ad-btn danger" name="action" value="cancelled"><i class="fa-solid fa-xmark"></i> Annuler la commande fournisseur</button></form>
+        {% endif %}
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyAddr(btn) {
+    var text = document.getElementById('addr').innerText;
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function() {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copiée';
+        setTimeout(function() { btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copier'; }, 2000);
+    }).catch(function() {});
+}
+</script>
+{% endblock %}

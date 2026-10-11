@@ -1,0 +1,45 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Commandes{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-receipt"></i> Commandes de la plateforme</h1>
+        <p>Toutes les commandes passées sur le site · {{ gmv|floatformat:0|intcomma }} F de volume (hors annulées) pour cette sélection</p>
+    </div>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs" aria-label="Statut">
+        {% for code, label, n in tabs %}<a href="?{% if code %}status={{ code }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if status == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}
+    </nav>
+    <form class="ad-search" method="get">
+        {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+        <select name="paid" onchange="this.form.submit()" aria-label="Paiement">
+            <option value="">Paiement : tous</option>
+            <option value="1" {% if paid == '1' %}selected{% endif %}>Payées</option>
+            <option value="0" {% if paid == '0' %}selected{% endif %}>Non payées</option>
+        </select>
+        <input type="search" name="q" value="{{ q }}" placeholder="N°, client, e-mail, boutique">
+    </form>
+</div>
+{% if request.GET.stale %}<p style="font-size:13px;color:#b54708;margin:-4px 0 12px;"><i class="fa-solid fa-hourglass-half"></i> Commandes en attente depuis plus de 3 jours : relancez la boutique. <a href="?status=pending" style="color:var(--dash-accent);font-weight:600;">Voir toutes les commandes en attente</a></p>{% endif %}
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Commande</th><th>Client</th><th>Boutique(s)</th><th>Paiement</th><th class="num">Montant</th><th>Statut</th><th></th></tr></thead>
+        <tbody>
+        {% for o in page %}
+        <tr>
+            <td><strong>{{ o.order_number }}</strong><div class="muted">{{ o.created_at|date:"d/m/Y H:i" }}</div></td>
+            <td>{{ o.buyer.display_name }}<div class="muted">{{ o.shipping_city }}</div></td>
+            <td>{{ o.stores|join:", " }}</td>
+            <td>{% if o.is_paid %}<span class="ad-pill green">Payée</span>{% else %}<span class="ad-pill orange">Non payée</span>{% endif %}<div class="muted">{{ o.get_payment_method_display }}</div></td>
+            <td class="num"><strong>{{ o.total_amount|intcomma }} F</strong></td>
+            <td><span class="status-badge st-{{ o.status }}">{{ o.get_status_display }}</span></td>
+            <td><div class="ad-acts"><a class="ad-btn" href="{% url 'dashboard:order_detail' o.order_number %}">Détail</a></div></td>
+        </tr>
+        {% empty %}<tr><td colspan="7"><div class="ad-empty"><i class="fa-solid fa-receipt"></i>Aucune commande ne correspond.</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+{% endblock %}

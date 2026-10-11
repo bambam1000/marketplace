@@ -1,0 +1,281 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Guide du dropshipping{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.gd > div { min-width: 0; }
+.gd { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 22px; align-items: start; }
+.gd-toc { position: sticky; top: 84px; background: #fff; border: 1px solid var(--dash-border); border-radius: 12px; padding: 12px; }
+.gd-toc strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dash-text3); margin: 4px 8px 8px; }
+.gd-toc a { display: flex; gap: 9px; align-items: center; padding: 7px 8px; border-radius: 7px; font-size: 13px; color: var(--dash-text2); text-decoration: none; font-weight: 600; }
+.gd-toc a:hover, .gd-toc a.on { background: #fff4ec; color: var(--dash-accent); }
+.gd-toc a i { width: 16px; text-align: center; }
+.gd-sec { background: #fff; border: 1px solid var(--dash-border); border-radius: 12px; padding: 22px 24px; margin-bottom: 18px; scroll-margin-top: 84px; }
+.gd-sec h2 { font-family: inherit; font-size: 18px; font-weight: 800; margin: 0 0 6px; display: flex; gap: 10px; align-items: center; }
+.gd-sec h2 i { color: var(--dash-accent); }
+.gd-sec h3 { font-family: inherit; font-size: 14.5px; font-weight: 700; margin: 20px 0 8px; }
+.gd-sec p, .gd-sec li { font-size: 13.5px; line-height: 1.7; color: var(--dash-text); }
+.gd-sec .lead { color: var(--dash-text2); margin: 0 0 14px; }
+.gd-sec code { background: var(--dash-bg); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+.gd-steps { list-style: none; padding: 0; margin: 10px 0; counter-reset: s; }
+.gd-steps > li { position: relative; padding: 0 0 16px 44px; border-left: 2px solid var(--dash-border); margin-left: 15px; }
+.gd-steps > li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.gd-steps > li::before { counter-increment: s; content: counter(s); position: absolute; left: -16px; top: -2px; width: 30px; height: 30px; border-radius: 50%; background: var(--dash-accent); color: #fff; font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.gd-steps > li > strong:first-child { display: block; font-size: 14px; margin-bottom: 2px; }
+.gd-steps ul { margin: 4px 0 0; padding-left: 18px; }
+.gd-path { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12.5px; font-weight: 600; background: var(--dash-bg); border-radius: 6px; padding: 2px 8px; }
+.gd-note { display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.6; margin: 12px 0; }
+.gd-note i { margin-top: 4px; }
+.gd-note.info { background: #eff8ff; border: 1px solid #b2ddff; color: #194185; }
+.gd-note.warn { background: #fff4e5; border: 1px solid #fbd5a5; color: #7a4100; }
+.gd-note.ok { background: #ecfdf3; border: 1px solid #abefc6; color: #05603a; }
+.gd-flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 14px 0; }
+.gd-flow div { border: 1px solid var(--dash-border); border-radius: 10px; padding: 12px; text-align: center; font-size: 12.5px; color: var(--dash-text2); }
+.gd-flow div i { display: block; font-size: 20px; color: var(--dash-accent); margin-bottom: 6px; }
+.gd-flow div b { display: block; color: var(--dash-text); font-size: 13px; }
+.gd-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 10px 0; }
+.gd-table th, .gd-table td { border: 1px solid var(--dash-border); padding: 8px 10px; text-align: left; vertical-align: top; }
+.gd-table th { background: var(--dash-bg); font-weight: 700; }
+.gd-calc { display: grid; grid-template-columns: 1fr auto; gap: 4px 20px; max-width: 420px; font-size: 13.5px; background: var(--dash-bg); padding: 14px 16px; border-radius: 10px; }
+.gd-calc .t { border-top: 1px solid var(--dash-border); padding-top: 6px; font-weight: 800; }
+.gd-faq details { border-bottom: 1px solid var(--dash-border); padding: 10px 0; }
+.gd-faq summary { cursor: pointer; font-weight: 700; font-size: 13.5px; }
+.gd-faq details p { margin: 8px 0 0; }
+.gd-cta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.gd-cta .ad-btn { padding: 9px 14px; font-size: 13px; }
+.gd-pill { display: inline-block; padding: 1px 8px; border-radius: 50px; font-size: 11.5px; font-weight: 700; }
+@media (max-width: 1000px) { .gd { grid-template-columns: minmax(0, 1fr); } .gd-toc { position: static; display: flex; flex-wrap: wrap; gap: 4px; } .gd-toc strong { width: 100%; } .gd-flow { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .gd-sec { padding: 18px 16px; } .gd-flow { grid-template-columns: 1fr; } .gd-table { display: block; overflow-x: auto; } }
+</style>
+
+<a href="{% url 'dropship:index' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:10px;"><i class="fa-solid fa-arrow-left"></i> Retour au dropshipping</a>
+<div class="ad-head">
+    <div><h1><i class="fa-solid fa-book-open"></i> Guide du dropshipping</h1>
+        <p>Tout ce qu'il faut savoir pour vendre avec CJ Dropshipping, AliExpress ou un grossiste, étape par étape.</p></div>
+</div>
+
+<div class="gd">
+    <nav class="gd-toc" aria-label="Sommaire">
+        <strong>Sommaire</strong>
+        <a href="#principe"><i class="fa-solid fa-lightbulb"></i> Le principe</a>
+        <a href="#cj"><i class="fa-solid fa-plug"></i> CJ Dropshipping</a>
+        <a href="#aliexpress"><i class="fa-solid fa-cart-shopping"></i> AliExpress</a>
+        <a href="#fichier"><i class="fa-solid fa-file-excel"></i> Grossiste (fichier)</a>
+        <a href="#prix"><i class="fa-solid fa-calculator"></i> Prix et marge</a>
+        <a href="#commandes"><i class="fa-solid fa-route"></i> Suivre une commande</a>
+        <a href="#faq"><i class="fa-solid fa-circle-question"></i> Questions fréquentes</a>
+    </nav>
+
+    <div>
+        <!-- ─── Principe ─── -->
+        <section class="gd-sec" id="principe">
+            <h2><i class="fa-solid fa-lightbulb"></i> Le principe</h2>
+            <p class="lead">Le dropshipping, c'est vendre des produits <strong>sans les avoir en stock</strong>. Vous les mettez en vente sur Comptoir ; quand un client achète, c'est le fournisseur qui prépare le colis et l'envoie directement chez lui.</p>
+            <div class="gd-flow">
+                <div><i class="fa-solid fa-store"></i><b>1. Vous publiez</b>les produits du fournisseur, à votre prix.</div>
+                <div><i class="fa-solid fa-mobile-screen"></i><b>2. Le client paie</b>sur Comptoir (Mobile Money, carte).</div>
+                <div><i class="fa-solid fa-paper-plane"></i><b>3. Vous commandez</b>chez le fournisseur, avec l'adresse du client.</div>
+                <div><i class="fa-solid fa-truck-plane"></i><b>4. Il expédie</b>le colis directement au client.</div>
+                <div><i class="fa-solid fa-coins"></i><b>5. Vous gagnez</b>la différence entre les deux prix.</div>
+            </div>
+            <h3>Dans Comptoir, un fournisseur = un entrepôt</h3>
+            <p>Chaque fournisseur apparaît comme un entrepôt spécial (badge <span class="gd-pill" style="background:#eff8ff;color:#175cd3;">Dropshipping</span>). Ses produits y sont rangés, et les commandes de ces produits arrivent dans son onglet <strong>Commandes</strong>, prêtes à être transmises.</p>
+            <h3>Trois façons de travailler</h3>
+            <table class="gd-table">
+                <thead><tr><th>Fournisseur</th><th>Comment</th><th>Ce qui est automatique</th></tr></thead>
+                <tbody>
+                    <tr><td><strong>CJ Dropshipping</strong></td><td>Connexion directe avec votre clé d'API</td><td>Import des produits, prix, stock, envoi des commandes, numéro de suivi</td></tr>
+                    <tr><td><strong>AliExpress</strong></td><td>Import par fichier (connexion directe en préparation)</td><td>Import des produits ; les commandes se passent à la main sur AliExpress</td></tr>
+                    <tr><td><strong>Grossiste, 1688, fournisseur local</strong></td><td>Import par fichier CSV ou Excel</td><td>Import des produits ; commandes envoyées avec un bon de commande Excel</td></tr>
+                </tbody>
+            </table>
+            <div class="gd-note warn"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Pas de paiement à la livraison</strong> pour les produits en dropshipping : vous payez le fournisseur avant l'expédition, donc le client doit payer avant. Comptoir retire automatiquement cette option au moment du paiement.</div></div>
+        </section>
+
+        <!-- ─── CJ ─── -->
+        <section class="gd-sec" id="cj">
+            <h2><i class="fa-solid fa-plug"></i> CJ Dropshipping <span class="gd-pill" style="background:#ecfdf3;color:#067647;">Connexion directe</span></h2>
+            <p class="lead">CJ Dropshipping est un grossiste basé en Chine, spécialisé dans le dropshipping. Son gros avantage : Comptoir se connecte directement à votre compte CJ et fait presque tout à votre place.</p>
+            <ol class="gd-steps">
+                <li><strong>Créez votre compte CJ (gratuit)</strong>
+                    Allez sur <a href="https://cjdropshipping.com" target="_blank" rel="noopener noreferrer" style="color:var(--dash-accent);font-weight:600;">cjdropshipping.com</a> et cliquez sur <em>Sign Up</em>. Inscrivez-vous avec votre e-mail et confirmez-le. Le site est en anglais : vous pouvez utiliser la traduction automatique de votre navigateur.</li>
+                <li><strong>Générez votre clé d'API</strong>
+                    Une fois connecté sur CJ : <span class="gd-path">My CJ <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> Authorization <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> API</span>, puis cliquez sur <strong>Generate</strong>. Copiez la clé : elle ressemble à <code>CJ1234567@api@a1b2c3d4…</code>.
+                    <div class="gd-note warn" style="margin-bottom:0;"><i class="fa-solid fa-key"></i><div>Cette clé donne accès à votre compte CJ : ne la donnez à personne. Dans Comptoir, elle est chiffrée et n'est jamais réaffichée.</div></div></li>
+                <li><strong>Ajoutez CJ dans Comptoir</strong>
+                    Menu <span class="gd-path">Dropshipping</span> › bouton <strong>Connecter CJ Dropshipping</strong>. Vous arrivez sur les réglages : collez la clé dans <strong>Clé d'API CJ</strong> et cliquez sur <strong>Connecter mon compte CJ</strong>. Le badge vert <span class="gd-pill" style="background:#ecfdf3;color:#067647;">Connecté</span> confirme que tout fonctionne.</li>
+                <li><strong>Réglez la livraison et vos prix</strong>
+                    Toujours dans les réglages :
+                    <ul>
+                        <li><strong>Pays de livraison</strong> : le pays de vos clients (Cameroun par défaut).</li>
+                        <li><strong>Mode de livraison</strong> : laissez « CJPacket Ordinary », le moins cher en général.</li>
+                        <li><strong>Inclure le port</strong> : laissez coché, votre prix couvrira la livraison.</li>
+                        <li><strong>Taux de change et coefficient</strong> : voir <a href="#prix" style="color:var(--dash-accent);">Prix et marge</a>.</li>
+                    </ul></li>
+                <li><strong>Choisissez vos produits</strong>
+                    Onglet <span class="gd-path">Catalogue CJ</span> : tapez un mot <strong>en anglais</strong> (<code>watch</code>, <code>earbuds</code>, <code>handbag</code>…). Pour chaque produit, vous voyez le prix CJ en dollars et votre prix de vente estimé en francs. Cochez jusqu'à 10 produits, choisissez la catégorie Comptoir et cliquez sur <strong>Importer</strong>.
+                    <div class="gd-note info" style="margin-bottom:0;"><i class="fa-solid fa-language"></i><div>Les produits arrivent avec leur nom anglais, leurs photos, leurs couleurs et tailles et leur stock. Laissez-les <strong>hors ligne</strong>, traduisez le nom et la description (bouton <em>Modifier</em> dans l'onglet Produits), puis mettez-les en ligne.</div></div></li>
+                <li><strong>Rechargez votre solde CJ (conseillé)</strong>
+                    Sur CJ : <span class="gd-path">My CJ <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> Wallet</span> pour ajouter de l'argent (carte bancaire, PayPal…). Puis dans Comptoir, cochez <strong>Payer CJ avec le solde de mon compte CJ</strong> : vos commandes seront payées et expédiées sans attendre.
+                    Sans solde, chaque commande est créée chez CJ « à payer » (<em>Unpaid</em>) : il faut alors aller la payer sur CJ, dans <span class="gd-path">My CJ <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> Orders</span>.</li>
+                <li><strong>Quand un client commande</strong>
+                    Vous recevez une notification. Dès que le paiement du client est confirmé :
+                    <ul>
+                        <li>avec la <strong>transmission automatique</strong> cochée, la commande part seule chez CJ ;</li>
+                        <li>sinon, ouvrez <span class="gd-path">Dropshipping <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> CJ <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> Commandes</span> et cliquez sur <strong>Transmettre à CJ maintenant</strong>.</li>
+                    </ul>
+                    L'adresse du client, la couleur et la taille choisies sont envoyées à CJ.</li>
+                <li><strong>Suivi et livraison</strong>
+                    Quand CJ expédie, le numéro de suivi arrive dans Comptoir (bouton <strong>Actualiser</strong>, ou automatiquement chaque heure si la tâche de synchronisation est en place). Le client reçoit une notification et un e-mail avec le numéro. Comptez en général 10 à 25 jours vers l'Afrique centrale.</li>
+            </ol>
+            <div class="gd-cta">
+                {% if cj_wh %}<a class="ad-btn primary" href="{% url 'dropship:settings' cj_wh.pk %}"><i class="fa-solid fa-sliders"></i> Ouvrir mes réglages CJ</a>
+                {% elif owner %}<form method="post" action="{% url 'dropship:index' %}">{% csrf_token %}<input type="hidden" name="provider" value="cj"><button class="ad-btn primary"><i class="fa-solid fa-plug"></i> Connecter CJ Dropshipping maintenant</button></form>{% endif %}
+                <a class="ad-btn" href="https://cjdropshipping.com" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> Aller sur cjdropshipping.com</a>
+            </div>
+        </section>
+
+        <!-- ─── AliExpress ─── -->
+        <section class="gd-sec" id="aliexpress">
+            <h2><i class="fa-solid fa-cart-shopping"></i> AliExpress</h2>
+            <p class="lead">AliExpress propose des millions de produits à bas prix. La connexion directe est en préparation (elle demande une autorisation d'AliExpress pour Comptoir). En attendant, vous pouvez déjà vendre des produits AliExpress : vous les importez avec un fichier et vous passez les commandes vous-même sur AliExpress.</p>
+            <div class="gd-note info"><i class="fa-solid fa-circle-info"></i><div>Quand la connexion directe sera disponible, un bouton « Connecter AliExpress » apparaîtra dans le menu Dropshipping : vous vous connecterez avec votre compte AliExpress et tout fonctionnera comme pour CJ.</div></div>
+
+            <h3>A. Mettre les produits AliExpress en vente</h3>
+            <ol class="gd-steps">
+                <li><strong>Créez le fournisseur</strong>
+                    Menu <span class="gd-path">Dropshipping</span> › <strong>Autre fournisseur (fichier)</strong>, nommez-le « AliExpress » et cliquez sur <strong>Créer</strong>. Dans les réglages, choisissez la devise <strong>Dollar américain ($)</strong> et le pays d'expédition <strong>Chine</strong>.</li>
+                <li><strong>Choisissez des produits qui livrent chez vous</strong>
+                    Sur <a href="https://fr.aliexpress.com" target="_blank" rel="noopener noreferrer" style="color:var(--dash-accent);font-weight:600;">aliexpress.com</a>, réglez en haut de page <em>Livrer à : Cameroun</em> (ou votre pays) et la devise en <em>USD</em>. Sur chaque fiche produit, vérifiez que la livraison est possible et notez son prix et le délai.
+                    <div class="gd-note warn" style="margin-bottom:0;"><i class="fa-solid fa-star"></i><div>Préférez les vendeurs bien notés (95 % d'avis positifs ou plus), avec beaucoup de ventes et la livraison <em>AliExpress Standard Shipping</em> (suivie de bout en bout).</div></div></li>
+                <li><strong>Remplissez le fichier modèle</strong>
+                    Onglet <span class="gd-path">Importer</span> du fournisseur › <strong>Télécharger le modèle</strong>. Une ligne par produit :
+                    <table class="gd-table">
+                        <thead><tr><th>Colonne</th><th>Quoi mettre</th><th>Exemple</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>Référence</strong> *</td><td>Le numéro du produit, dans son adresse : <code>aliexpress.com/item/<strong>1005006123456789</strong>.html</code></td><td>1005006123456789</td></tr>
+                            <tr><td><strong>Nom</strong> *</td><td>Le nom, en français, tel que vos clients le verront</td><td>Montre connectée étanche</td></tr>
+                            <tr><td><strong>Prix fournisseur</strong> *</td><td>Le prix AliExpress <strong>en dollars, port compris</strong></td><td>12.50</td></tr>
+                            <tr><td>Stock</td><td>Une quantité raisonnable (AliExpress a rarement des ruptures)</td><td>50</td></tr>
+                            <tr><td>Image</td><td>Clic droit sur la photo › <em>Copier l'adresse de l'image</em></td><td>https://ae01.alicdn.com/…jpg</td></tr>
+                            <tr><td>Couleurs / Tailles</td><td>Les choix proposés, séparés par des virgules</td><td>Noir, Bleu</td></tr>
+                            <tr><td>Lien</td><td>L'adresse complète de la fiche AliExpress (très utile pour commander)</td><td>https://fr.aliexpress.com/item/…</td></tr>
+                        </tbody>
+                    </table>
+                    <span style="font-size:12.5px;color:var(--dash-text3);">* obligatoire</span></li>
+                <li><strong>Importez le fichier</strong>
+                    Onglet <span class="gd-path">Importer</span> › choisissez le fichier › vérifiez que chaque colonne correspond au bon champ › <strong>Importer</strong>. Les prix de vente sont calculés automatiquement avec vos réglages, et les photos sont téléchargées.</li>
+            </ol>
+
+            <h3>B. Quand un client commande</h3>
+            <ol class="gd-steps">
+                <li><strong>Attendez le paiement du client</strong>
+                    La commande apparaît dans <span class="gd-path">Commandes</span> du fournisseur avec « Attend le paiement du client ». Ne commandez rien sur AliExpress tant que vous n'avez pas confirmé le paiement.</li>
+                <li><strong>Commandez sur AliExpress</strong>
+                    Ouvrez la commande dans Comptoir et cliquez sur <strong>fiche fournisseur</strong> à côté du produit. Sur AliExpress :
+                    <ul>
+                        <li>choisissez <strong>la même couleur, la même taille et la même quantité</strong> que le client ;</li>
+                        <li>au moment de payer, <strong>ajoutez une nouvelle adresse</strong> : celle du client (bouton <strong>Copier</strong> dans Comptoir), avec son nom et son téléphone ;</li>
+                        <li>choisissez <em>AliExpress Standard Shipping</em> si possible, puis payez.</li>
+                    </ul>
+                    <div class="gd-note warn" style="margin-bottom:0;"><i class="fa-solid fa-gift"></i><div>Dans le champ « Message au vendeur », écrivez : <em>« Dropshipping order, please no invoice or price in the package »</em> (commande en dropshipping, pas de facture ni de prix dans le colis).</div></div></li>
+                <li><strong>Notez la commande dans Comptoir</strong>
+                    Copiez le <strong>numéro de commande AliExpress</strong> (dans <em>Mes commandes</em>) dans <strong>N° de commande chez le fournisseur</strong>, corrigez le montant payé si besoin, puis cliquez sur <strong>C'est fait : marquer transmise</strong>.</li>
+                <li><strong>Ajoutez le numéro de suivi</strong>
+                    Après quelques jours, sur AliExpress : <span class="gd-path">Mes commandes <i class="fa-solid fa-chevron-right" style="font-size:9px;"></i> Suivre la commande</span>. Copiez le numéro de suivi dans Comptoir et cliquez sur <strong>Enregistrer et prévenir le client</strong> : le client reçoit le numéro.</li>
+                <li><strong>Confirmez la réception</strong>
+                    Quand le client a son colis, cliquez sur <strong>Le client a reçu son colis</strong>. Sur AliExpress, confirmez aussi la réception de la commande.</li>
+            </ol>
+            <div class="gd-cta">
+                {% if file_wh %}<a class="ad-btn primary" href="{% url 'dropship:import' file_wh.pk %}"><i class="fa-solid fa-file-import"></i> Importer un fichier</a>
+                {% elif owner %}<a class="ad-btn primary" href="{% url 'dropship:index' %}"><i class="fa-solid fa-plus"></i> Créer le fournisseur AliExpress</a>{% endif %}
+                <a class="ad-btn" href="https://fr.aliexpress.com" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-arrow-up-right-from-square"></i> Aller sur AliExpress</a>
+            </div>
+        </section>
+
+        <!-- ─── Fichier ─── -->
+        <section class="gd-sec" id="fichier">
+            <h2><i class="fa-solid fa-file-excel"></i> Grossiste ou autre fournisseur (fichier)</h2>
+            <p class="lead">Pour un grossiste qui vous envoie son catalogue (Excel, CSV), un fournisseur sur 1688 ou Alibaba, ou un fournisseur local qui livre vos clients.</p>
+            <ol class="gd-steps">
+                <li><strong>Créez le fournisseur</strong> avec <strong>Autre fournisseur (fichier)</strong>, puis réglez sa devise (francs CFA s'il est local), ses délais de livraison et ses contacts.</li>
+                <li><strong>Importez son catalogue</strong> : envoyez-lui le fichier modèle à remplir, ou importez directement son fichier. Comptoir reconnaît la plupart des colonnes tout seul ; vous corrigez si besoin avant d'importer.</li>
+                <li><strong>Mettez à jour</strong> : quand il vous envoie un nouveau fichier, réimportez-le. Les produits existants sont mis à jour (prix, stock) grâce à leur référence ; cochez « mettre à zéro les produits absents » pour retirer ce qu'il ne vend plus.</li>
+                <li><strong>Transmettez les commandes</strong> : sur chaque commande, le bouton <strong>Bon de commande</strong> télécharge un fichier Excel avec les produits et l'adresse du client, à envoyer par e-mail ou WhatsApp. Notez ensuite son numéro de suivi.</li>
+            </ol>
+        </section>
+
+        <!-- ─── Prix ─── -->
+        <section class="gd-sec" id="prix">
+            <h2><i class="fa-solid fa-calculator"></i> Prix et marge</h2>
+            <p class="lead">Comptoir calcule votre prix de vente à partir du prix du fournisseur. Tout se règle dans <span class="gd-path">Réglages</span> de chaque fournisseur.</p>
+            <table class="gd-table">
+                <tbody>
+                    <tr><th style="width:180px;">Taux de change</th><td>Combien de francs pour 1 dollar. Mettez un peu plus que le cours du jour (ex. <strong>620</strong> au lieu de 605) pour couvrir les frais de votre banque ou de Mobile Money.</td></tr>
+                    <tr><th>Frais par article</th><td>Ce que vous coûte chaque article en plus : frais de dédouanement, transport depuis le point de retrait, emballage… Mettez 0 si le fournisseur livre jusque chez le client.</td></tr>
+                    <tr><th>Coefficient</th><td>Combien de fois le coût vous vendez. <strong>1,8</strong> = vous vendez 1,8 fois ce que l'article vous coûte. Entre 1,5 et 2,5 en général.</td></tr>
+                    <tr><th>Arrondi</th><td>Les prix sont arrondis au-dessus (ex. à 100 F : 14 640 F devient 14 700 F).</td></tr>
+                    <tr><th>Alerte marge</th><td>Les produits dont la marge passe sous ce seuil apparaissent en rouge dans l'onglet Produits.</td></tr>
+                </tbody>
+            </table>
+            <h3>Exemple</h3>
+            <div class="gd-calc">
+                <span>Prix CJ / AliExpress</span><span>10 $</span>
+                <span>+ port</span><span>2 $</span>
+                <span>× taux 620</span><span>7 440 F</span>
+                <span>+ frais par article</span><span>500 F</span>
+                <span class="t">Coût de revient</span><span class="t">7 940 F</span>
+                <span>× coefficient 1,8 (arrondi)</span><span>14 300 F</span>
+                <span class="t" style="color:#067647;">Votre marge</span><span class="t" style="color:#067647;">6 360 F (44 %)</span>
+            </div>
+            <div class="gd-note info"><i class="fa-solid fa-rotate"></i><div>Changer les réglages ne modifie pas les prix déjà en ligne : utilisez <strong>Recalculer les prix</strong> en bas des réglages. Un prix modifié à la main reste fixe ; « Recalculer le prix » dans l'onglet Produits le remet en calcul automatique.</div></div>
+        </section>
+
+        <!-- ─── Commandes ─── -->
+        <section class="gd-sec" id="commandes">
+            <h2><i class="fa-solid fa-route"></i> Suivre une commande de A à Z</h2>
+            <p class="lead">Chaque commande client contenant un produit en dropshipping crée une <strong>commande fournisseur</strong> (référence <code>DRP-00001</code>). Voici ses étapes :</p>
+            <table class="gd-table">
+                <thead><tr><th>Statut</th><th>Ce que ça veut dire</th><th>Ce que vous faites</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="gd-pill" style="background:#fff4e5;color:#b54708;">Attend le paiement</span></td><td>Le client n'a pas encore payé.</td><td>Rien. Confirmez le paiement dès que vous le recevez (page de la commande client).</td></tr>
+                    <tr><td><span class="gd-pill" style="background:#fef3f2;color:#b42318;">À transmettre</span></td><td>Le client a payé.</td><td>Commandez chez le fournisseur (automatique avec CJ).</td></tr>
+                    <tr><td><span class="gd-pill" style="background:#eff8ff;color:#175cd3;">Transmise</span></td><td>Le fournisseur a la commande.</td><td>Vérifiez qu'elle est payée chez lui ; attendez l'expédition.</td></tr>
+                    <tr><td><span class="gd-pill" style="background:#eff8ff;color:#175cd3;">Expédiée</span></td><td>Le colis est en route ; le client a son numéro de suivi.</td><td>Rien, sauf si le client vous contacte.</td></tr>
+                    <tr><td><span class="gd-pill" style="background:#ecfdf3;color:#067647;">Livrée</span></td><td>Le client a reçu son colis.</td><td>Terminé.</td></tr>
+                    <tr><td><span class="gd-pill" style="background:#fef3f2;color:#b42318;">À annuler</span></td><td>Le client a annulé après la transmission.</td><td>Demandez l'annulation ou le remboursement au fournisseur, puis confirmez dans Comptoir.</td></tr>
+                </tbody>
+            </table>
+            <p>Le chiffre rouge à côté de <strong>Dropshipping</strong> dans le menu indique les commandes payées à transmettre ou à annuler.</p>
+        </section>
+
+        <!-- ─── FAQ ─── -->
+        <section class="gd-sec gd-faq" id="faq">
+            <h2><i class="fa-solid fa-circle-question"></i> Questions fréquentes</h2>
+            <details><summary>Combien de temps met la livraison ?</summary><p>Depuis la Chine vers l'Afrique centrale, comptez en général 10 à 25 jours (parfois plus avec la douane). Le délai affiché sur vos produits se règle dans les réglages du fournisseur : soyez honnête, c'est ce qui évite les réclamations.</p></details>
+            <details><summary>Comment je paie CJ ou AliExpress depuis le Cameroun ?</summary><p>Avec une carte bancaire Visa ou Mastercard, y compris une carte virtuelle prépayée (proposée par plusieurs banques et services Mobile Money). Sur CJ, vous pouvez aussi recharger votre solde (<em>Wallet</em>) à l'avance.</p></details>
+            <details><summary>Et si le client annule ou demande un remboursement ?</summary><p>Si la commande n'a pas encore été transmise, elle est annulée automatiquement chez vous. Si elle l'était, elle passe « À annuler » : sur CJ, le bouton <strong>Supprimer chez CJ</strong> fonctionne tant que vous n'avez pas payé ; sinon ouvrez un litige (<em>Dispute</em>) chez le fournisseur.</p></details>
+            <details><summary>Le colis est perdu ou abîmé, que faire ?</summary><p>Ouvrez un litige chez le fournisseur avec des photos (sur CJ : <em>My CJ › Disputes</em> ; sur AliExpress : <em>Mes commandes › Ouvrir un litige</em>). Ils remboursent ou renvoient le produit en général. Prévenez votre client pour le rassurer.</p></details>
+            <details><summary>Les stocks et les prix changent chez le fournisseur ?</summary><p>Avec CJ, cliquez sur <strong>Synchroniser</strong> dans l'onglet Produits (ou laissez la synchronisation automatique le faire). Pour les fournisseurs par fichier, réimportez leur dernier fichier.</p></details>
+            <details><summary>Le client peut-il payer à la livraison ?</summary><p>Non pour les produits en dropshipping, car vous devez payer le fournisseur avant l'expédition. Si son panier contient aussi des produits de votre stock, le paiement à la livraison est retiré pour toute la commande.</p></details>
+            <details><summary>Je peux mélanger dropshipping et mes propres produits ?</summary><p>Oui. Dans une même commande, les produits de votre stock partent de votre entrepôt et ceux du fournisseur sont expédiés par lui. Le client est prévenu quand le colis du fournisseur part, avec son numéro de suivi.</p></details>
+            <details><summary>Mes employés peuvent-ils gérer le dropshipping ?</summary><p>Oui, selon leurs droits : « voir/gérer les commandes » pour transmettre les commandes, « modifier les produits » pour importer. Seul le propriétaire peut ajouter un fournisseur, régler les prix ou la clé CJ.</p></details>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var links = document.querySelectorAll('.gd-toc a'), secs = document.querySelectorAll('.gd-sec');
+    if (!('IntersectionObserver' in window)) return;
+    var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+            if (e.isIntersecting) links.forEach(function(a) { a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id); });
+        });
+    }, { rootMargin: '-90px 0px -60% 0px' });
+    secs.forEach(function(s) { obs.observe(s); });
+})();
+</script>
+{% endblock %}

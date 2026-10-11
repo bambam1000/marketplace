@@ -1,0 +1,81 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Dépenses{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.ex-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.ex-bar { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; }
+.ex-bar .nm { width: 110px; flex-shrink: 0; color: var(--dash-text2); }
+.ex-bar .tr { flex: 1; height: 8px; background: var(--dash-bg); border-radius: 50px; overflow: hidden; }
+.ex-bar .tr span { display: block; height: 100%; background: var(--dash-accent); border-radius: 50px; }
+.ex-bar .am { width: 110px; text-align: right; font-weight: 700; flex-shrink: 0; }
+.ex-bar a { color: inherit; text-decoration: none; display: contents; }
+.ex-form .f { margin-bottom: 12px; }
+.ex-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.ex-form input, .ex-form select { width: 100%; padding: 9px 11px; border: 1.5px solid var(--dash-border); border-radius: 8px; font: 14px inherit; font-family: inherit; background: #fff; }
+.ex-form .err input, .ex-form .err select { border-color: #f04438; }
+.ex-form .msg { font-size: 12px; color: #d92d20; margin-top: 4px; }
+.ex-form .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 1100px) { .ex-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-file-invoice-dollar"></i> Dépenses de la plateforme</h1>
+        <p>Ce que coûte Comptoir : hébergement, marketing, salaires… Elles sont déduites des revenus dans la page Revenus.</p>
+    </div>
+    <a class="ad-btn" href="{% url 'dashboard:platform_stats' %}"><i class="fa-solid fa-coins"></i> Revenus</a>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs">{% for code, label in periods %}<a href="?period={{ code }}{% if cat %}&category={{ cat }}{% endif %}" class="{% if period == code %}on{% endif %}">{{ label }}</a>{% endfor %}</nav>
+    <form class="ad-search" method="get"><input type="hidden" name="period" value="{{ period }}">
+        <select name="category" onchange="this.form.submit()" aria-label="Catégorie"><option value="">Toutes les catégories</option>{% for c, l in categories %}<option value="{{ c }}" {% if cat == c %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+    </form>
+</div>
+
+<div class="ex-grid">
+    <div>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-chart-simple"></i> Répartition</h2><strong style="font-size:16px;">{{ total|floatformat:0|intcomma }} F</strong></div>
+            <div class="ad-card-body">
+                {% for c, label, t, pct in by_cat %}<div class="ex-bar"><a href="?period={{ period }}&category={{ c }}"><span class="nm">{{ label }}</span><span class="tr"><span style="width:{{ pct }}%;"></span></span><span class="am">{{ t|floatformat:0|intcomma }} F</span></a></div>
+                {% empty %}<div class="ad-empty" style="padding:1.2rem;">Aucune dépense sur la période.</div>{% endfor %}
+            </div>
+        </section>
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-list"></i> Historique</h2></div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Description</th><th>Catégorie</th><th>Date</th><th class="num">Montant</th><th></th></tr></thead>
+                <tbody>
+                {% for e in page %}
+                <tr>
+                    <td><strong>{{ e.description }}</strong>{% if e.created_by %}<div class="muted">saisie par {{ e.created_by.display_name }}</div>{% endif %}</td>
+                    <td><span class="ad-pill gray">{{ e.get_category_display }}</span></td>
+                    <td class="muted">{{ e.date|date:"d/m/Y" }}</td>
+                    <td class="num"><strong>{{ e.amount|floatformat:0|intcomma }} F</strong></td>
+                    <td><div class="ad-acts">
+                        {% if e.receipt %}<a class="ad-btn" href="{{ e.receipt.url }}" target="_blank" rel="noopener" title="Justificatif"><i class="fa-solid fa-paperclip"></i></a>{% endif %}
+                        <form method="post" onsubmit="return confirm('Supprimer cette dépense ?');">{% csrf_token %}<input type="hidden" name="expense" value="{{ e.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="ad-btn danger" name="action" value="delete" title="Supprimer"><i class="fa-regular fa-trash-can"></i></button></form>
+                    </div></td>
+                </tr>
+                {% empty %}<tr><td colspan="5"><div class="ad-empty"><i class="fa-solid fa-file-invoice-dollar"></i>Aucune dépense sur la période.</div></td></tr>{% endfor %}
+                </tbody>
+            </table></div>
+            {% include 'dashboard/admin/_pages.html' %}
+        </section>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="ad-card ex-form" id="nouvelle">{% csrf_token %}
+        <div class="ad-card-head"><h2><i class="fa-solid fa-plus"></i> Ajouter une dépense</h2></div>
+        <div class="ad-card-body">
+            <div class="f {% if errors.category %}err{% endif %}"><label for="eCat">Catégorie</label><select id="eCat" name="category" required><option value="">— Choisir —</option>{% for c, l in categories %}<option value="{{ c }}" {% if form.category == c %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>{% if errors.category %}<div class="msg">{{ errors.category }}</div>{% endif %}</div>
+            <div class="f {% if errors.description %}err{% endif %}"><label for="eDesc">Description</label><input id="eDesc" name="description" value="{{ form.description }}" maxlength="300" placeholder="Ex. : hébergement du serveur — octobre" required>{% if errors.description %}<div class="msg">{{ errors.description }}</div>{% endif %}</div>
+            <div class="row2">
+                <div class="f {% if errors.amount %}err{% endif %}"><label for="eAmt">Montant (F)</label><input id="eAmt" name="amount" value="{{ form.amount }}" inputmode="numeric" pattern="[0-9 ]+" required>{% if errors.amount %}<div class="msg">{{ errors.amount }}</div>{% endif %}</div>
+                <div class="f {% if errors.date %}err{% endif %}"><label for="eDate">Date</label><input id="eDate" type="date" name="date" value="{{ form.date|default:today }}" max="{{ today }}">{% if errors.date %}<div class="msg">{{ errors.date }}</div>{% endif %}</div>
+            </div>
+            <div class="f"><label for="eRec">Justificatif <span style="font-weight:400;color:var(--dash-text3);">(facultatif)</span></label><input id="eRec" type="file" name="receipt" accept="image/*,application/pdf"></div>
+            <button type="submit" class="ad-btn primary" style="width:100%;justify-content:center;padding:10px;"><i class="fa-solid fa-check"></i> Enregistrer la dépense</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

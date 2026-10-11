@@ -1,0 +1,76 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Dropshipping{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.dsi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.dsi-card { background: #fff; border: 1px solid var(--dash-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.dsi-card:hover { border-color: #fbc59b; box-shadow: 0 4px 14px rgba(16,24,40,.06); }
+.dsi-top { display: flex; gap: 12px; align-items: center; }
+.dsi-ico { width: 42px; height: 42px; border-radius: 10px; background: #fff4ec; color: var(--dash-accent); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+.dsi-top strong { font-size: 15px; display: block; }
+.dsi-top small { font-size: 12px; color: var(--dash-text3); }
+.dsi-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dsi-nums div { background: var(--dash-bg); border-radius: 8px; padding: 8px; text-align: center; font-size: 11.5px; color: var(--dash-text3); }
+.dsi-nums b { display: block; font-size: 17px; color: var(--dash-text); }
+.dsi-nums .hot { background: #fef3f2; } .dsi-nums .hot b { color: #d92d20; }
+.dsi-help { display: flex; gap: 14px; align-items: center; background: #f5faff; border: 1px solid #b2ddff; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; text-decoration: none; color: #194185; font-size: 13.5px; line-height: 1.5; }
+.dsi-help:hover { border-color: #84caff; }
+@media (max-width: 600px) { .dsi-help { flex-wrap: wrap; } }
+.dsi-new { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.dsi-opt { border: 1.5px solid var(--dash-border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
+.dsi-opt h3, .dsi-h2 { font-family: inherit; } .dsi-opt h3 { margin: 0; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+.dsi-opt p { margin: 0; font-size: 13px; color: var(--dash-text2); line-height: 1.55; flex: 1; }
+.dsi-opt.main { border-color: var(--dash-accent); background: #fffaf5; }
+.dsi-opt input { padding: 9px 11px; border: 1.5px solid var(--dash-border); border-radius: 8px; font-size: 14px; font-family: inherit; }
+@media (max-width: 760px) { .dsi-new { grid-template-columns: 1fr; } }
+</style>
+<div class="ad-head">
+    <div><h1><i class="fa-solid fa-truck-plane"></i> Dropshipping</h1>
+        <p>Vos fournisseurs expédient directement à vos clients. Chacun est un entrepôt de la boutique.</p></div>
+    <a class="ad-btn primary" href="{% url 'dropship:guide' %}" style="padding:10px 16px;font-size:13.5px;"><i class="fa-solid fa-book-open"></i> Guide : comment ça marche ?</a>
+</div>
+<a class="dsi-help" href="{% url 'dropship:guide' %}">
+    <span class="dsi-ico" style="background:#eff8ff;color:#175cd3;"><i class="fa-solid fa-circle-question"></i></span>
+    <span style="flex:1;"><strong>Nouveau dans le dropshipping ?</strong> Le guide explique pas à pas comment ouvrir un compte CJ Dropshipping, vendre des produits AliExpress, fixer vos prix et traiter les commandes.</span>
+    <span class="ad-btn">Lire le guide <i class="fa-solid fa-arrow-right"></i></span>
+</a>
+
+{% if suppliers %}
+<div class="dsi-grid">
+    {% for s in suppliers %}
+    <a class="dsi-card" href="{% if s.to_send or s.to_cancel %}{% url 'dropship:orders' s.wh.pk %}{% else %}{% url 'dropship:products' s.wh.pk %}{% endif %}">
+        <div class="dsi-top"><span class="dsi-ico"><i class="fa-solid {% if s.conn.provider == 'cj' %}fa-plug{% else %}fa-file-excel{% endif %}"></i></span>
+            <div style="flex:1;min-width:0;"><strong>{{ s.conn.name }}</strong><small>{{ s.conn.get_provider_display }} · {{ s.wh.code }}</small></div>
+            {% if s.conn.provider == 'cj' %}{% if s.conn.api_ready %}<span class="ad-pill green">Connecté</span>{% else %}<span class="ad-pill orange">À connecter</span>{% endif %}{% endif %}</div>
+        <div class="dsi-nums">
+            <div><b>{{ s.products|intcomma }}</b>produits</div>
+            <div class="{% if s.to_send %}hot{% endif %}"><b>{{ s.to_send }}</b>à transmettre</div>
+            <div><b>{{ s.transit }}</b>en route</div>
+        </div>
+        {% if s.to_cancel %}<span class="ad-pill red">{{ s.to_cancel }} à annuler chez le fournisseur</span>{% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if owner %}
+<h2 class="dsi-h2" style="font-size:15px;margin:0 0 12px;">{% if suppliers %}Ajouter un fournisseur{% else %}Ajoutez votre premier fournisseur{% endif %}</h2>
+<div class="dsi-new">
+    <form method="post" class="dsi-opt main">{% csrf_token %}<input type="hidden" name="provider" value="cj">
+        <h3><i class="fa-solid fa-plug" style="color:var(--dash-accent);"></i> CJ Dropshipping <span class="ad-pill green" style="font-size:10.5px;">Connexion directe</span></h3>
+        <p>Parcourez le catalogue CJ depuis Comptoir, importez un produit en un clic (photos, variantes, stock, port compris) et vos commandes payées partent chez CJ automatiquement, suivi compris.</p>
+        {% if has_cj %}<input name="name" placeholder="Nom (ex. CJ – compte 2)" maxlength="100" required aria-label="Nom du fournisseur">{% endif %}
+        <button class="ad-btn primary" style="justify-content:center;padding:10px;"><i class="fa-solid fa-plug"></i> Connecter CJ Dropshipping</button>
+    </form>
+    <form method="post" class="dsi-opt">{% csrf_token %}<input type="hidden" name="provider" value="file">
+        <h3><i class="fa-solid fa-file-excel" style="color:#067647;"></i> Autre fournisseur (fichier)</h3>
+        <p>Grossiste, AliExpress, 1688, fournisseur local… Importez son catalogue en CSV ou Excel et transmettez les commandes avec un bon de commande.</p>
+        <input name="name" placeholder="Nom du fournisseur" maxlength="100" required aria-label="Nom du fournisseur">
+        <button class="ad-btn" style="justify-content:center;padding:10px;"><i class="fa-solid fa-plus"></i> Créer</button>
+    </form>
+</div>
+{% elif not suppliers %}
+<section class="ad-card"><div class="ad-empty"><i class="fa-solid fa-truck-plane"></i>Aucun fournisseur pour l'instant. Le propriétaire de la boutique peut en ajouter.</div></section>
+{% endif %}
+{% endblock %}

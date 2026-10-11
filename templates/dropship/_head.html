@@ -1,0 +1,40 @@
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.ad-head h1 .ad-pill { font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; letter-spacing: 0; }
+.ds-back { font-size: 13px; color: var(--dash-text3); text-decoration: none; display: inline-block; margin-bottom: 10px; }
+.ds-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--dash-border); margin: 0 0 18px; overflow-x: auto; scrollbar-width: none; }
+.ds-nav a { padding: 10px 14px; font-size: 13.5px; font-weight: 600; color: var(--dash-text2); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; gap: 7px; align-items: center; }
+.ds-nav a.on { color: var(--dash-accent); border-bottom-color: var(--dash-accent); }
+.ds-nav a .n { background: #f04438; color: #fff; border-radius: 50px; font-size: 11px; padding: 1px 7px; }
+.ds-field { margin-bottom: 14px; }
+.ds-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.ds-field input:not([type=checkbox]):not([type=radio]), .ds-field select, .ds-field textarea { width: 100%; padding: 9px 11px; border: 1.5px solid var(--dash-border); border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff; }
+.ds-field input:focus, .ds-field select:focus, .ds-field textarea:focus { outline: none; border-color: var(--dash-accent); box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.ds-field .hint { font-size: 12px; color: var(--dash-text3); margin-top: 4px; }
+.ds-field.err input, .ds-field.err select { border-color: #f04438; }
+.ds-field .msg { font-size: 12px; color: #d92d20; margin-top: 4px; }
+.ds-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0 14px; }
+.ds-check { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; padding: 6px 0; cursor: pointer; }
+.ds-check input { margin-top: 3px; accent-color: var(--dash-accent); }
+.ds-check small { display: block; color: var(--dash-text3); font-size: 12px; }
+.ds-alert { display: flex; gap: 12px; padding: 12px 14px; border-radius: 8px; font-size: 13px; line-height: 1.55; margin-bottom: 14px; }
+.ds-alert i { margin-top: 3px; }
+.ds-alert.info { background: #eff8ff; border: 1px solid #b2ddff; color: #194185; }
+.ds-alert.warn { background: #fff4e5; border: 1px solid #fbd5a5; color: #7a4100; }
+.ds-alert.err { background: #fef3f2; border: 1px solid #fecdca; color: #912018; }
+.ds-alert a { color: inherit; font-weight: 700; }
+</style>
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;"><a class="ds-back" href="{% url 'dropship:index' %}"><i class="fa-solid fa-arrow-left"></i> Tous les fournisseurs</a><a class="ds-back" href="{% url 'dropship:guide' %}{% if conn.provider == 'cj' %}#cj{% endif %}" style="color:var(--dash-accent);font-weight:600;"><i class="fa-solid fa-book-open"></i> Guide</a></div>
+<div class="ad-head" style="margin-bottom:12px;">
+    <div>
+        <h1><i class="fa-solid fa-truck-plane"></i> {{ conn.name }} <span class="ad-pill blue" style="font-size:11px;">Dropshipping</span>{% if conn.api_ready %} <span class="ad-pill green" style="font-size:11px;"><i class="fa-solid fa-plug"></i> Connecté</span>{% endif %}</h1>
+        <p>{{ conn.get_provider_display }} · prix en {{ conn.get_currency_display }} · livraison {{ conn.delivery_min_days }} à {{ conn.delivery_max_days }} jours depuis {{ conn.country }}</p>
+    </div>
+</div>
+<nav class="ds-nav" aria-label="Fournisseur">
+    <a href="{% url 'dropship:products' warehouse.pk %}" class="{% if tab == 'products' %}on{% endif %}"><i class="fa-solid fa-tags"></i> Produits</a>
+    {% if can.import and conn.api_ready %}<a href="{% url 'dropship:cj_catalog' warehouse.pk %}" class="{% if tab == 'catalog' %}on{% endif %}"><i class="fa-solid fa-magnifying-glass"></i> Catalogue CJ</a>{% endif %}
+    {% if can.import %}<a href="{% url 'dropship:import' warehouse.pk %}" class="{% if tab == 'import' %}on{% endif %}"><i class="fa-solid fa-file-import"></i> Importer</a>{% endif %}
+    {% if can.orders %}<a href="{% url 'dropship:orders' warehouse.pk %}" class="{% if tab == 'orders' %}on{% endif %}"><i class="fa-solid fa-paper-plane"></i> Commandes{% if badges.to_send or badges.to_cancel %} <span class="n">{{ badges.to_send|add:badges.to_cancel }}</span>{% endif %}</a>{% endif %}
+    {% if can.settings %}<a href="{% url 'dropship:settings' warehouse.pk %}" class="{% if tab == 'settings' %}on{% endif %}"><i class="fa-solid fa-sliders"></i> Réglages</a>{% endif %}
+</nav>

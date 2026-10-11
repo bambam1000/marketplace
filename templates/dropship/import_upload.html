@@ -1,0 +1,92 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Importer · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+<style>
+.im-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.im-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; border: 2px dashed var(--dash-border); border-radius: 10px; padding: 2.4rem 1rem; cursor: pointer; transition: .15s; background: #fcfcfd; }
+.im-drop:hover, .im-drop.over { border-color: var(--dash-accent); background: #fffaf5; }
+.im-drop i { font-size: 32px; color: var(--dash-accent); }
+.im-drop strong { font-size: 15px; }
+.im-drop span { font-size: 12.5px; color: var(--dash-text3); }
+.im-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.im-file { font-size: 13px; font-weight: 700; color: var(--dash-text); }
+.im-steps { counter-reset: s; list-style: none; padding: 0; margin: 0; font-size: 13px; color: var(--dash-text2); }
+.im-steps li { position: relative; padding: 0 0 12px 32px; line-height: 1.5; }
+.im-steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: 0; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,106,0,.12); color: var(--dash-accent); font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.im-cols { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.im-cols span { font-size: 11.5px; padding: 3px 8px; border-radius: 50px; background: var(--dash-bg); color: var(--dash-text2); }
+.im-cols span.req { background: #fff4e5; color: #b54708; font-weight: 700; }
+@media (max-width: 1000px) { .im-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="im-grid">
+    <div>
+        <form method="post" enctype="multipart/form-data" class="ad-card" id="upForm">{% csrf_token %}
+            <div class="ad-card-head"><h2><i class="fa-solid fa-file-import"></i> Importer un catalogue</h2><a href="{% url 'dropship:import_template' warehouse.pk %}"><i class="fa-solid fa-download"></i> Télécharger le fichier modèle</a></div>
+            <div class="ad-card-body">
+                {% if error %}<div class="ds-alert err"><i class="fa-solid fa-circle-exclamation"></i><div>{{ error }}</div></div>{% endif %}
+                <label class="im-drop" id="drop">
+                    <input type="file" name="file" accept=".csv,.xlsx,.txt" required id="fileIn">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <strong>Choisissez un fichier ou déposez-le ici</strong>
+                    <span>CSV ou Excel (.xlsx) · 5 Mo et 5 000 produits au plus</span>
+                    <span class="im-file" id="fileName"></span>
+                </label>
+                <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+                    <button type="submit" class="ad-btn primary" style="padding:10px 18px;font-size:13.5px;"><i class="fa-solid fa-arrow-right"></i> Continuer : associer les colonnes</button>
+                </div>
+            </div>
+        </form>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-clock-rotate-left"></i> Imports précédents</h2></div>
+            <div class="ad-table-wrap"><table class="ad-table">
+                <thead><tr><th>Fichier</th><th>Date</th><th class="num">Créés</th><th class="num">Mis à jour</th><th class="num">Ignorés</th><th></th></tr></thead>
+                <tbody>
+                {% for i in imports %}
+                <tr>
+                    <td><strong>{{ i.filename|truncatechars:40 }}</strong>{% if i.created_by %}<div class="muted">par {{ i.created_by.display_name }}</div>{% endif %}</td>
+                    <td class="muted">{{ i.created_at|date:"d/m/Y H:i" }}</td>
+                    {% if i.status == 'done' %}
+                    <td class="num">{{ i.created_count }}</td><td class="num">{{ i.updated_count }}</td><td class="num">{{ i.skipped_count }}</td>
+                    <td><div class="ad-acts"><a class="ad-btn" href="{% url 'dropship:import_result' warehouse.pk i.pk %}">Compte rendu</a></div></td>
+                    {% else %}
+                    <td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td>
+                    <td><div class="ad-acts"><a class="ad-btn primary" href="{% url 'dropship:import_map' warehouse.pk i.pk %}">Reprendre</a></div></td>
+                    {% endif %}
+                </tr>
+                {% empty %}<tr><td colspan="6"><div class="ad-empty"><i class="fa-solid fa-file-csv"></i>Aucun import pour ce fournisseur.</div></td></tr>{% endfor %}
+                </tbody>
+            </table></div>
+        </section>
+    </div>
+
+    <aside class="ad-card">
+        <div class="ad-card-head"><h2><i class="fa-solid fa-circle-info"></i> Comment ça marche</h2></div>
+        <div class="ad-card-body">
+            <ol class="im-steps">
+                <li>Demandez au fournisseur son catalogue en CSV ou en Excel, ou remplissez le fichier modèle.</li>
+                <li>Indiquez quelle colonne contient la référence, le nom, le prix… Comptoir le devine d'après les titres.</li>
+                <li>Vérifiez l'aperçu des prix de vente, puis importez. Les images sont récupérées depuis leurs liens.</li>
+                <li>Pour mettre à jour prix et stock, réimportez simplement un fichier plus récent : les produits sont reconnus par leur référence.</li>
+            </ol>
+            <div style="font-size:12.5px;font-weight:700;margin-top:4px;">Colonnes reconnues</div>
+            <div class="im-cols">{% for code, label, req, syn in fields %}<span class="{% if req %}req{% endif %}">{{ label }}</span>{% endfor %}</div>
+            <div style="font-size:12px;color:var(--dash-text3);margin-top:8px;">En orange : obligatoires.</div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    var drop = document.getElementById('drop'), input = document.getElementById('fileIn'), name = document.getElementById('fileName');
+    input.addEventListener('change', function() { name.textContent = input.files.length ? input.files[0].name : ''; });
+    ['dragenter', 'dragover'].forEach(function(e) { drop.addEventListener(e, function(ev) { ev.preventDefault(); drop.classList.add('over'); }); });
+    ['dragleave', 'drop'].forEach(function(e) { drop.addEventListener(e, function(ev) { ev.preventDefault(); drop.classList.remove('over'); }); });
+    drop.addEventListener('drop', function(ev) { if (ev.dataTransfer.files.length) { input.files = ev.dataTransfer.files; name.textContent = input.files[0].name; } });
+    document.getElementById('upForm').addEventListener('submit', function() { var b = this.querySelector('button[type=submit]'); b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Lecture du fichier…'; });
+})();
+</script>
+{% endblock %}

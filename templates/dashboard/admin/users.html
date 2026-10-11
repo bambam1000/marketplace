@@ -1,0 +1,37 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Utilisateurs{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-users"></i> Utilisateurs</h1>
+        <p>{{ tabs.0.2 }} comptes · {{ new_week }} inscrit{{ new_week|pluralize }} cette semaine · {{ active_month }} connecté{{ active_month|pluralize }} ces 30 derniers jours</p>
+    </div>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs" aria-label="Type de compte">
+        {% for code, label, n in tabs %}<a href="?{% if code %}role={{ code }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if role == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}
+    </nav>
+    <form class="ad-search" method="get">{% if role %}<input type="hidden" name="role" value="{{ role }}">{% endif %}<input type="search" name="q" value="{{ q }}" placeholder="Nom, identifiant, e-mail, téléphone"></form>
+</div>
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Utilisateur</th><th>Contact</th><th>Type</th><th class="num">Commandes</th><th>Inscrit le</th><th>Dernière connexion</th><th>État</th><th></th></tr></thead>
+        <tbody>
+        {% for u in page %}
+        <tr>
+            <td><div class="ad-who">{% if u.avatar %}<img class="ad-thumb" src="{{ u.avatar.url }}" alt="" style="border-radius:50%;">{% else %}<span class="ad-thumb" style="border-radius:50%;font-size:12px;">{{ u.initials }}</span>{% endif %}<div><strong>{{ u.display_name }}</strong><span class="muted">@{{ u.username }}</span></div></div></td>
+            <td>{{ u.email|default:"—" }}<div class="muted">{{ u.phone|default:"" }}</div></td>
+            <td>{% if u.is_superuser %}<span class="ad-pill blue">Superadmin</span>{% else %}<span class="ad-pill {% if u.role == 'seller' %}orange{% elif u.role == 'admin' %}blue{% else %}gray{% endif %}">{{ u.get_role_display }}</span>{% endif %}{% if u.is_verified %} <i class="fa-solid fa-circle-check" style="color:#12b76a;" title="Vérifié"></i>{% endif %}</td>
+            <td class="num">{{ u.n_orders }}</td>
+            <td class="muted">{{ u.date_joined|date:"d/m/Y" }}</td>
+            <td class="muted">{% if u.last_login %}{{ u.last_login|naturaltime }}{% else %}Jamais{% endif %}</td>
+            <td>{% if u.is_active %}<span class="ad-pill green">Actif</span>{% else %}<span class="ad-pill red">Désactivé</span>{% endif %}</td>
+            <td><div class="ad-acts"><a class="ad-btn" href="{% url 'dashboard:user_detail' u.pk %}">Ouvrir</a></div></td>
+        </tr>
+        {% empty %}<tr><td colspan="8"><div class="ad-empty"><i class="fa-solid fa-users"></i>Aucun utilisateur ne correspond.</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+{% endblock %}

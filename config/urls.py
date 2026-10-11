@@ -37,6 +37,7 @@ urlpatterns += i18n_patterns(
     path('facturation/', include('invoicing.urls')),
     path('pos/', include('pos.urls')),
     path('dashboard/whatsapp/', include('whatsapp.urls')),
+    path('dashboard/dropshipping/', include('dropship.urls')),
     path('', include('catalog.home_urls')),
 )
 if settings.DEBUG:

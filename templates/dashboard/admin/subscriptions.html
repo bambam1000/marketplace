@@ -1,0 +1,42 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Abonnements{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-gem"></i> Abonnements des vendeurs</h1>
+        <p>Formules souscrites, échéances et revenu mensuel récurrent.{% if n_overdue %} <a href="?status=overdue" style="color:#b42318;font-weight:700;">{{ n_overdue }} abonnement{{ n_overdue|pluralize }} échu{{ n_overdue|pluralize }} sans renouvellement</a> : relancez ces vendeurs.{% endif %}</p>
+    </div>
+</div>
+<div class="ad-kpis">
+    <div class="ad-kpi"><div class="l"><i class="fa-solid fa-arrows-rotate"></i> Revenu mensuel récurrent</div><div class="v">{{ mrr|floatformat:0|intcomma }} F</div><div class="s">Abonnements en cours (non échus), au tarif mensuel</div></div>
+    {% for p in plans|slice:":3" %}
+    <a class="ad-kpi" href="?plan={{ p.pk }}"><div class="l"><i class="fa-solid fa-gem"></i> {{ p.name }}</div><div class="v">{{ p.n }}</div><div class="s">actif{{ p.n|pluralize }} · {{ p.price_monthly|intcomma }} F / mois · commission {{ p.commission_rate|floatformat:0 }} %</div></a>
+    {% endfor %}
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs">{% for code, label, n in tabs %}<a href="?{% if code %}status={{ code }}{% endif %}{% if plan %}&plan={{ plan }}{% endif %}" class="{% if status == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}</nav>
+    <form class="ad-search" method="get">{% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+        <select name="plan" onchange="this.form.submit()" aria-label="Formule"><option value="">Toutes les formules</option>{% for p in plans %}<option value="{{ p.pk }}" {% if plan == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+    </form>
+</div>
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Vendeur</th><th>Formule</th><th>Cycle</th><th>Début</th><th>Échéance</th><th>Renouvellement</th><th>Statut</th></tr></thead>
+        <tbody>
+        {% for s in page %}
+        <tr>
+            <td><a href="{% url 'dashboard:user_detail' s.user_id %}" style="color:var(--dash-text);font-weight:600;">{{ s.user.display_name }}</a><div class="muted">{{ s.user.store.name|default:"—" }}</div></td>
+            <td><span class="ad-pill blue">{{ s.plan.name }}</span></td>
+            <td>{{ s.get_billing_cycle_display }}</td>
+            <td class="muted">{{ s.start_date|date:"d/m/Y" }}</td>
+            <td {% if s.status == 'active' and s.end_date < soon %}style="color:{% if s.end_date < now %}#b42318{% else %}#b54708{% endif %};font-weight:700;"{% endif %}>{{ s.end_date|date:"d/m/Y" }}{% if s.status == 'active' and s.end_date < now %} <span class="ad-pill red">dépassée</span>{% elif s.status == 'active' and s.end_date < soon %} <span class="ad-pill orange">dans {{ s.end_date|timeuntil }}</span>{% endif %}</td>
+            <td>{% if s.auto_renew %}<span class="muted">Automatique</span>{% else %}<span class="ad-pill gray">Manuel</span>{% endif %}</td>
+            <td>{% if s.status == 'active' and s.end_date < now %}<span class="ad-pill red">Échu</span>{% else %}<span class="ad-pill {% if s.status == 'active' %}green{% elif s.status == 'trial' %}blue{% elif s.status == 'expired' %}orange{% else %}gray{% endif %}">{{ s.get_status_display }}</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="7"><div class="ad-empty"><i class="fa-regular fa-gem"></i>Aucun abonnement ne correspond.</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+{% endblock %}

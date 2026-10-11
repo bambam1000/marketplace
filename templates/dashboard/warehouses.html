@@ -28,13 +28,13 @@
     <a href="{% url 'dashboard:warehouse_detail' wh.pk %}" class="wh-card" style="text-decoration:none;color:inherit;">
         <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:14px;">
             <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,106,0,.1);color:var(--dash-accent);display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa-solid fa-warehouse"></i></div>
+                <div style="width:44px;height:44px;border-radius:10px;background:{% if wh.is_dropship %}rgba(46,144,250,.1);color:var(--dash-blue){% else %}rgba(255,106,0,.1);color:var(--dash-accent){% endif %};display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa-solid {% if wh.is_dropship %}fa-truck-plane{% else %}fa-warehouse{% endif %}"></i></div>
                 <div>
                     <div style="font-weight:700;font-size:15px;">{{ wh.name }}</div>
                     <div style="font-size:11px;color:var(--dash-text3);">{{ wh.code }} · {{ wh.city }}</div>
                 </div>
             </div>
-            {% if wh.is_default %}<span class="tag tag-orange">Principal</span>{% endif %}
+            {% if wh.is_default %}<span class="tag tag-orange">Principal</span>{% elif wh.is_dropship %}<span class="tag" style="background:#eff8ff;color:#175cd3;">Dropshipping</span>{% endif %}
         </div>
         {% if wh.pending_orders or wh.open_registers %}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 12px;">
@@ -79,14 +79,22 @@
         <form method="post">
             {% csrf_token %}
             <div class="dmodal-body">
-                <div class="form-group"><label>Nom *</label><input type="text" name="name" class="form-control" required placeholder="Ex: Entrepôt Bonabéri"></div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <div class="wh-kinds">
+                        <label><input type="radio" name="kind" value="own" checked onchange="whKind(this.value)"><span><i class="fa-solid fa-warehouse"></i><strong>Entrepôt physique</strong><small>Vous stockez et expédiez vous-même</small></span></label>
+                        <label><input type="radio" name="kind" value="dropship" onchange="whKind(this.value)"><span><i class="fa-solid fa-truck-plane"></i><strong>Fournisseur en dropshipping</strong><small>Le fournisseur expédie directement au client</small></span></label>
+                    </div>
+                </div>
+                <div class="form-group"><label id="whNameLabel">Nom *</label><input type="text" name="name" class="form-control" required maxlength="100" placeholder="Ex: Entrepôt Bonabéri" id="whName"></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-                    <div class="form-group"><label>Code *</label><input type="text" name="code" class="form-control" required placeholder="DLA-02"></div>
+                    <div class="form-group"><label>Code *</label><input type="text" name="code" class="form-control" required maxlength="20" placeholder="DLA-02"></div>
                     <div class="form-group"><label>Ville</label><input type="text" name="city" class="form-control" value="Douala"></div>
                 </div>
-                <div class="form-group"><label>Adresse</label><textarea name="address" class="form-control" rows="2"></textarea></div>
+                <div class="form-group wh-own"><label>Adresse</label><textarea name="address" class="form-control" rows="2"></textarea></div>
+                <p class="wh-drop" style="display:none;font-size:12.5px;color:var(--dash-text3);margin:0;">Ensuite : devise du fournisseur, calcul de vos prix de vente et délais de livraison, puis import de son catalogue (CSV ou Excel). Le paiement à la livraison ne sera pas proposé pour ses produits.</p>
                 {% if other_stores %}
-                <div class="form-group">
+                <div class="form-group wh-own">
                     <label>Boutiques alimentées par cet entrepôt</label>
                     {% for s in other_stores %}
                     <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;"><input type="checkbox" name="linked_stores" value="{{ s.id }}"> {{ s.name }}</label>
@@ -102,7 +110,25 @@
         </form>
     </div>
 </div>
+<style>
+.wh-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wh-kinds label { margin: 0; cursor: pointer; }
+.wh-kinds input { position: absolute; opacity: 0; }
+.wh-kinds span { display: flex; flex-direction: column; gap: 3px; padding: 12px; border: 1.5px solid var(--dash-border); border-radius: 8px; height: 100%; font-size: 13px; }
+.wh-kinds span i { color: var(--dash-accent); font-size: 16px; margin-bottom: 4px; }
+.wh-kinds small { font-size: 11.5px; color: var(--dash-text3); font-weight: 400; }
+.wh-kinds input:checked + span { border-color: var(--dash-accent); background: #fffaf5; box-shadow: 0 0 0 3px var(--dash-accent-glow); }
+.wh-kinds input:focus-visible + span { outline: 2px solid var(--dash-accent); }
+@media (max-width: 480px) { .wh-kinds { grid-template-columns: 1fr; } }
+</style>
 <script>
+function whKind(kind) {
+    var drop = kind === 'dropship';
+    document.querySelectorAll('.wh-own').forEach(function(el) { el.style.display = drop ? 'none' : ''; });
+    document.querySelectorAll('.wh-drop').forEach(function(el) { el.style.display = drop ? '' : 'none'; });
+    document.getElementById('whNameLabel').textContent = drop ? 'Nom du fournisseur *' : 'Nom *';
+    document.getElementById('whName').placeholder = drop ? 'Ex : CJ Dropshipping, Grossiste Guangzhou' : 'Ex: Entrepôt Bonabéri';
+}
 document.getElementById('whModal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') document.getElementById('whModal').classList.remove('open'); });
 </script>

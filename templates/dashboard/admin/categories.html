@@ -1,0 +1,63 @@
+{% extends 'dashboard/base.html' %}{% load catalog_tags %}
+{% block title %}Catégories{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.ct-ic { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,106,0,.1); color: var(--dash-accent); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.ct-child td:first-child { padding-left: 46px; }
+.ct-child .ct-ic { width: 28px; height: 28px; font-size: 12px; background: var(--dash-bg); color: var(--dash-text2); }
+.ct-child td { background: #fcfcfd; }
+</style>
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-folder-open"></i> Catégories</h1>
+        <p>{{ total }} catégories dont {{ parents }} principales{% if empty %} · {{ empty }} vide{{ empty|pluralize }}{% endif %}{% if inactive %} · {{ inactive }} masquée{{ inactive|pluralize }}{% endif %}. L'ordre décide de leur place dans les menus du site.</p>
+    </div>
+    <a class="ad-btn primary" href="{% url 'dashboard:category_add' %}" style="padding:8px 14px;"><i class="fa-solid fa-plus"></i> Nouvelle catégorie</a>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs">
+        <a href="?{% if q %}q={{ q|urlencode }}{% endif %}" class="{% if not f %}on{% endif %}">Toutes<span>{{ total }}</span></a>
+        <a href="?f=empty{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if f == 'empty' %}on{% endif %}">Vides<span>{{ empty }}</span></a>
+        <a href="?f=hidden{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if f == 'hidden' %}on{% endif %}">Masquées<span>{{ inactive }}</span></a>
+    </nav>
+    <div class="ad-search">
+        {% if f == 'empty' and empty %}<form method="post" onsubmit="return confirm('Supprimer les {{ empty }} catégories sans produit ni sous-catégorie ?');">{% csrf_token %}<button class="ad-btn danger" name="action" value="purge_empty"><i class="fa-regular fa-trash-can"></i> Supprimer les {{ empty }} catégories vides</button></form>{% endif %}
+        <form method="get">{% if f %}<input type="hidden" name="f" value="{{ f }}">{% endif %}<input type="search" name="q" value="{{ q }}" placeholder="Rechercher une catégorie"></form>
+    </div>
+</div>
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Catégorie</th><th class="num">Ordre</th><th class="num">Produits</th><th>Visibilité</th><th></th></tr></thead>
+        <tbody>
+        {% for parent, kids in rows %}
+        <tr>
+            <td><div class="ad-who"><span class="ct-ic">{{ parent.icon|cat_icon }}</span><div><strong>{{ parent.name }}</strong><span class="muted">{{ kids|length }} sous-catégorie{{ kids|length|pluralize }}</span></div></div></td>
+            <td class="num">{{ parent.order }}</td>
+            <td class="num"><strong>{{ parent.n_total }}</strong>{% if kids %}<div class="muted">dont {{ parent.n_direct }} directement</div>{% endif %}</td>
+            <td>{% if parent.is_active %}<span class="ad-pill green">Visible</span>{% else %}<span class="ad-pill gray">Masquée</span>{% endif %}</td>
+            <td><div class="ad-acts">
+                {% if parent.is_active %}<a class="ad-btn" href="{% url 'catalog:category' parent.slug %}" target="_blank" rel="noopener" title="Voir sur le site"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>{% endif %}
+                <a class="ad-btn" href="{% url 'dashboard:category_add' %}?parent={{ parent.pk }}" title="Ajouter une sous-catégorie"><i class="fa-solid fa-plus"></i></a>
+                <a class="ad-btn" href="{% url 'dashboard:category_edit' parent.pk %}">Modifier</a>
+                <a class="ad-btn danger" href="{% url 'dashboard:category_delete' parent.pk %}" title="Supprimer"><i class="fa-regular fa-trash-can"></i></a>
+            </div></td>
+        </tr>
+        {% for c in kids %}
+        <tr class="ct-child">
+            <td><div class="ad-who"><span class="ct-ic">{{ c.icon|cat_icon }}</span><div><strong>{{ c.name }}</strong></div></div></td>
+            <td class="num muted">{{ c.order }}</td>
+            <td class="num">{{ c.n_direct }}</td>
+            <td>{% if c.is_active %}<span class="ad-pill green">Visible</span>{% else %}<span class="ad-pill gray">Masquée</span>{% endif %}</td>
+            <td><div class="ad-acts">
+                {% if c.is_active %}<a class="ad-btn" href="{% url 'catalog:category' c.slug %}" target="_blank" rel="noopener" title="Voir sur le site"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>{% endif %}
+                <a class="ad-btn" href="{% url 'dashboard:category_edit' c.pk %}">Modifier</a>
+                <a class="ad-btn danger" href="{% url 'dashboard:category_delete' c.pk %}" title="Supprimer"><i class="fa-regular fa-trash-can"></i></a>
+            </div></td>
+        </tr>
+        {% endfor %}
+        {% empty %}<tr><td colspan="5"><div class="ad-empty"><i class="fa-regular fa-folder-open"></i>{% if q %}Aucune catégorie ne correspond.{% else %}Aucune catégorie : créez la première.{% endif %}</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+</section>
+{% endblock %}

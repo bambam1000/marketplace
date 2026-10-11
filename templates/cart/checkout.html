@@ -22,6 +22,7 @@
 .co-alert i { font-size: 17px; margin-top: 2px; }
 .co-alert.err { background: #fef3f2; border: 1px solid #fecdca; color: #912018; }
 .co-alert.warn { background: #fff4e5; border: 1px solid #fbd5a5; color: #7a4100; }
+.co-alert.info { background: #eff8ff; border: 1px solid #b2ddff; color: #194185; }
 .co-alert ul { margin: 6px 0 0 18px; padding: 0; }
 .co-alert a { color: inherit; font-weight: 700; text-decoration: underline; }
 .pay-list { display: flex; flex-direction: column; gap: 10px; }
@@ -113,7 +114,17 @@
 
         <div class="co-card {% if errors.payment_method %}co-pay-err{% endif %}" id="payCard" data-field="payment">
             <h3><span class="step">2</span> Moyen de paiement</h3>
-            {% if pay.missing %}
+            {% if pay.no_cash %}
+            <div class="co-alert info" style="margin-bottom:12px;"><i class="fa-solid fa-truck-plane"></i><div>
+                Certains produits de votre panier sont expédiés directement par un fournisseur partenaire : ils se paient à la commande, le <strong>paiement à la livraison</strong> n'est pas proposé.
+            </div></div>
+            {% endif %}
+            {% if pay.cash_only %}
+            <div class="co-alert warn" style="margin-bottom:0;"><i class="fa-solid fa-money-bill-wave"></i><div>
+                {% for s in pay.cash_only %}<strong>{{ s.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %} n'accepte{{ pay.cash_only|length|pluralize:",nt" }} que le paiement à la livraison, impossible ici.
+                Retirez du <a href="{% url 'cart:view' %}">panier</a> les produits expédiés par un fournisseur, ou contactez la boutique.
+            </div></div>
+            {% elif pay.missing %}
             <div class="co-alert warn" style="margin-bottom:0;"><i class="fa-solid fa-store-slash"></i><div>
                 {% if pay.missing|length == 1 %}La boutique <strong>{{ pay.missing.0.name }}</strong> n'a pas encore indiqué comment elle accepte d'être payée.
                 {% else %}Ces boutiques n'ont pas encore indiqué comment elles acceptent d'être payées : {% for s in pay.missing %}<strong>{{ s.name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.{% endif %}
@@ -170,7 +181,7 @@
                 {% endfor %}
             </div>
             <div class="co-total"><span>Total</span><strong>{{ total|intcomma }} FCFA</strong></div>
-            <button type="submit" class="btn btn-orange btn-lg co-submit" id="coSubmit" {% if pay.missing or not pay.methods %}disabled{% endif %}><i class="fa-solid fa-check"></i> Confirmer la commande</button>
+            <button type="submit" class="btn btn-orange btn-lg co-submit" id="coSubmit" {% if pay.missing or pay.cash_only or not pay.methods %}disabled{% endif %}><i class="fa-solid fa-check"></i> Confirmer la commande</button>
             <div class="co-err" id="coErr" role="alert"></div>
             <p class="co-note"><i class="fa-regular fa-envelope" style="margin-top:2px;"></i><span>Vous recevez une confirmation, et vous suivez chaque étape dans <a href="{% url 'orders:list' %}" style="color:var(--orange);font-weight:600;">Mes commandes</a>.</span></p>
         </div>
@@ -256,7 +267,7 @@
     var firstErr = document.querySelector('.co-f.err, .co-pay-err');
     if (firstErr) firstErr.scrollIntoView({ block: 'center' });
     /* Retour arrière après envoi : réactiver le bouton */
-    window.addEventListener('pageshow', function() { if (btn && !{% if pay.missing or not pay.methods %}true{% else %}false{% endif %}) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmer la commande'; } });
+    window.addEventListener('pageshow', function() { if (btn && !{% if pay.missing or pay.cash_only or not pay.methods %}true{% else %}false{% endif %}) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Confirmer la commande'; } });
 })();
 </script>
 {% endblock %}

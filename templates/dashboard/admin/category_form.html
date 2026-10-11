@@ -1,0 +1,52 @@
+{% extends 'dashboard/base.html' %}{% load catalog_tags %}
+{% block title %}{% if category %}Modifier la catégorie{% else %}Nouvelle catégorie{% endif %}{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.cf { max-width: 720px; }
+.cf .f { margin-bottom: 16px; }
+.cf label.l { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.cf input[type=text], .cf input[type=number], .cf select, .cf textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--dash-border); border-radius: 8px; font: 14px inherit; font-family: inherit; background: #fff; }
+.cf .err input, .cf .err select { border-color: #f04438; }
+.cf .msg { font-size: 12px; color: #d92d20; margin-top: 5px; }
+.cf .hint { font-size: 12px; color: var(--dash-text3); margin-top: 5px; }
+.cf .row2 { display: grid; grid-template-columns: 1fr 140px; gap: 14px; }
+.cf-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 6px; }
+.cf-icons input { position: absolute; opacity: 0; }
+.cf-icons label { height: 44px; border: 1.5px solid var(--dash-border); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: var(--dash-text2); cursor: pointer; margin: 0; background: #fff; }
+.cf-icons input:checked + label { border-color: var(--dash-accent); background: rgba(255,106,0,.1); color: var(--dash-accent); }
+.cf-icons input:focus-visible + label { outline: 2px solid var(--dash-accent); }
+@media (max-width: 600px) { .cf .row2 { grid-template-columns: 1fr; } }
+</style>
+<a href="{% url 'dashboard:categories' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Catégories</a>
+<div class="ad-head"><div><h1><i class="fa-solid fa-folder-plus"></i> {% if category %}Modifier « {{ category.name }} »{% else %}Nouvelle catégorie{% endif %}</h1></div></div>
+
+<form method="post" enctype="multipart/form-data" class="ad-card cf"><div class="ad-card-body">{% csrf_token %}
+    <div class="row2">
+        <div class="f {% if errors.name %}err{% endif %}"><label class="l" for="cName">Nom *</label><input type="text" id="cName" name="name" value="{{ data.name }}" maxlength="200" required autofocus>{% if errors.name %}<div class="msg">{{ errors.name }}</div>{% endif %}</div>
+        <div class="f"><label class="l" for="cOrder">Ordre</label><input type="number" id="cOrder" name="order" value="{{ data.order|default:'0' }}"><div class="hint">Plus petit = en premier</div></div>
+    </div>
+    <div class="f {% if errors.parent %}err{% endif %}">
+        <label class="l" for="cParent">Catégorie parente</label>
+        <select id="cParent" name="parent">
+            <option value="">— Aucune : catégorie principale —</option>
+            {% for p in parents %}<option value="{{ p.pk }}" {% if data.parent == p.pk|stringformat:"s" or not data.parent and request.GET.parent == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+        {% if errors.parent %}<div class="msg">{{ errors.parent }}</div>{% endif %}
+    </div>
+    <div class="f">
+        <label class="l">Icône</label>
+        <div class="cf-icons" role="radiogroup" aria-label="Icône">
+            {% for ic in icons %}<input type="radio" name="icon" id="ic-{{ ic }}" value="{{ ic }}" {% if data.icon == ic or not data.icon and ic == 'fa-tag' %}checked{% endif %}><label for="ic-{{ ic }}" title="{{ ic|slice:'3:' }}"><i class="fa-solid {{ ic }}"></i></label>{% endfor %}
+        </div>
+        {% if category and category.icon and category.icon not in icons %}<div class="hint">Icône actuelle : {{ category.icon|cat_icon }} — choisissez-en une ci-dessus pour la remplacer.</div>{% endif %}
+    </div>
+    <div class="f"><label class="l" for="cDesc">Description</label><textarea id="cDesc" name="description" rows="3" placeholder="Affichée en haut de la page de la catégorie">{{ data.description }}</textarea></div>
+    <div class="f"><label class="l" for="cImg">Image</label><input type="file" id="cImg" name="image" accept="image/*">{% if category.image %}<div class="hint">Image actuelle : <a href="{{ category.image.url }}" target="_blank" rel="noopener">voir</a></div>{% endif %}</div>
+    <div class="f"><label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;"><input type="checkbox" name="is_active" {% if is_active %}checked{% endif %} style="width:17px;height:17px;accent-color:var(--dash-accent);"> Visible sur le site</label></div>
+    <div class="ad-acts" style="justify-content:flex-start;">
+        <button type="submit" class="ad-btn primary" style="padding:9px 16px;"><i class="fa-solid fa-check"></i> {% if category %}Enregistrer{% else %}Créer la catégorie{% endif %}</button>
+        <a href="{% url 'dashboard:categories' %}" class="ad-btn" style="padding:9px 16px;">Annuler</a>
+    </div>
+</div></form>
+{% endblock %}

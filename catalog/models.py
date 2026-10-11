@@ -8,7 +8,7 @@ class Category(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
-    icon = models.CharField(max_length=50, default='📦')
+    icon = models.CharField(max_length=50, default='fa-tag')
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
     description = models.TextField(blank=True)
     order = models.IntegerField(default=0)

@@ -1,0 +1,81 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Versements{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-money-bill-transfer"></i> Versements aux vendeurs</h1>
+        <p>Les vendeurs demandent le retrait de leur solde. Envoyez l'argent sur le compte indiqué, puis marquez la demande comme versée.</p>
+    </div>
+</div>
+<div class="ad-kpis">
+    <a class="ad-kpi" href="?status=pending"><div class="l"><i class="fa-solid fa-hourglass-half"></i> À traiter</div><div class="v">{{ todo_amount|floatformat:0|intcomma }} F</div><div class="s">{{ todo_count }} demande{{ todo_count|pluralize }} en attente ou en cours</div></a>
+    <a class="ad-kpi" href="?status=completed"><div class="l"><i class="fa-solid fa-circle-check"></i> Versé ce mois</div><div class="v">{{ paid_month|floatformat:0|intcomma }} F</div><div class="s">Demandes marquées « versé »</div></a>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs">{% for code, label, n in tabs %}<a href="?{% if code %}status={{ code }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if status == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}</nav>
+    <form class="ad-search" method="get">{% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}<input type="search" name="q" value="{{ q }}" placeholder="Vendeur ou boutique"></form>
+</div>
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Vendeur</th><th class="num">Montant</th><th>Envoyer sur</th><th>Demandé le</th><th>Statut</th><th></th></tr></thead>
+        <tbody>
+        {% for p in page %}
+        <tr>
+            <td><a href="{% url 'dashboard:user_detail' p.user_id %}" style="color:var(--dash-text);font-weight:700;">{{ p.user.display_name }}</a><div class="muted">{{ p.store.name|default:"" }}</div></td>
+            <td class="num"><strong style="font-size:15px;">{{ p.amount|floatformat:0|intcomma }} F</strong></td>
+            <td><strong>{{ p.get_payment_method_display }}</strong><div class="muted" style="white-space:pre-line;">{{ p.account_details|default:"—" }}</div></td>
+            <td class="muted">{{ p.created_at|date:"d/m/Y H:i" }}</td>
+            <td><span class="ad-pill {% if p.status == 'completed' %}green{% elif p.status == 'rejected' %}red{% elif p.status == 'processing' %}blue{% else %}orange{% endif %}">{{ p.get_status_display }}</span>{% if p.processed_at %}<div class="muted">le {{ p.processed_at|date:"d/m/Y" }}</div>{% endif %}{% if p.admin_notes %}<div class="muted" title="{{ p.admin_notes }}">{{ p.admin_notes|truncatechars:40 }}</div>{% endif %}</td>
+            <td><div class="ad-acts">
+                {% if p.status == 'pending' or p.status == 'processing' %}
+                {% if p.status == 'pending' %}<form method="post" action="{% url 'dashboard:process_payout' p.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="ad-btn" name="action" value="processing" title="Je m'en occupe">En cours</button></form>{% endif %}
+                <button type="button" class="ad-btn primary" data-payout="{{ p.pk }}" data-act="approve" data-amount="{{ p.amount|floatformat:0|intcomma }}" data-name="{{ p.user.display_name }}"><i class="fa-solid fa-check"></i> Versé</button>
+                <button type="button" class="ad-btn danger" data-payout="{{ p.pk }}" data-act="reject" data-amount="{{ p.amount|floatformat:0|intcomma }}" data-name="{{ p.user.display_name }}">Refuser</button>
+                {% endif %}
+            </div></td>
+        </tr>
+        {% empty %}<tr><td colspan="6"><div class="ad-empty"><i class="fa-solid fa-money-bill-transfer"></i>{% if status == 'pending' %}Aucune demande en attente.{% else %}Aucune demande de versement.{% endif %}</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+
+<div class="ad-modal" id="payModal" role="dialog" aria-modal="true">
+    <form method="post" id="payForm">{% csrf_token %}
+        <input type="hidden" name="action" id="payAction"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <h3 id="payTitle"></h3>
+        <p id="payText"></p>
+        <textarea name="notes" rows="3" maxlength="500" id="payNotes"></textarea>
+        <div class="ad-acts"><button type="button" class="ad-btn" data-close>Annuler</button><button type="submit" class="ad-btn" id="paySubmit"></button></div>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function() {
+    var m = document.getElementById('payModal'), f = document.getElementById('payForm');
+    var base = "{% url 'dashboard:process_payout' 0 %}";
+    document.querySelectorAll('[data-payout]').forEach(function(b) {
+        b.addEventListener('click', function() {
+            var ok = b.dataset.act === 'approve';
+            f.action = base.replace('/0/', '/' + b.dataset.payout + '/');
+            document.getElementById('payAction').value = b.dataset.act;
+            document.getElementById('payTitle').textContent = (ok ? 'Confirmer le versement de ' : 'Refuser la demande de ') + b.dataset.amount + ' F';
+            document.getElementById('payText').textContent = ok
+                ? "Confirmez seulement après avoir envoyé l'argent à " + b.dataset.name + '. Le vendeur est prévenu.'
+                : 'Le montant revient sur le solde de ' + b.dataset.name + ', qui est prévenu avec votre motif.';
+            var n = document.getElementById('payNotes');
+            n.placeholder = ok ? 'Référence de la transaction (facultatif)' : 'Motif du refus (communiqué au vendeur)';
+            n.required = !ok; n.value = '';
+            var s = document.getElementById('paySubmit');
+            s.className = 'ad-btn ' + (ok ? 'primary' : 'danger');
+            s.textContent = ok ? "C'est versé" : 'Refuser la demande';
+            m.classList.add('open'); n.focus();
+        });
+    });
+    m.addEventListener('click', function(e) { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('open'); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') m.classList.remove('open'); });
+})();
+</script>
+{% endblock %}

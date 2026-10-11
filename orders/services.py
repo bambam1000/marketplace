@@ -50,4 +50,8 @@ def apply_cancellation(order, user, reason=''):
         wallet.save()
         tx.status = 'cancelled'
         tx.save(update_fields=['status'])
+
+    # Produits en dropshipping : la commande fournisseur est annulée, ou signalée si elle était déjà transmise
+    from dropship.services import on_order_cancelled
+    on_order_cancelled(order)
     return per_store

@@ -19,7 +19,7 @@ def shipping_for(subtotal):
 @require_POST
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
-    if not product.is_active:
+    if not product.is_active or not product.store.is_active:
         messages.error(request, "Ce produit n'est plus disponible.")
         return redirect(request.META.get('HTTP_REFERER', 'home'))
     cart = get_cart(request)
@@ -220,9 +220,12 @@ def checkout(request):
     # Moyens de paiement : seulement ceux que toutes les boutiques du panier ont activés
     from store.models import Store
     from billing.payments import checkout_options
+    from dropship.services import create_supplier_orders, fulfilment_warehouse, has_dropship
     store_ids = list(dict.fromkeys(i['store_id'] for i in cart.values() if i.get('store_id')))
     stores = sorted(Store.objects.filter(pk__in=store_ids), key=lambda s: store_ids.index(s.pk))
-    pay = checkout_options(stores)
+    # Produits expédiés par un fournisseur : la boutique avance le prix au fournisseur, donc pas de paiement à la livraison
+    dropship = has_dropship([int(pid) for pid in cart if str(pid).isdigit()])
+    pay = checkout_options(stores, no_cash=dropship)
     allowed = [m['code'] for m in pay['methods']]
 
     # Pré-remplissage : profil, sinon dernière commande
@@ -272,9 +275,8 @@ def checkout(request):
         for pid, item in cart.items():
             try:
                 product = Product.objects.get(pk=int(pid))
-                from inventory.models import Warehouse
-                whs = Warehouse.objects.filter(store=product.store)
-                wh = whs.filter(is_default=True).first() or whs.filter(is_active=True).first()
+                # Produit en dropshipping : la ligne part chez son fournisseur
+                wh = fulfilment_warehouse(product)
                 OrderItem.objects.create(
                     order=order, product=product, store=product.store, warehouse=wh,
                     quantity=item['quantity'], price=item['price'],
@@ -289,6 +291,7 @@ def checkout(request):
                 )
             except Product.DoesNotExist:
                 pass
+        create_supplier_orders(order)
         if promo:
             promo.apply_code()
             # Conversion des campagnes liées à ce code promo
@@ -345,6 +348,6 @@ def checkout(request):
         'cart_items': items, 'subtotal': subtotal,
         'shipping': shipping, 'promo': promo, 'discount': discount,
         'loyalty_discount': loyalty_discount, 'loyalty_details': loyalty_details,
-        'total': total, 'pay': pay, 'form': form, 'errors': errors,
+        'total': total, 'pay': pay, 'form': form, 'errors': errors, 'dropship': dropship,
         'cities': ['Douala', 'Yaoundé', 'Bafoussam', 'Bamenda', 'Garoua', 'Maroua', 'Ngaoundéré', 'Bertoua', 'Kribi', 'Limbé', 'Buea', 'Ebolowa'],
     }, status=400 if errors else 200)

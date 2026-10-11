@@ -1,0 +1,27 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Compte rendu d'import · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+<p style="font-size:13px;color:var(--dash-text2);margin:-4px 0 14px;"><i class="fa-solid fa-file-lines" style="color:var(--dash-accent);"></i> <strong>{{ imp.filename }}</strong> · importé le {{ imp.finished_at|date:"d/m/Y à H:i" }}{% if imp.created_by %} par {{ imp.created_by.display_name }}{% endif %}</p>
+<div class="ad-kpis">
+    <div class="ad-kpi"><div class="l"><i class="fa-solid fa-plus"></i> Produits créés</div><div class="v">{{ imp.created_count }}</div><div class="s">{% if imp.options.publish %}En ligne{% else %}Hors ligne, à vérifier{% endif %}</div></div>
+    <div class="ad-kpi"><div class="l"><i class="fa-solid fa-rotate"></i> Mis à jour</div><div class="v">{{ imp.updated_count }}</div><div class="s">Prix et stock</div></div>
+    <div class="ad-kpi"><div class="l"><i class="fa-solid fa-forward"></i> Lignes ignorées</div><div class="v">{{ imp.skipped_count }}</div><div class="s">Voir le détail plus bas</div></div>
+    <div class="ad-kpi"><div class="l"><i class="fa-regular fa-image"></i> Images en attente</div><div class="v">{{ images_left }}</div><div class="s">{% if images_left %}Produits dont les images restent à récupérer{% else %}Toutes récupérées{% endif %}</div></div>
+</div>
+{% if images_left %}
+<div class="ds-alert info"><i class="fa-regular fa-image"></i><div style="flex:1;">Les images sont téléchargées depuis les liens du fichier, par lots. Il reste {{ images_left }} produit{{ images_left|pluralize }} à traiter.</div>
+    <form method="post" action="{% url 'dropship:fetch_images' warehouse.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="ad-btn primary"><i class="fa-solid fa-download"></i> Récupérer les images</button></form></div>
+{% endif %}
+<section class="ad-card">
+    <div class="ad-card-head"><h2><i class="fa-solid fa-list-check"></i> Détail</h2><a href="{% url 'dropship:products' warehouse.pk %}">Voir les produits <i class="fa-solid fa-arrow-right"></i></a></div>
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Ligne</th><th>Message</th></tr></thead>
+        <tbody>
+        {% for n, msg in imp.report %}<tr><td class="muted" style="width:80px;">{% if n %}{{ n }}{% else %}—{% endif %}</td><td>{{ msg }}</td></tr>
+        {% empty %}<tr><td colspan="2"><div class="ad-empty"><i class="fa-solid fa-circle-check" style="color:#12b76a;opacity:1;"></i>Aucune remarque : toutes les lignes ont été importées.</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+</section>
+<a href="{% url 'dropship:import' warehouse.pk %}" class="ad-btn"><i class="fa-solid fa-file-import"></i> Importer un autre fichier</a>
+{% endblock %}

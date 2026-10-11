@@ -1,0 +1,30 @@
+{% extends 'dashboard/base.html' %}{% load humanize %}
+{% block title %}Commandes · {{ conn.name }}{% endblock %}
+{% block dash %}
+{% include 'dropship/_head.html' %}
+<div class="ds-alert info"><i class="fa-solid fa-circle-info"></i><div>Chaque commande client contenant des produits de ce fournisseur apparaît ici. <strong>Transmettez-la seulement une fois payée par le client</strong> : c'est vous qui payez le fournisseur.</div></div>
+<div class="ad-bar">
+    <nav class="ad-tabs">{% for code, label, n in tabs %}<a href="?{% if code %}status={{ code }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}" class="{% if status == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}</nav>
+    <form class="ad-search" method="get">{% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}<input type="search" name="q" value="{{ q }}" placeholder="N° de commande, client, suivi"></form>
+</div>
+<section class="ad-card">
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Commande</th><th>Client</th><th>Date</th><th>Paiement client</th><th class="num">Coût fournisseur</th><th>Statut</th><th></th></tr></thead>
+        <tbody>
+        {% for so in page %}
+        <tr>
+            <td><strong>{{ so.reference }}</strong><div class="muted">commande {{ so.order.order_number }}</div></td>
+            <td>{{ so.order.shipping_name|default:so.order.buyer.display_name }}<div class="muted">{{ so.order.shipping_city }}</div></td>
+            <td class="muted">{{ so.created_at|date:"d/m/Y H:i" }}</td>
+            <td>{% if so.order.status == 'cancelled' or so.order.status == 'refunded' %}<span class="ad-pill gray">Commande annulée</span>{% elif so.order.is_paid %}<span class="ad-pill green"><i class="fa-solid fa-check"></i> Payée</span>{% else %}<span class="ad-pill orange">En attente</span>{% endif %}</td>
+            <td class="num">{{ so.cost|intcomma }} F</td>
+            <td>{% if so.can_send %}<span class="ad-pill red">À transmettre</span>{% elif so.status == 'to_send' %}<span class="ad-pill gray">Attend le paiement</span>{% else %}<span class="ad-pill {% if so.status == 'to_cancel' %}red{% elif so.status == 'shipped' or so.status == 'sent' %}blue{% elif so.status == 'delivered' %}green{% else %}gray{% endif %}">{{ so.get_status_display }}</span>{% endif %}{% if so.tracking_number %}<div class="muted">suivi {{ so.tracking_number }}</div>{% endif %}</td>
+            <td><div class="ad-acts"><a class="ad-btn {% if so.can_send or so.status == 'to_cancel' %}primary{% endif %}" href="{% url 'dropship:order_detail' warehouse.pk so.pk %}">{% if so.can_send %}Transmettre{% else %}Ouvrir{% endif %}</a></div></td>
+        </tr>
+        {% empty %}<tr><td colspan="7"><div class="ad-empty"><i class="fa-solid fa-paper-plane"></i>{% if status or q %}Aucune commande ne correspond.{% else %}Rien à traiter pour l'instant.{% endif %}</div></td></tr>{% endfor %}
+        </tbody>
+    </table></div>
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+{% if stats.n %}<p style="font-size:12px;color:var(--dash-text3);">{{ stats.n }} commande{{ stats.n|pluralize }} fournisseur (hors annulées) · {{ stats.cost|default:0|intcomma }} F de coût de revient au total.</p>{% endif %}
+{% endblock %}

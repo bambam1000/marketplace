@@ -51,8 +51,12 @@
 
 <div class="dash-header" style="margin-top:12px;margin-bottom:0;">
     <div>
-        <h1><i class="fa-solid fa-warehouse" style="color:var(--dash-accent);"></i> {{ warehouse.name }} {% if warehouse.is_default %}<span class="tag tag-orange">Principal</span>{% endif %}</h1>
+        <h1><i class="fa-solid {% if dropship %}fa-truck-plane{% else %}fa-warehouse{% endif %}" style="color:var(--dash-accent);"></i> {{ warehouse.name }} {% if warehouse.is_default %}<span class="tag tag-orange">Principal</span>{% elif dropship %}<span class="tag" style="background:#eff8ff;color:#175cd3;">Dropshipping</span>{% endif %}</h1>
+        {% if dropship %}
+        <p style="font-size:13px;color:var(--dash-text3);">{{ warehouse.code }} · {{ dropship.conn.get_provider_display }} · expédié depuis {{ dropship.conn.country }} · livraison {{ dropship.conn.delivery_min_days }} à {{ dropship.conn.delivery_max_days }} jours</p>
+        {% else %}
         <p style="font-size:13px;color:var(--dash-text3);">{{ warehouse.code }} · {{ warehouse.city }}{% if warehouse.address %} · {{ warehouse.address }}{% endif %}</p>
+        {% endif %}
     </div>
 </div>
 
@@ -65,8 +69,12 @@
         <a href="{% if free_register %}{% url 'pos:open_session' %}?register={{ free_register.pk }}{% else %}#caisses{% endif %}" class="btn btn-orange"><i class="fa-solid fa-cash-register"></i> Ouvrir une caisse</a>
         {% endif %}
     {% endif %}
-    {% if can.reception %}<a href="{% url 'dashboard:warehouse_reception' warehouse.pk %}" class="btn btn-outline"><i class="fa-solid fa-dolly"></i> Réception de marchandises</a>{% endif %}
-    {% if can.transfer %}
+    {% if dropship %}
+        {% if can.products %}<a href="{% url 'dropship:import' warehouse.pk %}" class="btn btn-orange"><i class="fa-solid fa-file-import"></i> Importer le catalogue</a>{% endif %}
+        {% if can.orders %}<a href="{% url 'dropship:orders' warehouse.pk %}" class="btn btn-outline"><i class="fa-solid fa-paper-plane"></i> Commandes à transmettre{% if dropship.to_send_paid %} ({{ dropship.to_send_paid }}){% endif %}</a>{% endif %}
+    {% endif %}
+    {% if can.reception and not dropship %}<a href="{% url 'dashboard:warehouse_reception' warehouse.pk %}" class="btn btn-outline"><i class="fa-solid fa-dolly"></i> Réception de marchandises</a>{% endif %}
+    {% if can.transfer and not dropship %}
         {% if other_warehouses %}
         <button type="button" class="btn btn-outline" onclick="openModal('transferModal')"><i class="fa-solid fa-truck-arrow-right"></i> Transfert</button>
         {% else %}
@@ -74,6 +82,41 @@
         {% endif %}
     {% endif %}
 </div>
+
+{% if dropship %}
+<!-- ═══ Fournisseur (dropshipping) ═══ -->
+<section class="wh-sec">
+    <div class="wh-sec-head"><h2><i class="fa-solid fa-truck-plane"></i> Fournisseur</h2>
+        <div class="wh-sec-links">{% if dropship.conn.last_import_at %}<span>Dernier import {{ dropship.conn.last_import_at|timesince }}</span>{% else %}<span>Aucun import pour l'instant</span>{% endif %}</div>
+    </div>
+    <div class="wh-cards">
+        {% if can.orders %}
+        <a href="{% url 'dropship:orders' warehouse.pk %}" class="wh-link-card">
+            {% if dropship.to_send_paid or dropship.to_cancel %}<span class="wh-badge red">{{ dropship.to_send_paid|add:dropship.to_cancel }}</span>{% endif %}
+            <div class="ic" style="background:rgba(255,106,0,.1);color:var(--dash-accent);"><i class="fa-solid fa-paper-plane"></i></div>
+            <div><div class="t">Commandes fournisseur</div><div class="s">{% if dropship.to_send_paid %}{{ dropship.to_send_paid }} payée{{ dropship.to_send_paid|pluralize }} à transmettre{% elif dropship.to_send_unpaid %}{{ dropship.to_send_unpaid }} en attente de paiement{% elif dropship.in_transit %}{{ dropship.in_transit }} en cours{% else %}Rien à transmettre{% endif %}</div></div>
+        </a>
+        {% endif %}
+        {% if can.products %}
+        <a href="{% url 'dropship:products' warehouse.pk %}" class="wh-link-card">
+            {% if dropship.images %}<span class="wh-badge yellow">{{ dropship.images }}</span>{% endif %}
+            <div class="ic" style="background:rgba(46,144,250,.1);color:var(--dash-blue);"><i class="fa-solid fa-tags"></i></div>
+            <div><div class="t">Produits du fournisseur</div><div class="s">{{ dropship.products }} produit{{ dropship.products|pluralize }} · prix et marges</div></div>
+        </a>
+        <a href="{% url 'dropship:import' warehouse.pk %}" class="wh-link-card">
+            <div class="ic" style="background:rgba(18,183,106,.1);color:var(--dash-green);"><i class="fa-solid fa-file-import"></i></div>
+            <div><div class="t">Importer</div><div class="s">Fichier CSV ou Excel</div></div>
+        </a>
+        {% endif %}
+        {% if can.owner %}
+        <a href="{% url 'dropship:settings' warehouse.pk %}" class="wh-link-card">
+            <div class="ic" style="background:rgba(122,90,248,.1);color:var(--dash-purple);"><i class="fa-solid fa-sliders"></i></div>
+            <div><div class="t">Réglages</div><div class="s">Devise, prix, délais</div></div>
+        </a>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
 
 {% if can.pos %}
 <!-- ═══ Caisses de l'entrepôt ═══ -->

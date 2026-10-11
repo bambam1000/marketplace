@@ -46,6 +46,20 @@ def _build(request):
         role = member.role.name if member and member.role else 'Employé'
 
     badges = {}
+    admin_mode = is_admin and store is None
+    if admin_mode:
+        from datetime import timedelta
+        from django.utils import timezone
+        from accounting.models import PayoutRequest
+        from catalog.models import ContactMessage
+        from orders.models import Order
+        from store.models import Store
+        badges = {
+            'stores_to_verify': Store.objects.filter(is_active=True, is_verified=False).count(),
+            'payouts': PayoutRequest.objects.filter(status='pending').count(),
+            'contact': ContactMessage.objects.filter(is_read=False).count(),
+            'stale_orders': Order.objects.filter(status='pending', created_at__lt=timezone.now() - timedelta(days=3)).count(),
+        }
     if store is not None:
         from orders.models import OrderItem, RFQ
         if can['orders']:
@@ -62,11 +76,22 @@ def _build(request):
         if can['pos']:
             from pos.models import POSSession
             badges['pos_open'] = POSSession.objects.filter(store=store, cashier=user, status='open').exists()
+        if owner or can['products'] or can['orders']:
+            from inventory.models import Warehouse
+            suppliers = Warehouse.objects.filter(store=store, kind='dropship')
+            if limit:
+                suppliers = suppliers.filter(pk=limit)
+            can['dropship'] = owner or suppliers.exists()
+            if can['dropship'] and can['orders']:
+                from dropship.models import SupplierOrder
+                badges['dropship'] = (SupplierOrder.objects.filter(connection__warehouse__in=suppliers, order__is_paid=True,
+                                                                   status__in=('to_send', 'to_cancel'))
+                                      .exclude(order__status__in=('cancelled', 'refunded')).count())
         if can['manage']:
             from whatsapp.models import WhatsAppChat
             badges['whatsapp'] = (WhatsAppChat.objects.filter(instance__store=store)
                                   .aggregate(t=Sum('unread_count'))['t'] or 0)
-    return {'store': store, 'is_admin': is_admin, 'is_seller': user.is_seller, 'can': can, 'role': role, 'hub_urls': HUB_URLS,
+    return {'store': store, 'is_admin': is_admin, 'admin_mode': admin_mode, 'is_seller': user.is_seller, 'can': can, 'role': role, 'hub_urls': HUB_URLS,
             'badges': badges, 'initials': ''.join(w[0] for w in (user.display_name or '?').split()[:2]).upper()}
 
 

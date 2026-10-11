@@ -11,9 +11,9 @@ def home(request):
     from marketing.models import Campaign
     categories = Category.objects.filter(parent__isnull=True, is_active=True)[:10]
     banners = HeroBanner.objects.filter(is_active=True)
-    flash_products = Product.objects.filter(is_flash_deal=True, is_active=True)[:6]
-    featured = Product.objects.filter(is_featured=True, is_active=True)[:12]
-    new_products = Product.objects.filter(is_active=True).order_by('-created_at')[:12]
+    flash_products = Product.objects.filter(is_flash_deal=True, is_active=True, store__is_active=True)[:6]
+    featured = Product.objects.filter(is_featured=True, is_active=True, store__is_active=True)[:12]
+    new_products = Product.objects.filter(is_active=True, store__is_active=True).order_by('-created_at')[:12]
     top_stores = Store.objects.filter(is_active=True)[:10]
     # Campagnes actives affichées sur la vitrine
     now = timezone.now()
@@ -38,7 +38,7 @@ def home(request):
     })
 
 def product_list(request):
-    products = Product.objects.filter(is_active=True).select_related('store', 'category')
+    products = Product.objects.filter(is_active=True, store__is_active=True).select_related('store', 'category')
     categories = Category.objects.filter(parent__isnull=True, is_active=True)
     
     cat_slug = request.GET.get('category')
@@ -87,10 +87,10 @@ def category_view(request, slug):
     if category.is_parent:
         child_ids = category.children.values_list('id', flat=True)
         products = Product.objects.filter(
-            Q(category=category) | Q(category__in=child_ids), is_active=True
+            Q(category=category) | Q(category__in=child_ids), is_active=True, store__is_active=True
         )
     else:
-        products = Product.objects.filter(category=category, is_active=True)
+        products = Product.objects.filter(category=category, is_active=True, store__is_active=True)
     subcategories = category.children.filter(is_active=True) if category.is_parent else []
     from . import recommend
     recommend.record(request, 'category', category=category)
@@ -101,7 +101,7 @@ def category_view(request, slug):
     })
 
 def product_detail(request, slug):
-    product = get_object_or_404(Product, slug=slug, is_active=True)
+    product = get_object_or_404(Product, slug=slug, is_active=True, store__is_active=True)
     product.views_count += 1
     product.save(update_fields=['views_count'])
     from . import recommend
@@ -151,7 +151,7 @@ def search_view(request):
                 Q(name__icontains=q) |
                 Q(description__icontains=q) |
                 Q(store__name__icontains=q),
-                is_active=True
+                is_active=True, store__is_active=True
             ).select_related('store', 'category')[:40]
 
         # Recherche de boutiques
@@ -182,11 +182,11 @@ def search_view(request):
     return render(request, 'catalog/search.html', context)
 
 def flash_deals(request):
-    products = Product.objects.filter(is_flash_deal=True, is_active=True)
+    products = Product.objects.filter(is_flash_deal=True, is_active=True, store__is_active=True)
     return render(request, 'catalog/flash_deals.html', {'products': products})
 
 def promotions(request):
-    products = Product.objects.filter(is_active=True, old_price__isnull=False).exclude(old_price=0)
+    products = Product.objects.filter(is_active=True, store__is_active=True, old_price__isnull=False).exclude(old_price=0)
     return render(request, 'catalog/promotions.html', {'products': products})
 
 WISHLIST_SORTS = {
@@ -446,7 +446,7 @@ def search_autocomplete(request):
     # Rechercher produits et boutiques
     products = Product.objects.filter(
         Q(name__icontains=q),
-        is_active=True
+        is_active=True, store__is_active=True
     ).values('id', 'name', 'slug', 'price')[:5]
 
     stores = Store.objects.filter(

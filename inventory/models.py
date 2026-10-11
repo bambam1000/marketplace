@@ -6,8 +6,14 @@ from config.numbering import save_with_reference
 
 
 class Warehouse(models.Model):
-    """Entrepôt / point de stockage — peut servir plusieurs boutiques"""
-    store = models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='warehouses')
+    """Entrepôt / point de stockage — peut servir plusieurs boutiques.
+    Un entrepôt « dropship » représente un fournisseur qui expédie directement au client (app dropship)."""
+    KIND_CHOICES = [
+        ('own', 'Entrepôt physique'),
+        ('dropship', 'Fournisseur en dropshipping'),
+    ]
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='own')
+    store =models.ForeignKey('store.Store', on_delete=models.CASCADE, related_name='warehouses')
     linked_stores = models.ManyToManyField('store.Store', blank=True, related_name='linked_warehouses',
                                            help_text='Boutiques supplémentaires alimentées par cet entrepôt')
     name = models.CharField(max_length=100)
@@ -25,6 +31,10 @@ class Warehouse(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.code})"
+
+    @property
+    def is_dropship(self):
+        return self.kind == 'dropship'
 
     @property
     def total_products(self):

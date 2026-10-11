@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'invoicing',
     'pos',
     'inventory',
+    'dropship',
     'whatsapp',
 ]
 

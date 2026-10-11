@@ -71,10 +71,10 @@ for url, name in [
 r = safe_get(c, f'/fr/dashboard/utilisateurs/{buyer.id}/')
 check('Détail utilisateur (200)', r.status_code == 200, f'-> {r.status_code}')
 
-r = safe_post(c, f'/fr/dashboard/utilisateurs/{buyer.id}/toggle/')
+r = safe_post(c, f'/fr/dashboard/utilisateurs/{buyer.id}/action/', {'action': 'deactivate'})
 buyer.refresh_from_db()
 check('Désactivation utilisateur', not buyer.is_active)
-r = safe_post(c, f'/fr/dashboard/utilisateurs/{buyer.id}/toggle/')
+r = safe_post(c, f'/fr/dashboard/utilisateurs/{buyer.id}/action/', {'action': 'activate'})
 buyer.refresh_from_db()
 check('Réactivation utilisateur', buyer.is_active)
 
@@ -93,7 +93,7 @@ r = safe_get(c_seller, '/fr/dashboard/plateforme/')
 check('Vendeur banni de /plateforme (302)', r.status_code == 302, f'-> {r.status_code}')
 
 # ===== 3. Vérification vendeurs =====
-r = safe_post(c, f'/fr/dashboard/vendeurs/{store.id}/verify/')
+r = safe_post(c, f'/fr/dashboard/vendeurs/{store.id}/action/', {'action': 'verify'})
 store.refresh_from_db(); seller.refresh_from_db()
 check('Vendeur + boutique vérifiés', store.is_verified and seller.is_verified)
 

@@ -1,0 +1,26 @@
+{% extends 'dashboard/base.html' %}{% load catalog_tags %}
+{% block title %}Supprimer une catégorie{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<a href="{% url 'dashboard:categories' %}" style="font-size:13px;color:var(--dash-text3);text-decoration:none;display:inline-block;margin-bottom:12px;"><i class="fa-solid fa-arrow-left"></i> Catégories</a>
+<form method="post" class="ad-card" style="max-width:620px;"><div class="ad-card-body">{% csrf_token %}
+    <h1 style="font-size:20px;margin:0 0 8px;display:flex;gap:10px;align-items:center;"><i class="fa-regular fa-trash-can" style="color:#d92d20;"></i> Supprimer « {{ category.name }} » ?</h1>
+    {% if n_products or children %}
+    <p style="font-size:14px;color:var(--dash-text2);line-height:1.6;margin-bottom:14px;">
+        Cette catégorie contient <strong>{{ n_products }} produit{{ n_products|pluralize }}</strong>{% if children %} et <strong>{{ children|length }} sous-catégorie{{ children|length|pluralize }}</strong> ({% for c in children %}{{ c.name }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}.
+        Pour ne rien perdre, ils sont d'abord déplacés vers la catégorie de votre choix.
+    </p>
+    <label for="moveTo" style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;">Déplacer vers *</label>
+    <select id="moveTo" name="move_to" required style="width:100%;padding:9px 12px;border:1.5px solid var(--dash-border);border-radius:8px;font-family:inherit;margin-bottom:16px;">
+        <option value="">— Choisir une catégorie —</option>
+        {% for t in targets %}<option value="{{ t.pk }}">{% if t.parent %}{{ t.parent.name }} › {% endif %}{{ t.name }}</option>{% endfor %}
+    </select>
+    {% else %}
+    <p style="font-size:14px;color:var(--dash-text2);margin-bottom:16px;">Elle ne contient aucun produit ni sous-catégorie.</p>
+    {% endif %}
+    <div class="ad-acts" style="justify-content:flex-start;">
+        <button type="submit" class="ad-btn danger" style="padding:9px 16px;"><i class="fa-regular fa-trash-can"></i> Supprimer{% if n_products %} et déplacer les produits{% endif %}</button>
+        <a href="{% url 'dashboard:categories' %}" class="ad-btn" style="padding:9px 16px;">Annuler</a>
+    </div>
+</div></form>
+{% endblock %}

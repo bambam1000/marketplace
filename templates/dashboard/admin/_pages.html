@@ -1,0 +1,7 @@
+{% load admin_tags %}{% if page.has_other_pages %}
+<nav class="ad-pages" aria-label="Pages">
+    {% if page.has_previous %}<a href="{% page_url page.previous_page_number %}" aria-label="Page précédente"><i class="fa-solid fa-chevron-left"></i></a>{% endif %}
+    <span>Page {{ page.number }} sur {{ page.paginator.num_pages }} · {{ page.paginator.count }} résultat{{ page.paginator.count|pluralize }}</span>
+    {% if page.has_next %}<a href="{% page_url page.next_page_number %}" aria-label="Page suivante"><i class="fa-solid fa-chevron-right"></i></a>{% endif %}
+</nav>
+{% endif %}

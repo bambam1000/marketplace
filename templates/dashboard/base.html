@@ -921,16 +921,51 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <div class="sb-store"><span class="sb-store-avatar"><i class="fa-solid fa-shield-halved"></i></span><span class="sb-store-main"><span class="sb-store-name">Administration</span><span class="sb-store-role">Toute la plateforme</span></span></div>
 {% endif %}
 
+{% if nav.admin_mode %}
 <div class="dash-sidebar-label">Pilotage</div>
 <nav class="dash-nav">
-<a href="{% url 'dashboard:index' %}" class="{% if rm.url_name == 'index' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Vue d'ensemble</a>
+<a href="{% url 'dashboard:index' %}" class="{% if rm.url_name == 'index' and rm.app_name != 'dropship' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Vue d'ensemble</a>
+<a href="{% url 'dashboard:platform_stats' %}" class="{% if rm.url_name == 'platform_stats' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-coins"></i></span> Revenus</a>
+</nav>
+
+<div class="dash-sidebar-label">Marketplace</div>
+<nav class="dash-nav">
+<a href="{% url 'dashboard:admin_orders' %}" class="{% if rm.url_name == 'admin_orders' or rm.url_name == 'order_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-receipt"></i></span> Commandes{% if nav.badges.stale_orders %}<span class="nav-badge warn" title="En attente depuis plus de 3 jours">{{ nav.badges.stale_orders }}</span>{% endif %}</a>
+<a href="{% url 'dashboard:sellers' %}" class="{% if rm.url_name == 'sellers' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-store"></i></span> Boutiques{% if nav.badges.stores_to_verify %}<span class="nav-badge" title="À vérifier">{{ nav.badges.stores_to_verify }}</span>{% endif %}</a>
+<a href="{% url 'dashboard:admin_products' %}" class="{% if rm.url_name == 'admin_products' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-tag"></i></span> Produits</a>
+<a href="{% url 'dashboard:categories' %}" class="{% if 'categor' in rm.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-folder-open"></i></span> Catégories</a>
+<a href="{% url 'dashboard:admin_reviews' %}" class="{% if rm.url_name == 'admin_reviews' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-star-half-stroke"></i></span> Avis</a>
+</nav>
+
+<div class="dash-sidebar-label">Comptes</div>
+<nav class="dash-nav">
+<a href="{% url 'dashboard:users' %}" class="{% if rm.url_name == 'users' or rm.url_name == 'user_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Utilisateurs</a>
+<a href="{% url 'dashboard:admin_subscriptions' %}" class="{% if rm.url_name == 'admin_subscriptions' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gem"></i></span> Abonnements</a>
+</nav>
+
+<div class="dash-sidebar-label">Finances</div>
+<nav class="dash-nav">
+<a href="{% url 'dashboard:payouts' %}" class="{% if rm.url_name == 'payouts' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-money-bill-transfer"></i></span> Versements{% if nav.badges.payouts %}<span class="nav-badge warn" title="À traiter">{{ nav.badges.payouts }}</span>{% endif %}</a>
+<a href="{% url 'accounting:expenses' %}" class="{% if rm.url_name == 'expenses' and rm.app_name == 'accounting' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span> Dépenses</a>
+</nav>
+
+<div class="dash-sidebar-label">Contenu et support</div>
+<nav class="dash-nav">
+<a href="{% url 'dashboard:banners' %}" class="{% if 'banner' in rm.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-image"></i></span> Bannières</a>
+<a href="{% url 'dashboard:admin_messages' %}" class="{% if rm.url_name == 'admin_messages' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-envelope"></i></span> Messages de contact{% if nav.badges.contact %}<span class="nav-badge danger" title="Non lus">{{ nav.badges.contact }}</span>{% endif %}</a>
+</nav>
+{% else %}
+<div class="dash-sidebar-label">Pilotage</div>
+<nav class="dash-nav">
+<a href="{% url 'dashboard:index' %}" class="{% if rm.url_name == 'index' and rm.app_name != 'dropship' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gauge-high"></i></span> Vue d'ensemble</a>
 <a href="{% url 'dashboard:assistant' %}" class="{% if rm.url_name == 'assistant' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-robot"></i></span> Assistant IA</a>
 </nav>
 
 {% if nav.can.warehouses %}
 <div class="dash-sidebar-label">Entrepôts</div>
 <nav class="dash-nav">
-<a href="{% url 'dashboard:warehouses' %}" class="{% if 'warehouse' in rm.url_name or rm.url_name in nav.hub_urls or rm.app_name == 'pos' or rm.app_name == 'invoicing' %}active{% endif %}" title="Commandes, ventes, caisses, factures, produits et stock de chaque entrepôt"><span class="nav-icon"><i class="fa-solid fa-warehouse"></i></span> Entrepôts{% if nav.badges.orders %}<span class="nav-badge warn" title="Commandes en attente">{{ nav.badges.orders }}</span>{% endif %}{% if nav.badges.stock %}<span class="nav-badge danger" title="Produits en rupture">{{ nav.badges.stock }}</span>{% endif %}{% if nav.badges.pos_open %}<span class="nav-badge wa" title="Votre caisse est ouverte">Caisse</span>{% endif %}</a>
+<a href="{% url 'dashboard:warehouses' %}" class="{% if rm.app_name == 'dropship' %}{% elif 'warehouse' in rm.url_name or rm.url_name in nav.hub_urls or rm.app_name == 'pos' or rm.app_name == 'invoicing' %}active{% endif %}" title="Commandes, ventes, caisses, factures, produits et stock de chaque entrepôt"><span class="nav-icon"><i class="fa-solid fa-warehouse"></i></span> Entrepôts{% if nav.badges.orders %}<span class="nav-badge warn" title="Commandes en attente">{{ nav.badges.orders }}</span>{% endif %}{% if nav.badges.stock %}<span class="nav-badge danger" title="Produits en rupture">{{ nav.badges.stock }}</span>{% endif %}{% if nav.badges.pos_open %}<span class="nav-badge wa" title="Votre caisse est ouverte">Caisse</span>{% endif %}</a>
+{% if nav.can.dropship %}<a href="{% url 'dropship:index' %}" class="{% if rm.app_name == 'dropship' %}active{% endif %}" title="Fournisseurs qui expédient directement à vos clients"><span class="nav-icon"><i class="fa-solid fa-truck-plane"></i></span> Dropshipping{% if nav.badges.dropship %}<span class="nav-badge danger" title="Commandes à transmettre au fournisseur">{{ nav.badges.dropship }}</span>{% endif %}</a>{% endif %}
 {% if nav.can.stock or nav.can.transfer %}<a href="{% url 'dashboard:transfers' %}" class="{% if 'transfer' in rm.url_name %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-right-left"></i></span> Transferts</a>{% endif %}
 </nav>
 {% endif %}
@@ -978,10 +1013,12 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 </nav>
 {% endwith %}
 {% endif %}
+{% endif %}
 
 <div class="sb-bottom">
 <nav class="dash-nav">
-{% if nav.store and nav.can.owner %}<a href="{% url 'dashboard:settings' %}" class="{% if rm.url_name == 'settings' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>{% endif %}
+{% if nav.store and nav.can.owner %}<a href="{% url 'dashboard:settings' %}" class="{% if rm.url_name == 'settings' and rm.app_name != 'dropship' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>{% endif %}
+{% if nav.admin_mode %}<a href="{% url 'home' %}" target="_blank" rel="noopener"><span class="nav-icon"><i class="fa-solid fa-arrow-up-right-from-square"></i></span> Voir le site</a>{% endif %}
 <a href="#" onclick="openDashLogout();return false;"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Déconnexion</a>
 </nav>
 </div>
@@ -1011,6 +1048,16 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 {% if nav.can.invoices %}<a href="{% url 'invoicing:invoices' %}" role="menuitem"><i class="fa-solid fa-file-invoice"></i> Facture</a>{% endif %}
 {% if nav.can.transfer %}<a href="{% url 'dashboard:transfers' %}" role="menuitem"><i class="fa-solid fa-right-left"></i> Transfert de stock</a>{% endif %}
 {% if nav.can.owner and nav.is_seller %}<a href="{% url 'marketing:promo_code_create' %}" role="menuitem"><i class="fa-solid fa-ticket"></i> Code promo</a>{% endif %}
+</div>
+</div>
+{% endif %}
+{% if nav.admin_mode %}
+<div class="tb-menu" data-menu>
+<button type="button" class="tb-new" data-menu-toggle aria-haspopup="true" aria-expanded="false"><i class="fa-solid fa-plus"></i><span>Nouveau</span></button>
+<div class="tb-dropdown" role="menu">
+<a href="{% url 'dashboard:banner_add' %}" role="menuitem"><i class="fa-solid fa-image"></i> Bannière d'accueil</a>
+<a href="{% url 'dashboard:category_add' %}" role="menuitem"><i class="fa-solid fa-folder-plus"></i> Catégorie</a>
+<a href="{% url 'accounting:expenses' %}" role="menuitem"><i class="fa-solid fa-file-invoice-dollar"></i> Dépense</a>
 </div>
 </div>
 {% endif %}

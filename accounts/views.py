@@ -30,7 +30,8 @@ def login_view(request):
 
 def register_view(request):
     if request.method == 'POST':
-        role = request.POST.get('role', 'buyer')
+        # Seuls « acheteur » et « vendeur » s'obtiennent à l'inscription : un administrateur est nommé, jamais auto-inscrit
+        role = 'seller' if request.POST.get('role') == 'seller' else 'buyer'
         username = request.POST.get('username')
         email = request.POST.get('email')
         password = request.POST.get('password')

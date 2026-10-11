@@ -1,0 +1,48 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Messages de contact{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.cm { border-bottom: 1px solid var(--dash-border); padding: 14px 18px; }
+.cm:last-child { border-bottom: none; }
+.cm.unread { background: #fffaf5; box-shadow: inset 3px 0 0 var(--dash-accent); }
+.cm-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+.cm-top strong { font-size: 14px; }
+.cm-meta { font-size: 12px; color: var(--dash-text3); margin-top: 2px; }
+.cm-subject { font-weight: 700; font-size: 13.5px; margin: 8px 0 4px; }
+.cm-body { font-size: 13.5px; color: var(--dash-text2); line-height: 1.6; white-space: pre-line; }
+</style>
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-envelope"></i> Messages de contact</h1>
+        <p>Messages envoyés depuis la page Contact du site. Répondez par e-mail, puis marquez-les comme traités.</p>
+    </div>
+</div>
+<div class="ad-bar">
+    <nav class="ad-tabs">
+        <a href="?" class="{% if f != 'unread' %}on{% endif %}">Tous<span>{{ total }}</span></a>
+        <a href="?f=unread" class="{% if f == 'unread' %}on{% endif %}">Non lus<span>{{ unread }}</span></a>
+    </nav>
+    <form class="ad-search" method="get">{% if f %}<input type="hidden" name="f" value="{{ f }}">{% endif %}<input type="search" name="q" value="{{ q }}" placeholder="Nom, e-mail, sujet, texte"></form>
+</div>
+<section class="ad-card">
+    {% for m in page %}
+    <article class="cm {% if not m.is_read %}unread{% endif %}">
+        <div class="cm-top">
+            <div><strong>{{ m.name }}</strong>{% if not m.is_read %} <span class="ad-pill orange">Nouveau</span>{% endif %}
+                <div class="cm-meta">{{ m.email }}{% if m.phone %} · {{ m.phone }}{% endif %} · {{ m.created_at|date:"d/m/Y à H:i" }}</div></div>
+            <div class="ad-acts">
+                <a class="ad-btn primary" href="mailto:{{ m.email }}?subject=Re%C2%A0%3A%20{{ m.subject|urlencode }}"><i class="fa-solid fa-reply"></i> Répondre</a>
+                <form method="post">{% csrf_token %}<input type="hidden" name="message" value="{{ m.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    {% if m.is_read %}<button class="ad-btn" name="action" value="unread">Marquer non lu</button>{% else %}<button class="ad-btn" name="action" value="read"><i class="fa-solid fa-check"></i> Traité</button>{% endif %}
+                </form>
+                <form method="post" onsubmit="return confirm('Supprimer ce message ?');">{% csrf_token %}<input type="hidden" name="message" value="{{ m.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="ad-btn danger" name="action" value="delete" title="Supprimer"><i class="fa-regular fa-trash-can"></i></button></form>
+            </div>
+        </div>
+        <div class="cm-subject">{{ m.subject }}</div>
+        <div class="cm-body">{{ m.message }}</div>
+    </article>
+    {% empty %}<div class="ad-empty"><i class="fa-regular fa-envelope-open"></i>{% if f == 'unread' %}Aucun message en attente : tout est traité.{% else %}Aucun message.{% endif %}</div>{% endfor %}
+    {% include 'dashboard/admin/_pages.html' %}
+</section>
+{% endblock %}

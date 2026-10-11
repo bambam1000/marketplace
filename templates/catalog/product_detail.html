@@ -128,6 +128,12 @@ Partager
 {% if product.in_stock %}<span style="color:var(--green);font-weight:600;"><i class="fa-solid fa-check"></i> En stock ({{ product.stock }})</span>{% else %}<span style="color:var(--red);font-weight:600;"><i class="fa-solid fa-xmark"></i> Rupture de stock</span>{% endif %}
 {% if product.min_order > 1 %}<span style="color:var(--text3);">· Min. {{ product.min_order }} pcs</span>{% endif %}
 </div>
+{% with sup=product.supplier_item.connection %}{% if sup %}
+<div style="display:flex;gap:10px;align-items:flex-start;background:#eff8ff;border:1px solid #b2ddff;color:#194185;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;margin:0 0 12px;">
+<i class="fa-solid fa-truck-plane" style="margin-top:3px;"></i>
+<div><strong>Expédié depuis {{ sup.country }} par un fournisseur partenaire</strong><br>Livraison estimée sous {{ sup.delivery_min_days }} à {{ sup.delivery_max_days }} jours · paiement à la commande (pas de paiement à la livraison).</div>
+</div>
+{% endif %}{% endwith %}
 <form method="post" action="{% url 'cart:add' product.id %}">{% csrf_token %}
 <div class="qty-control"><button type="button" class="qty-btn2" onclick="let i=this.nextElementSibling;i.value=Math.max({{ product.min_order }},parseInt(i.value)-1)">−</button><input type="number" name="quantity" value="{{ product.min_order }}" min="{{ product.min_order }}" class="qty-input"><button type="button" class="qty-btn2" onclick="let i=this.previousElementSibling;i.value=parseInt(i.value)+1">+</button></div>
 <div style="display:flex;flex-direction:column;gap:10px;">
