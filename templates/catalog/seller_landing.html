@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Vendre sur Comptoir — Boutique en ligne, caisse, stock et marketing</title>
-<meta name="description" content="Ouvrez votre boutique sur Comptoir : vente en ligne, caisse pour le magasin, stock par entrepôt, factures, équipe et marketing dans un seul tableau de bord.">
+<meta name="description" content="Ouvrez votre boutique sur Comptoir : vente en ligne, caisse pour le magasin, stock par entrepôt, dropshipping, factures, équipe et marketing dans un seul tableau de bord.">
 <meta name="theme-color" content="#ff6a00">
 <meta property="og:title" content="Vendre sur Comptoir">
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'images/brand/og-image.png' %}">
@@ -194,6 +194,28 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
 .ticket .r.s { width: 60%; }
 .ticket .z { border-top: 1px dashed #98a2b3; margin-top: 7px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 700; }
 
+/* Dropshipping */
+.drop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+.drop h2 { font-size: 40px; font-weight: 800; line-height: 1.12; margin: 6px 0 16px; }
+.drop p.lead { font-size: 16.5px; line-height: 1.7; margin-bottom: 26px; color: var(--text2); }
+.drop .check > i { background: rgba(46,144,250,.12); color: var(--blue); }
+.drop .check b { color: var(--text1); }
+.drop .check span { color: var(--text2); }
+.drop .check b .soon { display: inline-block; vertical-align: 2px; margin-left: 6px; font-size: 10.5px; font-weight: 800; color: var(--orange-dark); background: var(--orange-soft); border: 1px solid var(--orange-line); padding: 1px 8px; border-radius: 50px; text-transform: uppercase; letter-spacing: .04em; }
+.drop-note { margin-top: 22px; display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; color: var(--text2); line-height: 1.55; }
+.drop-note i { color: var(--orange); margin-top: 3px; }
+.drop-flow { position: relative; display: grid; gap: 14px; max-width: 460px; margin: 0 auto; width: 100%; }
+.drop-flow::before { content: ''; position: absolute; left: 33px; top: 30px; bottom: 30px; width: 2px; background: repeating-linear-gradient(180deg, #b2ddff 0 8px, transparent 8px 16px); }
+.drop-step { position: relative; display: flex; gap: 14px; align-items: center; background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
+.drop-step .ic { width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; background: var(--cs); color: var(--c); position: relative; z-index: 1; }
+.drop-step b { display: block; font-size: 14px; }
+.drop-step small { display: block; font-size: 12.5px; color: var(--text2); margin-top: 2px; line-height: 1.45; }
+.drop-step .pill { margin-left: auto; }
+.drop-price { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; background: var(--ink); color: #cfd4dc; border-radius: 16px; padding: 14px 16px; font-size: 11.5px; box-shadow: var(--shadow); }
+.drop-price div { text-align: center; }
+.drop-price b { display: block; color: #fff; font-family: var(--display); font-size: 15px; margin-top: 3px; }
+.drop-price div:last-child b { color: #6ce9a6; }
+
 /* Étapes */
 .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; position: relative; }
 .steps::before { content: ''; position: absolute; top: 31px; left: 12%; right: 12%; height: 2px; background: repeating-linear-gradient(90deg, var(--orange-line) 0 8px, transparent 8px 16px); }
@@ -294,7 +316,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
     .lp-links, .lp-nav-actions .btn { display: none; }
     .lp-burger { display: inline-flex; align-items: center; justify-content: center; }
     .hero { padding: 40px 0 28px; }
-    .hero-grid, .pos-grid { grid-template-columns: 1fr; gap: 44px; }
+    .hero-grid, .pos-grid, .drop-grid { grid-template-columns: 1fr; gap: 44px; }
     .hero h1 { font-size: 38px; }
     .hero p.lead { font-size: 16px; }
     .mock { margin: 10px 8px 24px; }
@@ -305,7 +327,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
     .strip span { flex-shrink: 0; }
     .sec { padding: 64px 0; }
     .head { margin-bottom: 34px; }
-    .head h2, .pos h2 { font-size: 30px; }
+    .head h2, .pos h2, .drop h2 { font-size: 30px; }
     .tabs { width: auto; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; margin-left: -24px; margin-right: -24px; border-radius: 0; border-left: none; border-right: none; scrollbar-width: none; }
     .tabs::-webkit-scrollbar { display: none; }
     .tab { flex-shrink: 0; }
@@ -334,6 +356,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
     .till-grid div:nth-child(n+9) { display: none; }
     .ticket { display: none; }
     .pos-mock { padding-bottom: 0; }
+    .drop-step .pill { display: none; }
     .included { padding: 22px 18px; }
     .faq summary { font-size: 14.5px; }
     .foot-inner { flex-direction: column; align-items: flex-start; }
@@ -349,6 +372,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
         <div class="lp-links">
             <a href="#fonctionnalites">Fonctionnalités</a>
             <a href="#caisse">Caisse</a>
+            <a href="#dropshipping">Dropshipping</a>
             <a href="#demarrer">Comment ça marche</a>
             <a href="#formules">Formules</a>
             <a href="#faq">Questions</a>
@@ -366,6 +390,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
     <div class="lp-mobile" id="lpMobile">
         <a href="#fonctionnalites">Fonctionnalités</a>
         <a href="#caisse">Caisse en magasin</a>
+        <a href="#dropshipping">Dropshipping</a>
         <a href="#demarrer">Comment ça marche</a>
         <a href="#formules">Formules et tarifs</a>
         <a href="#faq">Questions fréquentes</a>
@@ -441,6 +466,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
             <span><i class="fa-solid fa-store"></i> Boutique en ligne</span>
             <span><i class="fa-solid fa-cash-register"></i> Caisse en magasin</span>
             <span><i class="fa-solid fa-warehouse"></i> Multi-entrepôts</span>
+            <span><i class="fa-solid fa-truck-plane"></i> Dropshipping</span>
             <span><i class="fa-solid fa-file-invoice"></i> Factures PDF</span>
             <span><i class="fa-solid fa-users"></i> Équipe et droits</span>
             <span><i class="fa-brands fa-whatsapp"></i> WhatsApp</span>
@@ -595,6 +621,32 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
     </div>
 </section>
 
+<!-- ═══ Dropshipping ═══ -->
+<section class="sec soft drop" id="dropshipping">
+    <div class="container drop-grid">
+        <div class="reveal">
+            <span class="tag">Dropshipping</span>
+            <h2>Vendez sans stocker : votre fournisseur expédie</h2>
+            <p class="lead">Ajoutez un fournisseur comme un entrepôt de votre boutique. Ses produits rejoignent votre catalogue, et quand un client paie, la commande part chez le fournisseur qui livre directement votre client.</p>
+            <div class="checks">
+                <div class="check"><i class="fa-solid fa-file-csv"></i><div><b>Le catalogue de votre fournisseur</b><span>Importez son catalogue depuis un fichier CSV ou Excel, en associant simplement les colonnes.</span></div></div>
+                <div class="check"><i class="fa-solid fa-plug"></i><div><b>Connexion directe CJ Dropshipping <span class="soon">Bientôt</span></b><span>Parcourez le catalogue CJ et importez un produit en un clic, avec ses photos et ses variantes (couleur, taille).</span></div></div>
+                <div class="check"><i class="fa-solid fa-calculator"></i><div><b>Prix calculés pour vous</b><span>Taux de change, frais de transport et de douane, coefficient et arrondi : le prix de vente se met à jour quand le coût change, avec une alerte si la marge devient trop faible.</span></div></div>
+                <div class="check"><i class="fa-solid fa-rotate"></i><div><b>Stock synchronisé</b><span>Le stock et les coûts du fournisseur sont mis à jour dans votre boutique : vous ne vendez pas ce qui n'existe plus.</span></div></div>
+                <div class="check"><i class="fa-solid fa-paper-plane"></i><div><b>Commandes transmises et suivies</b><span>Seules les commandes payées partent chez le fournisseur, à la main ou automatiquement. Le numéro de suivi est envoyé à votre client.</span></div></div>
+            </div>
+            <p class="drop-note"><i class="fa-solid fa-circle-info"></i><span>Le dropshipping est une option payante, disponible selon votre formule.</span></p>
+        </div>
+        <div class="drop-flow reveal" aria-hidden="true">
+            <div class="drop-step" style="--c:var(--orange);--cs:var(--orange-soft);"><span class="ic"><i class="fa-solid fa-bag-shopping"></i></span><div><b>Le client commande et paie</b><small>sur votre boutique Comptoir, en francs CFA</small></div><span class="pill new">Payée</span></div>
+            <div class="drop-step" style="--c:var(--blue);--cs:#eaf3ff;"><span class="ic"><i class="fa-solid fa-paper-plane"></i></span><div><b>Commande transmise au fournisseur</b><small>avec la bonne variante et l'adresse du client</small></div><span class="pill ship">Transmise</span></div>
+            <div class="drop-step" style="--c:var(--violet);--cs:#f1edff;"><span class="ic"><i class="fa-solid fa-truck-plane"></i></span><div><b>Le fournisseur expédie</b><small>numéro de suivi envoyé au client</small></div><span class="pill ship">Expédiée</span></div>
+            <div class="drop-step" style="--c:var(--green);--cs:#e7f8ef;"><span class="ic"><i class="fa-solid fa-check"></i></span><div><b>Livré chez votre client</b><small>sans passer par votre entrepôt</small></div><span class="pill done">Livrée</span></div>
+            <div class="drop-price"><div>Coût fournisseur<b>Prix + port</b></div><div>Votre prix<b>× coefficient</b></div><div>Votre marge<b>calculée</b></div></div>
+        </div>
+    </div>
+</section>
+
 <!-- ═══ Démarrer ═══ -->
 <section class="sec warm" id="demarrer">
     <div class="container">
@@ -663,8 +715,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
                 <li><i class="fa-solid fa-circle-check"></i>Boutique en ligne et catalogue</li>
                 <li><i class="fa-solid fa-circle-check"></i>Commandes, ventes directes et devis</li>
                 <li><i class="fa-solid fa-circle-check"></i>Caisse en magasin</li>
-                <li><i class="fa-solid fa-circle-check"></i>Stock multi-entrepôts et transferts</li>
-                <li><i class="fa-solid fa-circle-check"></i>Factures PDF et comptabilité</li>
+                <li><i class="fa-solid fa-circle-check"></i>Stock multi-entrepôts et transferts</li>                <li><i class="fa-solid fa-circle-check"></i>Factures PDF et comptabilité</li>
                 <li><i class="fa-solid fa-circle-check"></i>Employés, rôles et paie</li>
                 <li><i class="fa-solid fa-circle-check"></i>Codes promo et campagnes</li>
                 <li><i class="fa-solid fa-circle-check"></i>Messagerie et notifications</li>
@@ -691,6 +742,8 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
                 <p>Oui. La caisse vous sert au comptoir, votre stock est partagé entre le magasin et le site, et vos chiffres réunissent toutes vos ventes. Vous pouvez même commencer par la caisse seule.</p></details>
             <details><summary>Puis-je gérer plusieurs magasins ou entrepôts ?<i class="fa-solid fa-plus"></i></summary>
                 <p>Oui. Chaque entrepôt a son stock, ses caisses, ses commandes, ses dépenses et sa comptabilité, et vous transférez du stock de l'un à l'autre. Vous pouvez aussi avoir plusieurs boutiques sur un même compte.</p></details>
+            <details><summary>Puis-je vendre sans avoir de stock (dropshipping) ?<i class="fa-solid fa-plus"></i></summary>
+                <p>Oui, avec l'option dropshipping (payante, selon votre formule). Ajoutez un fournisseur depuis vos entrepôts et importez son catalogue par fichier CSV ou Excel ; la connexion directe à CJ Dropshipping arrive bientôt. Vos prix sont calculés à partir de son coût, et chaque commande payée lui est transmise pour qu'il livre directement votre client.</p></details>
             <details><summary>Mes employés peuvent-ils utiliser le tableau de bord ?<i class="fa-solid fa-plus"></i></summary>
                 <p>Oui. Vous créez un rôle (caissier, magasinier, responsable…), choisissez ses droits et, si besoin, le limitez à un entrepôt. Chaque employé a ses propres identifiants et reçoit les notifications qui le concernent.</p></details>
             <details><summary>Quels moyens de paiement mes clients peuvent-ils utiliser ?<i class="fa-solid fa-plus"></i></summary>
