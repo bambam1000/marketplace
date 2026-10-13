@@ -132,6 +132,10 @@ def import_product(conn, pid, category, publish, user, client=None):
         else:
             created = True
             total = cost + (shipping or 0)
+            from billing.limits import blocked
+            limit_reason = blocked(conn.warehouse.store, 'products') if publish else None
+            if limit_reason:
+                publish, warning = False, f'Importé hors ligne. {limit_reason}'
             product = Product.objects.create(
                 store=conn.warehouse.store, category=category, name=(data['name'] or sku)[:500],
                 description=clean_description(data['description'], data['name']),

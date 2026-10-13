@@ -75,6 +75,35 @@
                 <tbody>{% for s in stores %}<tr><td><strong>{{ s.name }}</strong></td><td class="muted">{{ s.city }}</td><td>{% if not s.is_active %}<span class="ad-pill red">Suspendue</span>{% elif s.is_verified %}<span class="ad-pill green">Vérifiée</span>{% else %}<span class="ad-pill orange">À vérifier</span>{% endif %}</td><td><div class="ad-acts"><a class="ad-btn" href="{% url 'store:detail' s.slug %}" target="_blank" rel="noopener">Voir sur le site</a></div></td></tr>{% endfor %}</tbody>
             </table></div>
         </section>
+
+        <section class="ad-card">
+            <div class="ad-card-head"><h2><i class="fa-solid fa-key"></i> Accès à la plateforme</h2><a href="{% url 'dashboard:admin_subscriptions' %}">Abonnements</a></div>
+            <div class="ad-card-body" style="font-size:13.5px;">
+                {% if subscription %}
+                <p style="margin:0 0 12px;">
+                    {% if subscription.granted_by_id %}<span class="ad-pill blue"><i class="fa-solid fa-gift"></i> Offert</span> Formule <strong>{{ subscription.plan.name }}</strong>
+                        {% if subscription.end_date.year >= 2099 %}sans limite de durée{% else %}jusqu'au {{ subscription.end_date|date:"d/m/Y" }}{% endif %}, offerte par {{ subscription.granted_by.display_name }}{% if subscription.grant_note %} : « {{ subscription.grant_note }} »{% endif %}.
+                    {% elif subscription.is_active %}Formule <strong>{{ subscription.plan.name }}</strong> ({{ subscription.get_status_display|lower }}) jusqu'au {{ subscription.end_date|date:"d/m/Y" }}.
+                    {% else %}<span class="ad-pill red">Expiré</span> {{ subscription.plan.name }} depuis le {{ subscription.end_date|date:"d/m/Y" }} : la boutique est masquée.{% endif %}
+                </p>
+                {% endif %}
+                <form method="post" action="{% url 'dashboard:admin_user_access' u.pk %}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">{% csrf_token %}
+                    <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);">Formule
+                        <select name="plan" required style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;">{% for p in grant_plans %}<option value="{{ p.pk }}" {% if subscription.plan_id == p.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></label>
+                    <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);">Durée
+                        <select name="duration" style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;">{% for code, label in grant_durations %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select></label>
+                    <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);flex:1;min-width:180px;">Motif (facultatif)
+                        <input name="note" maxlength="200" placeholder="Ex. : partenaire, test, geste commercial" style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;"></label>
+                    <button class="ad-btn primary" onclick="return confirm('Donner cet accès sans paiement ? Le vendeur sera prévenu.');"><i class="fa-solid fa-gift"></i> Offrir l'accès</button>
+                </form>
+                {% if subscription.granted_by_id %}
+                <form method="post" action="{% url 'dashboard:admin_user_access' u.pk %}" style="margin-top:10px;">{% csrf_token %}
+                    <button class="ad-btn danger" name="action" value="revoke" onclick="return confirm('Retirer l\'accès offert ? La boutique ne sera plus visible.');">Retirer l'accès offert</button>
+                </form>
+                {% endif %}
+                <p style="margin:10px 0 0;font-size:12px;color:var(--dash-text3);">L'accès offert remplace l'abonnement en cours, sans paiement ni facture. La boutique redevient visible si elle était masquée.</p>
+            </div>
+        </section>
         {% endif %}
 
         {% if memberships %}

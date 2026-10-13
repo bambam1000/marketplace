@@ -33,6 +33,8 @@ SellerWallet.objects.filter(user__username__endswith=SUFFIX).delete()
 # ===== Données de base =====
 seller = User.objects.create_user(username=f'vend{SUFFIX}', password='testpass123', role='seller')
 store = Store.objects.create(owner=seller, name='Boutique Seller Test', slug='boutique-seller-test')
+from test_utils import give_plan
+give_plan(seller)
 cat = Category.objects.create(name='TestCat Seller', slug='testcat-seller')
 product = Product.objects.create(
     store=store, category=cat, name='Produit Seller', slug='produit-seller',
@@ -295,12 +297,14 @@ check('Notification envoyée à l\'acheteur',
 r = safe_get(c_scan, f'/fr/dashboard/commandes/{order.order_number}/')
 check('Vendeur étranger → commande refusée (302)', r.status_code == 302, f'-> {r.status_code}')
 
-# Vente encaissée : transaction + wallet (commission 10%)
-check('Transaction vente créée (commission 10%)',
+# Vente encaissée : transaction + wallet (commission de la formule du vendeur)
+from billing.limits import commission_rate
+expected_net = 4000 - int(4000 * commission_rate(store))
+check('Transaction vente créée (commission de la formule)',
       seller.transactions.filter(type='sale', order=order).exists())
 wallet = SellerWallet.objects.filter(user=seller).first()
-check('Wallet vendeur crédité (net 90% = 3600)',
-      wallet is not None and wallet.balance == 3600 and wallet.total_earned == 4000,
+check(f'Wallet vendeur crédité (net = {expected_net})',
+      wallet is not None and wallet.balance == expected_net and wallet.total_earned == 4000,
       f'-> balance={wallet.balance if wallet else "N/A"} earned={wallet.total_earned if wallet else "N/A"}')
 
 # ===== 10. RFQ côté vendeur (créer + répondre) =====

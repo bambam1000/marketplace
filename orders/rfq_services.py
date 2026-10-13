@@ -19,6 +19,10 @@ def submit_quote(rfq, user, data):
         raise QuoteError('Vous ne pouvez pas répondre à votre propre demande.')
     if rfq.status not in ACCEPTING:
         raise QuoteError("Cette demande n'accepte plus d'offres.")
+    from billing.limits import blocked
+    reason = blocked(store, feature='b2b', user=user)
+    if reason:
+        raise QuoteError(reason)
     existing = Quote.objects.filter(rfq=rfq, seller=user).first()
     if existing and existing.status != 'pending':
         raise QuoteError("Votre offre a déjà été traitée par l'acheteur : elle ne peut plus être modifiée.")

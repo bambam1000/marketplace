@@ -18,6 +18,7 @@ from django.urls import reverse
 from functools import wraps
 from django.conf import settings
 from store import access
+from billing.limits import commission_rate
 
 
 def seller_or_admin_required(view_func):
@@ -319,12 +320,14 @@ def _credit_sellers_for_order(order):
     La transaction 'sale' par (commande, vendeur) sert de verrou : si elle existe déjà, rien n'est recrédité."""
     from accounting.models import Transaction, SellerWallet
     from django.conf import settings
-    per_owner = {}
+    per_owner, stores = {}, {}
     for item in order.items.select_related('store__owner'):
         per_owner.setdefault(item.store.owner, 0)
         per_owner[item.store.owner] += int(item.price) * item.quantity
+        stores[item.store.owner] = item.store
     for owner, sale_amount in per_owner.items():
-        commission = int(sale_amount * settings.SALES_COMMISSION_RATE)
+        # Commission de la formule du vendeur (0 % : Comptoir se rémunère par l'abonnement)
+        commission = int(sale_amount * commission_rate(stores[owner]))
         _, created = Transaction.objects.get_or_create(
             order=order, user=owner, type='sale',
             defaults={
@@ -571,6 +574,14 @@ def dash_product_edit(request, pk=None):
     if store is None:
         django_messages.error(request, "Aucune boutique associée.")
         return redirect('dashboard:index')
+    from billing import limits
+    target_store = product.store if product else store
+    if product is None:
+        reason = limits.blocked(target_store, 'products', user=request.user)
+        if reason:
+            django_messages.error(request, reason)
+            return redirect('dashboard:products')
+    plan = None if is_admin else limits.plan_of(target_store)
     if request.method == 'POST':
         data = {
             'name': request.POST.get('name'),
@@ -590,19 +601,45 @@ def dash_product_edit(request, pk=None):
         }
         cat_id = request.POST.get('category')
         if cat_id: data['category'] = Category.objects.get(pk=cat_id)
+        # Limites de la formule : on garde le produit, sans ce que la formule n'inclut pas
+        if not is_admin:
+            was_active = bool(product and product.is_active)
+            if data['is_active'] and product and not was_active:
+                reason = limits.blocked(target_store, 'products', user=request.user)
+                if reason:
+                    data['is_active'] = False
+                    django_messages.warning(request, f'Produit gardé hors ligne. {reason}')
+            if data['is_flash_deal'] and not (product and product.is_flash_deal):
+                reason = limits.blocked(target_store, feature='flash_deal', user=request.user)
+                if reason:
+                    data['is_flash_deal'] = False
+                    django_messages.warning(request, reason)
+            if data['is_featured'] and not (product and product.is_featured):
+                reason = limits.blocked(target_store, 'featured', user=request.user)
+                if reason:
+                    data['is_featured'] = False
+                    django_messages.warning(request, reason)
+        image_fields = ['image', 'image_2', 'image_3', 'image_4']
+        max_images = plan.max_images_per_product if plan else len(image_fields)
         if product:
             # Le stock ne se modifie que via l'ajustement (traçabilité)
             data.pop('stock', None)
             for k, v in data.items(): setattr(product, k, v)
-            for f in ['image', 'image_2', 'image_3', 'image_4']:
-                if request.FILES.get(f): setattr(product, f, request.FILES[f])
-            product.save()
         else:
             data['store'] = store
             product = Product(**data)
-            for f in ['image', 'image_2', 'image_3', 'image_4']:
-                if request.FILES.get(f): setattr(product, f, request.FILES[f])
-            product.save()
+        skipped = 0
+        for f in image_fields:
+            if request.FILES.get(f):
+                filled = sum(1 for other in image_fields if other != f and getattr(product, other))
+                if filled >= max_images:
+                    skipped += 1
+                    continue
+                setattr(product, f, request.FILES[f])
+        product.save()
+        if skipped:
+            django_messages.warning(request, f'Votre formule permet {max_images} photo{"s" if max_images > 1 else ""} par produit : '
+                                             f'{skipped} photo{"s" if skipped > 1 else ""} non ajoutée{"s" if skipped > 1 else ""}.')
         django_messages.success(request, 'Produit sauvegardé !')
         return redirect('dashboard:products')
     return render(request, 'dashboard/product_edit.html', {'product': product, 'categories': categories})
@@ -642,6 +679,11 @@ def dash_product_unarchive(request, pk):
         django_messages.error(request, 'Vous ne pouvez pas modifier ce produit.')
         return redirect('dashboard:products')
     if request.method == 'POST':
+        from billing.limits import blocked
+        reason = None if product.is_active else blocked(product.store, 'products', user=request.user)
+        if reason:
+            django_messages.error(request, reason)
+            return redirect('dashboard:products')
         product.is_active = True
         product.save(update_fields=['is_active'])
         django_messages.success(request, f'Produit "{product.name}" réactivé.')
@@ -1072,6 +1114,11 @@ def dash_warehouses(request):
             return redirect('dashboard:warehouses')
         if store.warehouses.filter(code=code).exists():
             django_messages.error(request, f'Le code « {code} » est déjà utilisé par un autre entrepôt.')
+            return redirect('dashboard:warehouses')
+        from billing.limits import blocked
+        reason = blocked(store, 'suppliers' if kind == 'dropship' else 'warehouses', user=request.user)
+        if reason:
+            django_messages.error(request, reason)
             return redirect('dashboard:warehouses')
         wh = Warehouse.objects.create(
             store=store, kind=kind, name=name, code=code,
@@ -1521,7 +1568,7 @@ def _warehouse_month_figures(warehouse, year, month):
 
     online, direct_rev = int(sums['online'] or 0), int(sums['direct'] or 0)
     pos_rev = int(pos_sums['net'] or 0)
-    commission = int(Decimal(online) * Decimal(str(settings.SALES_COMMISSION_RATE)))
+    commission = int(Decimal(online) * commission_rate(warehouse.store))
     cogs = int((sums['cogs'] or 0) + (pos_items['cogs'] or 0))
     expenses = int(warehouse.expenses.filter(date__year=year, date__month=month).aggregate(t=Sum('amount'))['t'] or 0)
     revenue = online + direct_rev + pos_rev
@@ -1639,7 +1686,7 @@ def dash_warehouse_accounting(request, pk):
         'commission': current['commission'],
         'total_expenses': current['expenses'],
         'net_profit': current['net'],
-        'commission_pct': round(settings.SALES_COMMISSION_RATE * 100),
+        'commission_pct': round(commission_rate(warehouse.store) * 100, 1),
         'expenses': expenses,
         'by_category': by_category,
         'payroll': payroll,
@@ -2089,6 +2136,12 @@ def dash_employees_list(request):
         if not username:
             django_messages.error(request, "Le nom d'utilisateur est requis.")
             return redirect('dashboard:employees_list')
+        if not store.members.filter(user__username=username, is_active=True).exists():
+            from billing.limits import blocked
+            reason = blocked(store, 'staff', user=request.user)
+            if reason:
+                django_messages.error(request, reason)
+                return redirect('dashboard:employees_list')
 
         user = User.objects.filter(username=username).first()
         if user is None:
@@ -2166,6 +2219,12 @@ def dash_employee_toggle(request, pk):
     from store.models import StoreMember
     member = get_object_or_404(StoreMember, pk=pk, store=request.user.store)
     if request.method == 'POST':
+        if not member.is_active:
+            from billing.limits import blocked
+            reason = blocked(member.store, 'staff', user=request.user)
+            if reason:
+                django_messages.error(request, reason)
+                return redirect('dashboard:employees_list')
         member.is_active = not member.is_active
         member.save()
         django_messages.success(request, f'{member.user.display_name} {"activé" if member.is_active else "désactivé"}.')
@@ -2258,6 +2317,11 @@ def dash_payslip_create(request):
         return redirect('dashboard:index')
 
     if request.method == 'POST':
+        from billing.limits import blocked
+        reason = blocked(store, feature='payroll', user=request.user)
+        if reason:
+            django_messages.error(request, reason)
+            return redirect('dashboard:payroll')
         from store.models import PayslipLine
         member = get_object_or_404(StoreMember, pk=request.POST.get('member'), store=store)
         month = int(request.POST.get('month'))
@@ -2899,6 +2963,10 @@ def dash_assistant_ask(request):
     conversation = None
     if conv_id.isdigit():
         conversation = AssistantConversation.objects.filter(pk=conv_id, user=request.user, store=store).first()
+    from billing.limits import use_ai_question
+    reason = use_ai_question(store, user=request.user)
+    if reason:
+        return JsonResponse({'ok': False, 'error': reason, 'conversation': conversation.pk if conversation else None}, status=402)
     if conversation is None:
         conversation = AssistantConversation.objects.create(user=request.user, store=store)
     result = ai_ask(conversation, question, request.user)

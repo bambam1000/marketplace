@@ -1,0 +1,17 @@
+# Tâche quotidienne des abonnements (production Linux) : rappels de fin J-7 / J-2, puis expiration
+# (la boutique est masquée jusqu'au paiement). Lancée chaque jour par afrimarket-billing.timer.
+# Installation :
+#   sudo cp deploy/billing/afrimarket-billing.service deploy/billing/afrimarket-billing.timer /etc/systemd/system/
+#   (adapter User, WorkingDirectory, EnvironmentFile et le chemin de Python ci-dessous)
+#   sudo systemctl daemon-reload && sudo systemctl enable --now afrimarket-billing.timer
+#   systemctl list-timers afrimarket-billing        # prochaine exécution
+#   journalctl -u afrimarket-billing                 # résultat des exécutions
+[Unit]
+Description=AfriMarket - rappels et expiration des abonnements vendeurs
+
+[Service]
+Type=oneshot
+User=afrimarket
+WorkingDirectory=/srv/afrimarket
+EnvironmentFile=/srv/afrimarket/.env.production
+ExecStart=/srv/afrimarket/.venv/bin/python manage.py billing_subscriptions

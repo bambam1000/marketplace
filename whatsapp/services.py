@@ -533,6 +533,8 @@ def service_catalog(instance, store, is_platform):
         ]
 
     store_phone = (store.whatsapp or store.phone) if store else ''
+    from billing.limits import blocked
+    inbox_reason = blocked(store, feature='whatsapp_inbox')
     if not (platform_ok or connected):
         alert_state, alert_reason = False, not_connected
     elif not normalize_phone(store_phone):
@@ -554,7 +556,8 @@ def service_catalog(instance, store, is_platform):
             'Commande passée', 'Vous (boutique)', ['seller_new_order'], state=alert_state, reason=alert_reason),
         svc('fa-comments', 'Conversations et réponses',
             'Les messages de vos clients arrivent dans Conversations, client reconnu et commandes affichées ; vous répondez depuis le dashboard.',
-            'Message reçu', 'Vous et vos employés (gestion des commandes)', ['inbound', 'reply']),
+            'Message reçu', 'Vous et vos employés (gestion des commandes)', ['inbound', 'reply'],
+            state=connected and inbox_reason is None, reason=inbox_reason or not_connected),
         svc('fa-bell-slash', 'Désinscription STOP / START',
             'Un client qui écrit STOP ne reçoit plus de message automatique ; START le réinscrit. Respecté partout.',
             'Mot-clé reçu', 'Client', ['optout']),

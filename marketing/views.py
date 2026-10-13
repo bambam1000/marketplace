@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db.models import Sum, Count, Avg, F
 from datetime import timedelta
 from .models import PromoCode, Campaign, Newsletter, MarketingAnalytics, LoyaltyProgram
+from billing.limits import requires_feature
 from catalog.models import Product
 from orders.models import Order
 
@@ -314,6 +315,7 @@ def campaign_public(request, pk):
 
 
 @login_required
+@requires_feature('marketing', 'marketing:dashboard')
 def campaign_create(request):
     """Créer une campagne"""
     if not request.user.is_seller or not (request.user.store is not None):
@@ -390,6 +392,7 @@ def campaign_edit(request, pk):
 
 # ========== ANALYTICS ==========
 @login_required
+@requires_feature('analytics', 'marketing:dashboard')
 def analytics(request):
     """Analytics marketing basés sur les données réelles (commandes, campagnes, emails, fidélité)"""
     if not request.user.is_seller or not (request.user.store is not None):
@@ -698,6 +701,7 @@ def emails_list(request):
 
 
 @login_required
+@requires_feature('marketing', 'marketing:dashboard')
 def email_create(request):
     """Créer (et optionnellement envoyer) une campagne email"""
     store = _get_seller_store(request)
@@ -823,6 +827,7 @@ def _send_newsletter(request, newsletter):
 
 
 @login_required
+@requires_feature('marketing', 'marketing:dashboard')
 def email_send(request, pk):
     """Envoyer un brouillon existant"""
     store = _get_seller_store(request)
@@ -923,6 +928,7 @@ def messaging_list(request):
 
 
 @login_required
+@requires_feature('marketing', 'marketing:dashboard')
 def messaging_create(request):
     """Créer une campagne WhatsApp/Telegram"""
     store = _get_seller_store(request)
@@ -1088,6 +1094,7 @@ def facebook_list(request):
 
 
 @login_required
+@requires_feature('marketing', 'marketing:dashboard')
 def facebook_create(request):
     """Studio de création de post Facebook"""
     store = _get_seller_store(request)

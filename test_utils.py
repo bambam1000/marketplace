@@ -169,3 +169,13 @@ def cleanup_test_data(suffix, promo_prefix=None, category_slugs=(), plan_slugs=(
         SubscriptionPlan.objects.filter(slug__in=list(plan_slugs)).delete()
     if banner_titles:
         HeroBanner.objects.filter(title__in=list(banner_titles)).delete()
+
+
+def give_plan(user, slug='enterprise', days=30):
+    """Met le vendeur de test sur une formule (Entreprise par défaut : aucune limite) pour tester les parcours complets."""
+    from datetime import timedelta
+    from django.utils import timezone
+    from billing.models import Subscription, SubscriptionPlan
+    plan = SubscriptionPlan.objects.get(slug=slug)
+    Subscription.objects.update_or_create(user=user, defaults={
+        'plan': plan, 'status': 'active', 'end_date': timezone.now() + timedelta(days=days)})

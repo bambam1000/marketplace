@@ -33,6 +33,8 @@ admin = User.objects.create_user(
 )
 seller = User.objects.create_user(username=f'vend{SUFFIX}', password='testpass123', role='seller')
 store = Store.objects.create(owner=seller, name='Boutique Admin Test', slug='boutique-admin-test')
+from test_utils import give_plan
+give_plan(seller)
 cat = Category.objects.create(name='TestCat Admin', slug='testcat-admin')
 product = Product.objects.create(
     store=store, category=cat, name='Produit Admin', slug='produit-admin',

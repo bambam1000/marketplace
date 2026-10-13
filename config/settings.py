@@ -118,7 +118,12 @@ ASSISTANT_EFFORT = os.environ.get('ASSISTANT_EFFORT', 'medium')        # low | m
 ASSISTANT_MAX_TOOL_ROUNDS = int(os.environ.get('ASSISTANT_MAX_TOOL_ROUNDS', '8'))
 ASSISTANT_TIMEOUT = float(os.environ.get('ASSISTANT_TIMEOUT', '120'))
 
-SALES_COMMISSION_RATE = 0.10  # commission plateforme sur les ventes en ligne (pas sur les ventes directes)
+SALES_COMMISSION_RATE = 0  # aucune commission sur les ventes : Comptoir se rémunère par l'abonnement (billing/limits.py)
+# Texte de secours affiché au vendeur tant que l'admin n'a pas renseigné ses numéros MoMo / Orange Money
+# (Admin > Abonnements > « Où les vendeurs paient leur formule »)
+SUBSCRIPTION_PAYMENT_INSTRUCTIONS = os.environ.get('SUBSCRIPTION_PAYMENT_INSTRUCTIONS', (
+    "Après votre demande, notre équipe vous contacte sur WhatsApp pour vous indiquer le numéro MTN MoMo ou Orange Money "
+    "où envoyer le montant. Votre formule est activée dès réception."))
 BOOST_COMMISSION_RATE = 0.20  # 20% commission for Facebook/WhatsApp boosts
 
 # Email Configuration

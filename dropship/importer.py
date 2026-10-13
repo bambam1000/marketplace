@@ -215,6 +215,11 @@ def run_import(imp, mapping, options, user):
     seen = set()
     now = timezone.now()
     existing = {sp.supplier_sku: sp for sp in connection.items.select_related('product')}
+    # Produits en ligne permis par la formule : au-delà, les nouveaux produits sont importés hors ligne
+    from billing.limits import limit_of
+    used, maximum = limit_of(store, 'products')
+    room = None if maximum is None else max(0, maximum - used)
+    held_offline = 0
 
     for n, row in enumerate(imp.rows, start=2):
         v, error = _row_values(row, mapping, connection)
@@ -258,6 +263,13 @@ def run_import(imp, mapping, options, user):
                 category, known = _match_category(v['category'], categories, default_category)
                 if not known:
                     report.append([n, f'Catégorie « {v["category"]} » inconnue : produit rangé dans « {default_category.name} »'])
+                publish = options['publish']
+                if publish and room is not None:
+                    if room > 0:
+                        room -= 1
+                    else:
+                        publish = False
+                        held_offline += 1
                 product = Product.objects.create(
                     store=store, category=category, name=v['name'][:500],
                     description=v['description'] or v['name'],
@@ -265,7 +277,7 @@ def run_import(imp, mapping, options, user):
                     colors=', '.join(_split_list(v['colors']))[:300],
                     sizes=', '.join(_split_list(v['sizes']))[:300],
                     weight=v['weight'][:50], origin=connection.country[:100] or 'Importé',
-                    is_active=options['publish'],
+                    is_active=publish,
                 )
                 SupplierProduct.objects.create(
                     connection=connection, product=product, supplier_sku=sku, supplier_url=v['url'][:1000],
@@ -279,6 +291,11 @@ def run_import(imp, mapping, options, user):
                     from inventory.models import ProductStock
                     ProductStock.objects.get_or_create(product=product, warehouse=warehouse)
                 created += 1
+
+    if held_offline:
+        report.append([0, f'{held_offline} nouveau{"x" if held_offline > 1 else ""} produit{"s" if held_offline > 1 else ""} '
+                          f'importé{"s" if held_offline > 1 else ""} hors ligne : votre formule limite le nombre de produits en ligne '
+                          f'({maximum}). Passez à une formule supérieure pour les publier.'])
 
     zeroed = 0
     if options['zero_missing']:

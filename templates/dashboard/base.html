@@ -1133,6 +1133,22 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 
 <!-- Main Content -->
 <div class="dash-main-content">
+{% with pb=dash_nav.plan_banner %}{% if pb %}
+<div class="plan-banner {{ pb.level }}">
+    <i class="fa-solid {% if pb.level == 'expired' %}fa-circle-exclamation{% elif pb.level == 'trial' %}fa-gift{% else %}fa-clock{% endif %}"></i>
+    <span>{% if pb.level == 'expired' %}{% if pb.plan.is_trial %}Votre essai gratuit est terminé{% else %}Votre formule {{ pb.plan.name }} a expiré{% endif %} : votre boutique n'est plus visible des acheteurs.
+    {% elif pb.level == 'trial' %}Essai gratuit : encore <b>{{ pb.days }} jour{{ pb.days|pluralize }}</b>. Profitez-en pour tout tester, puis choisissez votre formule.
+    {% else %}Votre formule {{ pb.plan.name }} se termine dans <b>{{ pb.days }} jour{{ pb.days|pluralize }}</b>.{% endif %}</span>
+    <a href="{% url 'billing:plans' %}">{% if pb.level == 'soon' %}Renouveler{% else %}Choisir une formule{% endif %} <i class="fa-solid fa-arrow-right"></i></a>
+</div>
+<style>
+.plan-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; margin-bottom: 14px; border-radius: 10px; font-size: 13.5px; background: #fff7ed; border: 1px solid #fed7aa; color: #7c2d12; }
+.plan-banner.expired { background: #fef3f2; border-color: #fecdca; color: #7a271a; }
+.plan-banner > i { font-size: 15px; }
+.plan-banner span { flex: 1; min-width: 200px; }
+.plan-banner a { font-weight: 700; color: inherit; white-space: nowrap; text-decoration: underline; }
+</style>
+{% endif %}{% endwith %}
 {% if messages %}{% for msg in messages %}<div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
 {% block dash %}{% endblock %}
 </div>

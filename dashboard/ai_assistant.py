@@ -47,7 +47,7 @@ Repères de la plateforme (pour les questions « comment faire ») :
 - Marketing : codes promo, campagnes, fidélité, emails, WhatsApp/Telegram, Facebook.
 - WhatsApp : Dashboard, WhatsApp (connexion par QR code, conversations, désinscription STOP).
 - Employés : Employés (rôles et permissions, paie).
-- La plateforme prélève une commission de {commission} % sur les ventes en ligne, pas sur les ventes directes ni la caisse POS."""
+- La plateforme ne prélève aucune commission sur les ventes : elle se rémunère par l'abonnement mensuel du vendeur."""
 
 TOOL_RESULT_HINT = 'Résultat de l’outil (données réelles de la boutique, en lecture seule).'
 
@@ -64,8 +64,7 @@ def _client():
 
 
 def _system(store):
-    return SYSTEM_PROMPT.format(store=store.name if store else 'Comptoir',
-                                commission=round(settings.SALES_COMMISSION_RATE * 100))
+    return SYSTEM_PROMPT.format(store=store.name if store else 'Comptoir')
 
 
 def _user_turn(user, question):

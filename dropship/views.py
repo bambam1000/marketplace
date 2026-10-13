@@ -242,6 +242,12 @@ def _cj_settings(request, conn):
         messages.error(request, "Collez votre clé d'API CJ (compte CJ > Authorization > API).")
         return redirect('dropship:settings', pk=conn.warehouse_id)
     conn.auto_send = 'auto_send' in post
+    if conn.auto_send:
+        from billing.limits import blocked
+        reason = blocked(conn.warehouse.store, feature='dropship_auto', user=request.user)
+        if reason:
+            conn.auto_send = False
+            messages.warning(request, f'Transmission automatique non activée. {reason}')
     conn.save()
     messages.success(request, 'Connecté à CJ Dropshipping.' if key else 'Options de connexion enregistrées.')
     return redirect('dropship:settings', pk=conn.warehouse_id)

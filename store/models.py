@@ -23,6 +23,7 @@ class Store(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, help_text="Longitude GPS")
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    billing_suspended = models.BooleanField(default=False, help_text='Masquée car l\'abonnement a expiré (rétablie au paiement)')
     opening_hours = models.CharField(max_length=200, blank=True, help_text='Ex: Lun-Sam 8h-18h')
     facebook = models.URLField(blank=True)
     instagram = models.URLField(blank=True)

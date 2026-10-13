@@ -344,7 +344,7 @@ def ask(question, store, user=None):
 
     # Général
     if any(w in q for w in ['commission', 'frais', 'pourcentage']):
-        return "**Commission** 💰\n\nComptoir prélève **10%** sur chaque vente. Le reste est crédité sur votre portefeuille."
+        return "**Commission** 💰\n\nComptoir ne prend **aucune commission** sur vos ventes : il se rémunère par votre abonnement. Vos ventes en ligne sont créditées en totalité sur votre portefeuille."
     if any(w in q for w in ['paiement', 'payer', 'mobile money', 'momo', 'orange money']):
         return "**Modes de paiement** 💳\n\nMTN Mobile Money, Orange Money, cash à la livraison, carte bancaire et virement bancaire."
 

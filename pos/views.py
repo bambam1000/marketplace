@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from billing.limits import blocked
 from catalog.models import Product
 from inventory.models import Warehouse
 from . import services
@@ -139,6 +140,8 @@ def registers(request, scope):
             messages.error(request, "Indiquez un nom et l'entrepôt de la caisse.")
         elif CashRegister.objects.filter(warehouse=warehouse, name__iexact=name).exists():
             messages.error(request, f'{warehouse.name} a déjà une caisse « {name} ».')
+        elif limit_reason := blocked(store, 'registers', user=request.user):
+            messages.error(request, limit_reason)
         else:
             try:
                 reg = CashRegister.objects.create(
@@ -168,6 +171,8 @@ def register_edit(request, scope, pk):
     if action == 'toggle':
         if reg.is_active and reg.open_session:
             messages.error(request, f'Fermez la session en cours de « {reg.name} » avant de la désactiver.')
+        elif not reg.is_active and (limit_reason := blocked(scope.store, 'registers', user=request.user)):
+            messages.error(request, limit_reason)
         else:
             reg.is_active = not reg.is_active
             reg.save(update_fields=['is_active'])

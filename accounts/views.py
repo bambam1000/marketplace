@@ -75,11 +75,14 @@ def register_view(request):
                     city=store.city,
                     is_default=True,
                 )
+                from billing.limits import start_trial
+                start_trial(user)  # essai gratuit de 30 jours, sans moyen de paiement
             login(request, user)
             # Email de bienvenue + notification interne
             from messaging.utils import notify
             if role == 'seller':
-                msg = 'Votre boutique a été créée avec un entrepôt principal. Complétez votre profil et ajoutez vos premiers produits pour commencer à vendre.'
+                msg = ('Votre boutique a été créée avec un entrepôt principal, et votre essai gratuit de 30 jours commence. '
+                       'Complétez votre profil et ajoutez vos premiers produits pour commencer à vendre.')
             else:
                 msg = 'Découvrez les boutiques et leurs produits, commandez en toute sécurité et suivez vos commandes en temps réel.'
             notify(

@@ -49,13 +49,13 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
 /* ── Navigation ── */
 .lp-nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,.82); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s, box-shadow .2s; }
 .lp-nav.scrolled { border-bottom-color: var(--border); box-shadow: 0 4px 20px rgba(16,24,40,.05); }
-.lp-nav-inner { display: flex; align-items: center; justify-content: space-between; height: 70px; gap: 16px; }
+.lp-nav-inner { display: flex; align-items: center; justify-content: space-between; height: 70px; gap: 12px; }
 .lp-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .lp-logo small { font-size: 11px; font-weight: 700; color: var(--orange); background: var(--orange-soft); padding: 4px 9px; border-radius: 50px; }
-.lp-links { display: flex; gap: 4px; align-items: center; }
-.lp-links a { white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--text2); text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: color .2s, background .2s; }
+.lp-links { display: flex; gap: 2px; align-items: center; }
+.lp-links a { white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--text2); text-decoration: none; padding: 8px 8px; border-radius: 8px; transition: color .2s, background .2s; }
 .lp-links a:hover { color: var(--text1); background: var(--soft); }
-.lp-nav-actions { display: flex; gap: 8px; align-items: center; }
+.lp-nav-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
 .lp-burger { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: #fff; font-size: 18px; color: var(--text1); }
 .lp-mobile { display: none; border-top: 1px solid var(--border); background: #fff; padding: 8px 24px 18px; }
 .lp-mobile.open { display: block; }
@@ -256,6 +256,33 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
 .plan .btn { width: 100%; }
 .plan:not(.popular) .btn { background: var(--soft); color: var(--text1); border: 1px solid var(--border); box-shadow: none; }
 .plan:not(.popular) .btn:hover { border-color: var(--orange-line); color: var(--orange); }
+.trial { display: grid; grid-template-columns: 1.2fr 1fr auto; gap: 22px; align-items: center; margin-bottom: 26px; padding: 22px 26px; border-radius: 22px; background: linear-gradient(120deg, var(--orange-soft), #fff 70%); border: 1px solid var(--orange-line); box-shadow: var(--shadow-sm); }
+.trial-main { display: flex; gap: 16px; align-items: flex-start; }
+.trial-ic { width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 19px; color: #fff; background: linear-gradient(135deg, var(--orange), var(--orange-2)); box-shadow: 0 8px 18px rgba(255,106,0,.3); }
+.trial h3 { font-size: 19px; }
+.trial p { font-size: 13.5px; color: var(--text2); margin-top: 5px; line-height: 1.55; }
+.trial-list { list-style: none; display: grid; gap: 7px; font-size: 13px; color: var(--text2); }
+.trial-list i { color: var(--green); font-size: 11px; margin-right: 6px; }
+.trial .btn { white-space: nowrap; }
+.plan .commission { margin-top: 14px; font-size: 13px; color: var(--text2); background: var(--soft); border-radius: 10px; padding: 8px 12px; }
+.plan .commission b { color: var(--text1); font-size: 15px; }
+.plan.popular .commission { background: rgba(255,255,255,.08); color: #d0d5dd; }
+.plan.popular .commission b { color: #fff; }
+.compare { margin-top: 26px; background: #fff; border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow-sm); overflow: hidden; }
+.compare summary { list-style: none; cursor: pointer; padding: 18px 24px; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+.compare summary::-webkit-details-marker { display: none; }
+.compare summary .chev { margin-left: auto; transition: transform .2s; color: var(--text3); }
+.compare[open] summary .chev { transform: rotate(180deg); }
+.compare-wrap { overflow-x: auto; border-top: 1px solid var(--border); }
+.compare table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 720px; }
+.compare th, .compare td { padding: 11px 14px; text-align: center; border-bottom: 1px solid var(--border); }
+.compare thead th { font-family: var(--display); font-size: 14.5px; background: var(--soft); position: sticky; top: 0; }
+.compare thead th.pop { color: var(--orange); }
+.compare tbody th { text-align: left; font-weight: 600; color: var(--text1); position: sticky; left: 0; background: #fff; min-width: 210px; }
+.compare tbody tr:last-child th, .compare tbody tr:last-child td { border-bottom: none; }
+.compare td { color: var(--text2); white-space: nowrap; }
+.compare .yes { color: var(--green); }
+.compare .no { color: var(--text3); }
 .included { margin-top: 30px; border-radius: 22px; padding: 26px 28px; background: #fff; border: 1px solid var(--border); display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
 .included h3 { font-size: 18px; }
 .included h3 + p { font-size: 13.5px; color: var(--text2); margin-top: 6px; line-height: 1.6; }
@@ -312,11 +339,16 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
     .included { grid-template-columns: 1fr; }
     .included ul { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
+    /* Pas assez de place pour les 6 liens : menu repliable */
     .lp-links, .lp-nav-actions .btn { display: none; }
     .lp-burger { display: inline-flex; align-items: center; justify-content: center; }
+}
+@media (max-width: 900px) {
     .hero { padding: 40px 0 28px; }
     .hero-grid, .pos-grid, .drop-grid { grid-template-columns: 1fr; gap: 44px; }
+    .trial { grid-template-columns: 1fr; gap: 16px; padding: 20px; }
+    .trial .btn { width: 100%; }
     .hero h1 { font-size: 38px; }
     .hero p.lead { font-size: 16px; }
     .mock { margin: 10px 8px 24px; }
@@ -373,7 +405,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
             <a href="#fonctionnalites">Fonctionnalités</a>
             <a href="#caisse">Caisse</a>
             <a href="#dropshipping">Dropshipping</a>
-            <a href="#demarrer">Comment ça marche</a>
+            <a href="#demarrer">Démarrer</a>
             <a href="#formules">Formules</a>
             <a href="#faq">Questions</a>
         </div>
@@ -413,10 +445,11 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
                 <h1>Vendez en ligne <span class="hl">et en magasin</span>, avec un seul outil</h1>
                 <p class="lead">Votre boutique sur Comptoir, votre caisse, votre stock, vos factures et votre équipe dans un même tableau de bord, sur ordinateur comme sur téléphone.</p>
                 <div class="hero-cta">
-                    <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-rocket"></i> Créer ma boutique</a>
+                    <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange btn-lg"><i class="fa-solid fa-rocket"></i> Essayer 30 jours gratuitement</a>
                     <a href="#fonctionnalites" class="btn btn-light btn-lg"><i class="fa-solid fa-circle-play"></i> Voir les fonctionnalités</a>
                 </div>
                 <div class="hero-proof">
+                    <span><i class="fa-solid fa-check"></i> Sans moyen de paiement</span>
                     <span><i class="fa-solid fa-check"></i> Mobile Money et carte</span>
                     <span><i class="fa-solid fa-check"></i> Plusieurs entrepôts</span>
                     <span><i class="fa-solid fa-check"></i> Employés et droits</span>
@@ -539,7 +572,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
                 <div class="feat"><i class="fa-solid fa-mobile-screen"></i><div><h4>Paiements des clients</h4><p>MTN Mobile Money, Orange Money, virement bancaire, carte ou paiement à la livraison selon ce que vous activez.</p></div></div>
                 <div class="feat"><i class="fa-solid fa-wallet"></i><div><h4>Portefeuille et retraits</h4><p>Vos ventes en ligne créditent votre portefeuille ; vous demandez un retrait vers Mobile Money ou votre banque.</p></div></div>
                 <div class="feat"><i class="fa-solid fa-file-invoice"></i><div><h4>Factures</h4><p>Factures PDF avec votre logo, la TVA et vos mentions, créées en un clic depuis une commande et envoyées par e-mail.</p></div></div>
-                <div class="feat"><i class="fa-solid fa-calculator"></i><div><h4>Comptabilité</h4><p>Revenus, coût des marchandises, commissions, dépenses et résultat, pour toute la boutique ou par entrepôt.</p></div></div>
+                <div class="feat"><i class="fa-solid fa-calculator"></i><div><h4>Comptabilité</h4><p>Revenus, coût des marchandises, dépenses et résultat, pour toute la boutique ou par entrepôt.</p></div></div>
                 <div class="feat"><i class="fa-solid fa-cash-register"></i><div><h4>Clôture de caisse</h4><p>Comptage des billets, écart calculé automatiquement, journal des entrées et sorties d'espèces, tickets X et Z.</p></div></div>
                 <div class="feat"><i class="fa-solid fa-file-export"></i><div><h4>Exports</h4><p>Ventes, produits, clients, stock et comptabilité exportables pour votre comptable.</p></div></div>
             </div>
@@ -635,7 +668,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
                 <div class="check"><i class="fa-solid fa-rotate"></i><div><b>Stock synchronisé</b><span>Le stock et les coûts du fournisseur sont mis à jour dans votre boutique : vous ne vendez pas ce qui n'existe plus.</span></div></div>
                 <div class="check"><i class="fa-solid fa-paper-plane"></i><div><b>Commandes transmises et suivies</b><span>Seules les commandes payées partent chez le fournisseur, à la main ou automatiquement. Le numéro de suivi est envoyé à votre client.</span></div></div>
             </div>
-            <p class="drop-note"><i class="fa-solid fa-circle-info"></i><span>Le dropshipping est une option payante, disponible selon votre formule.</span></p>
+            <p class="drop-note"><i class="fa-solid fa-circle-info"></i><span>Inclus dans toutes les formules payantes :{% for p in plans %} {% if p.max_suppliers is None %}sans limite{% else %}{{ p.max_suppliers }} fournisseur{{ p.max_suppliers|pluralize }}{% endif %} avec {{ p.name }}{% if not forloop.last %},{% endif %}{% endfor %}.</span></p>
         </div>
         <div class="drop-flow reveal" aria-hidden="true">
             <div class="drop-step" style="--c:var(--orange);--cs:var(--orange-soft);"><span class="ic"><i class="fa-solid fa-bag-shopping"></i></span><div><b>Le client commande et paie</b><small>sur votre boutique Comptoir, en francs CFA</small></div><span class="pill new">Payée</span></div>
@@ -657,7 +690,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
         </div>
         <div class="steps">
             <div class="step reveal"><div class="n"><i class="fa-solid fa-user-plus"></i><b>1</b></div><h3>Créez votre compte</h3><p>Le nom de votre boutique et vos coordonnées : votre espace vendeur est prêt, avec un premier entrepôt.</p></div>
-            <div class="step reveal"><div class="n"><i class="fa-solid fa-layer-group"></i><b>2</b></div><h3>Choisissez votre formule</h3><p>Selon le nombre de produits et les outils dont vous avez besoin. Vous pourrez en changer plus tard.</p></div>
+            <div class="step reveal"><div class="n"><i class="fa-solid fa-layer-group"></i><b>2</b></div><h3>Testez 30 jours gratuitement</h3><p>Sans moyen de paiement. Choisissez ensuite la formule qui vous convient : vous pourrez en changer plus tard.</p></div>
             <div class="step reveal"><div class="n"><i class="fa-solid fa-sliders"></i><b>3</b></div><h3>Configurez votre boutique</h3><p>Logo, moyens de paiement, entrepôts, caisses et employés : à votre rythme.</p></div>
             <div class="step reveal"><div class="n"><i class="fa-solid fa-rocket"></i><b>4</b></div><h3>Publiez et vendez</h3><p>Ajoutez vos produits : ils sont visibles par les acheteurs, et vous vendez aussi en magasin.</p></div>
         </div>
@@ -671,7 +704,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
             <div class="head reveal" style="margin-bottom:0;">
                 <span class="tag">Formules</span>
                 <h2>Des formules selon votre activité</h2>
-                <p>Un abonnement, sans frais de mise en place. Plus votre formule est élevée, plus la commission sur les ventes en ligne est basse.</p>
+                <p>Commencez gratuitement pendant 30 jours, puis choisissez votre formule. Un abonnement mensuel, sans frais de mise en place et sans aucune commission : vous gardez 100 % de vos ventes.</p>
             </div>
             {% if plans %}
             <div class="billing" role="group" aria-label="Période de facturation">
@@ -680,6 +713,21 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
             </div>
             {% endif %}
         </div>
+        {% if trial %}
+        <div class="trial reveal">
+            <div class="trial-main">
+                <span class="trial-ic"><i class="fa-solid fa-gift"></i></span>
+                <div>
+                    <h3>{{ trial.name }} : {{ trial.trial_days }} jours pour 0 F</h3>
+                    <p>{{ trial.description }} Aucun moyen de paiement demandé.</p>
+                </div>
+            </div>
+            <ul class="trial-list">
+                {% for h in trial.highlights|slice:":5" %}<li><i class="fa-solid fa-check"></i> {{ h }}</li>{% endfor %}
+            </ul>
+            <a href="{% url 'accounts:register_seller' %}" class="btn btn-orange"><i class="fa-solid fa-rocket"></i> Commencer gratuitement</a>
+        </div>
+        {% endif %}
         <div class="plans">
             {% for plan in plans %}
             <div class="plan reveal {% if plan.is_popular %}popular{% endif %}" data-month="{{ plan.price_monthly|floatformat:'0u' }}" data-year="{% if plan.price_yearly %}{{ plan.price_yearly|floatformat:'0u' }}{% endif %}">
@@ -688,18 +736,11 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
                 {% if plan.description %}<div class="desc">{{ plan.description|truncatewords:16 }}</div>{% endif %}
                 <div class="price"><b class="amount">{{ plan.price_monthly|floatformat:0|intcomma }} F</b><small class="per">/ mois</small></div>
                 <div class="price-note">{% if plan.price_yearly %}ou {{ plan.price_yearly|floatformat:0|intcomma }} F par an{% else %}&nbsp;{% endif %}</div>
+                <div class="commission"><b>0 %</b> de commission sur vos ventes</div>
                 <ul>
-                    <li><i class="fa-solid fa-check"></i> Jusqu'à {{ plan.max_products|intcomma }} produits</li>
-                    <li><i class="fa-solid fa-check"></i> Commission de {{ plan.commission_rate|floatformat:"-1" }} % sur les ventes en ligne</li>
-                    <li><i class="fa-solid fa-check"></i> {{ plan.max_images_per_product }} photo{{ plan.max_images_per_product|pluralize }} par produit</li>
-                    {% if plan.can_flash_deal %}<li><i class="fa-solid fa-check"></i> Ventes flash</li>{% endif %}
-                    {% if plan.can_boost %}<li><i class="fa-solid fa-check"></i> Boosts produits{% if plan.boost_credits_monthly %} ({{ plan.boost_credits_monthly }} par mois){% endif %}</li>{% endif %}
-                    {% if plan.featured_products %}<li><i class="fa-solid fa-check"></i> {{ plan.featured_products }} produit{{ plan.featured_products|pluralize }} mis en avant</li>{% endif %}
-                    {% if plan.can_analytics %}<li><i class="fa-solid fa-check"></i> Statistiques avancées</li>{% endif %}
-                    {% if plan.can_custom_store %}<li><i class="fa-solid fa-check"></i> Boutique personnalisée</li>{% endif %}
-                    {% if plan.can_priority_support %}<li><i class="fa-solid fa-check"></i> Support prioritaire</li>{% endif %}
+                    {% for h in plan.highlights %}<li><i class="fa-solid fa-check"></i> {{ h }}</li>{% endfor %}
                 </ul>
-                <a href="{% url 'accounts:register_seller' %}" class="btn {% if plan.is_popular %}btn-orange{% endif %}">Choisir {{ plan.name }}</a>
+                <a href="{% url 'accounts:register_seller' %}" class="btn {% if plan.is_popular %}btn-orange{% endif %}">Essayer gratuitement</a>
             </div>
             {% empty %}
             <div class="plan">
@@ -709,20 +750,36 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
             </div>
             {% endfor %}
         </div>
+        {% if comparison %}
+        <details class="compare reveal">
+            <summary><i class="fa-solid fa-table-list"></i> Comparer toutes les formules <i class="fa-solid fa-chevron-down chev"></i></summary>
+            <div class="compare-wrap">
+                <table>
+                    <thead><tr><th></th>{% for p in compare_plans %}<th class="{% if p.is_popular %}pop{% endif %}">{{ p.name }}</th>{% endfor %}</tr></thead>
+                    <tbody>
+                    {% for row in comparison %}
+                    <tr><th scope="row">{{ row.label }}</th>{% for cell in row.cells %}<td>{% if cell is True %}<i class="fa-solid fa-check yes" aria-label="Inclus"></i>{% elif cell is False %}<span class="no" aria-label="Non inclus">—</span>{% else %}{{ cell }}{% endif %}</td>{% endfor %}</tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+        {% endif %}
         <div class="included reveal">
-            <div><h3>Inclus dans toutes les formules</h3><p>Les outils essentiels sont les mêmes pour tous, quelle que soit la taille de votre activité.</p></div>
+            <div><h3>Inclus dans toutes les formules</h3><p>Essai gratuit compris : les outils essentiels sont là dès le premier jour, quelle que soit la taille de votre activité.</p></div>
             <ul>
                 <li><i class="fa-solid fa-circle-check"></i>Boutique en ligne et catalogue</li>
-                <li><i class="fa-solid fa-circle-check"></i>Commandes, ventes directes et devis</li>
+                <li><i class="fa-solid fa-circle-check"></i>Commandes et ventes directes</li>
                 <li><i class="fa-solid fa-circle-check"></i>Caisse en magasin</li>
-                <li><i class="fa-solid fa-circle-check"></i>Stock multi-entrepôts et transferts</li>                <li><i class="fa-solid fa-circle-check"></i>Factures PDF et comptabilité</li>
-                <li><i class="fa-solid fa-circle-check"></i>Employés, rôles et paie</li>
-                <li><i class="fa-solid fa-circle-check"></i>Codes promo et campagnes</li>
-                <li><i class="fa-solid fa-circle-check"></i>Messagerie et notifications</li>
+                <li><i class="fa-solid fa-circle-check"></i>Gestion du stock</li>
+                <li><i class="fa-solid fa-circle-check"></i>Factures PDF et comptabilité</li>
+                <li><i class="fa-solid fa-circle-check"></i>Employés et rôles</li>
+                <li><i class="fa-solid fa-circle-check"></i>Codes promo</li>
+                <li><i class="fa-solid fa-circle-check"></i>WhatsApp : confirmations et suivi</li>
                 <li><i class="fa-solid fa-circle-check"></i>Ordinateur et téléphone</li>
             </ul>
         </div>
-        <div class="fees reveal"><i class="fa-solid fa-circle-info"></i><div><b>Commission</b> : elle ne s'applique qu'aux ventes passées sur le site. Les ventes en caisse et les ventes directes que vous enregistrez n'en ont pas.</div></div>
+        <div class="fees reveal"><i class="fa-solid fa-circle-info"></i><div><b>Aucune commission</b> : Comptoir se rémunère uniquement par l'abonnement. Ce que vous vendez en ligne, en caisse ou en vente directe vous revient en totalité.</div></div>
     </div>
 </section>
 
@@ -735,9 +792,9 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.025em; }
         </div>
         <div class="faq">
             <details open><summary>Comment suis-je payé pour mes ventes en ligne ?<i class="fa-solid fa-plus"></i></summary>
-                <p>Le montant de chaque vente en ligne, commission déduite, est crédité sur votre portefeuille dans votre espace vendeur. Vous demandez ensuite un retrait vers votre compte MTN Mobile Money, Orange Money ou votre compte bancaire.</p></details>
+                <p>Le montant de chaque vente en ligne est crédité en totalité sur votre portefeuille dans votre espace vendeur. Vous demandez ensuite un retrait vers votre compte MTN Mobile Money, Orange Money ou votre compte bancaire.</p></details>
             <details><summary>Quelle commission prend Comptoir ?<i class="fa-solid fa-plus"></i></summary>
-                <p>Le taux dépend de votre formule et est indiqué sur chaque formule ci-dessus. Il ne s'applique qu'aux ventes passées par les acheteurs sur le site : rien sur vos ventes en caisse ni sur vos ventes directes.</p></details>
+                <p>Aucune. Comptoir se rémunère uniquement par votre abonnement mensuel : vos ventes en ligne, en caisse et en vente directe vous reviennent en totalité, quelle que soit votre formule.</p></details>
             <details><summary>J'ai déjà un magasin : est-ce utile pour moi ?<i class="fa-solid fa-plus"></i></summary>
                 <p>Oui. La caisse vous sert au comptoir, votre stock est partagé entre le magasin et le site, et vos chiffres réunissent toutes vos ventes. Vous pouvez même commencer par la caisse seule.</p></details>
             <details><summary>Puis-je gérer plusieurs magasins ou entrepôts ?<i class="fa-solid fa-plus"></i></summary>

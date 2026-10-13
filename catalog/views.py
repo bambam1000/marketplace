@@ -417,8 +417,8 @@ def faq(request):
              f"Créez un compte vendeur puis choisissez une formule d'abonnement adaptée à votre activité. Tout est détaillé sur la "
              f"page {link('seller_landing', 'Vendre sur Comptoir')}."),
             ('Quelle commission prend Comptoir ?',
-             "Le taux dépend de votre formule et ne s'applique qu'aux ventes passées sur le site ; les ventes en caisse et les "
-             "ventes directes que vous enregistrez n'en ont pas."),
+             "Aucune : Comptoir se rémunère uniquement par l'abonnement mensuel de votre formule. Vos ventes en ligne, "
+             "en caisse et en vente directe vous reviennent en totalité."),
             ('Où trouver plus de réponses pour les vendeurs ?',
              f"Les questions des vendeurs (paiements, caisse, employés, WhatsApp…) sont sur la "
              f"{link('seller_landing', 'page vendeurs')}."),
@@ -478,6 +478,14 @@ def search_autocomplete(request):
 
 def seller_landing(request):
     """Landing page de présentation pour les vendeurs"""
+    from billing.limits import comparison, highlights
     from billing.models import SubscriptionPlan
-    plans = SubscriptionPlan.objects.filter(is_active=True)
-    return render(request, 'catalog/seller_landing.html', {'plans': plans})
+    all_plans = list(SubscriptionPlan.objects.filter(is_active=True))
+    for plan in all_plans:
+        plan.highlights = highlights(plan)
+    return render(request, 'catalog/seller_landing.html', {
+        'plans': [p for p in all_plans if not p.is_trial],
+        'trial': next((p for p in all_plans if p.is_trial), None),
+        'compare_plans': all_plans,
+        'comparison': comparison(all_plans),
+    })

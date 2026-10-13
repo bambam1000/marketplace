@@ -282,6 +282,12 @@ def inbox(request):
         messages.error(request, "Vous n'avez pas accès aux conversations WhatsApp.")
         return redirect('dashboard:index')
     instance, is_platform = target
+    if not is_platform:
+        from billing.limits import blocked
+        reason = blocked(access.acting_store(request.user), feature='whatsapp_inbox', user=request.user)
+        if reason:
+            messages.error(request, reason)
+            return redirect('whatsapp:settings')
     chats = WhatsAppChat.objects.none()
     q = request.GET.get('q', '').strip()
     if instance:
@@ -309,6 +315,12 @@ def chat_detail(request, pk):
     if not _chat_allowed(request, chat):
         messages.error(request, "Vous n'avez pas accès à cette conversation.")
         return redirect('dashboard:index')
+    if chat.instance.store_id:
+        from billing.limits import blocked
+        reason = blocked(chat.instance.store, feature='whatsapp_inbox', user=request.user)
+        if reason:
+            messages.error(request, reason)
+            return redirect('whatsapp:settings')
     if request.method == 'POST':
         text = request.POST.get('text', '').strip()
         if not text:

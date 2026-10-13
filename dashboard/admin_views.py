@@ -410,18 +410,47 @@ def subscriptions(request):
     if plan.isdigit():
         qs = qs.filter(plan_id=plan)
     soon = now + timedelta(days=7)
-    live = Q(subscription__status='active', subscription__end_date__gte=now)
+    live = Q(subscription__status='active', subscription__end_date__gte=now, subscription__granted_by__isnull=True)  # payants
     plans = SubscriptionPlan.objects.annotate(n=Count('subscription', filter=live))
     counts = dict(Subscription.objects.values_list('status').annotate(n=Count('id')))
     n_overdue = Subscription.objects.filter(overdue).count()
     counts['active'] = counts.get('active', 0) - n_overdue
     tabs = [('', 'Tous', sum(counts.values()) + n_overdue), ('active', 'En cours', counts['active']),
             ('overdue', 'Échus, à relancer', n_overdue)] + [(c, l, counts.get(c, 0)) for c, l in Subscription.STATUS_CHOICES if c != 'active']
+    from billing.models import SubscriptionPayment, SubscriptionSettings
+    pay_settings = SubscriptionSettings.get()
+    if request.method == 'POST' and request.POST.get('form') == 'pay_settings':
+        for field in ('momo_number', 'momo_name', 'om_number', 'om_name'):
+            setattr(pay_settings, field, request.POST.get(field, '').strip()[:SubscriptionSettings._meta.get_field(field).max_length])
+        pay_settings.instructions = request.POST.get('instructions', '').strip()[:1000]
+        pay_settings.save()
+        messages.success(request, 'Numéros de paiement enregistrés : ils sont affichés aux vendeurs qui choisissent une formule.')
+        return redirect('dashboard:admin_subscriptions')
     return render(request, 'dashboard/admin/subscriptions.html', {
+        'pay_settings': pay_settings,
         'page': _page(request, qs, 25), 'status': status, 'plan': plan, 'plans': plans, 'soon': soon, 'now': now,
         'n_overdue': n_overdue, 'tabs': tabs,
         'mrr': sum((p.price_monthly or 0) * p.n for p in plans),
+        'pending_payments': SubscriptionPayment.objects.filter(status='pending')
+                            .select_related('subscription__user', 'plan').order_by('created_at'),
     })
+
+
+@admin_required
+def subscription_payment_action(request, pk, action):
+    """Valide (paiement reçu → formule activée) ou refuse une demande d'abonnement."""
+    from billing.models import SubscriptionPayment
+    from billing.subscriptions import reject, validate
+    payment = get_object_or_404(SubscriptionPayment.objects.select_related('subscription__user', 'plan'), pk=pk)
+    if request.method == 'POST' and payment.status == 'pending':
+        name = payment.subscription.user.display_name
+        if action == 'validate':
+            validate(payment, request.user)
+            messages.success(request, f'Paiement validé : {name} passe à la formule {payment.plan.name}.')
+        elif action == 'reject':
+            reject(payment, request.user, request.POST.get('reason', '').strip()[:200])
+            messages.success(request, f'Demande de {name} refusée : le vendeur est prévenu.')
+    return redirect('dashboard:admin_subscriptions')
 
 
 # ───────────────────────── Utilisateurs ─────────────────────────
@@ -456,7 +485,7 @@ def users(request):
 @admin_required
 def user_detail(request, pk):
     from accounting.models import SellerWallet, Transaction
-    from billing.models import Subscription
+    from billing.models import Subscription, SubscriptionPlan
     u = get_object_or_404(User, pk=pk)
     orders_qs = Order.objects.filter(buyer=u).exclude(shipping_address=Order.DIRECT_SALE_ADDRESS)
     sales = OrderItem.objects.filter(store__owner=u)
@@ -476,7 +505,35 @@ def user_detail(request, pk):
         'memberships': u.store_memberships.select_related('store', 'role'),
         'is_self': u.pk == request.user.pk,
         'roles': User.ROLE_CHOICES,
+        'grant_plans': SubscriptionPlan.objects.filter(is_active=True, is_trial=False),
+        'grant_durations': GRANT_DURATIONS,
     })
+
+
+# Durées proposées pour un accès offert (jours ; None = sans limite)
+GRANT_DURATIONS = [('30', '1 mois'), ('90', '3 mois'), ('180', '6 mois'), ('365', '1 an'), ('', 'Sans limite de durée')]
+
+
+@admin_required
+def user_access(request, pk):
+    """Donne à un vendeur l'accès à une formule sans abonnement payant, ou le lui retire."""
+    from billing.models import Subscription, SubscriptionPlan
+    from billing.subscriptions import grant, revoke
+    u = get_object_or_404(User, pk=pk)
+    if request.method == 'POST' and u.stores.exists():
+        if request.POST.get('action') == 'revoke':
+            sub = Subscription.objects.filter(user=u, granted_by__isnull=False).first()
+            if sub:
+                revoke(sub, request.user)
+                messages.warning(request, f"Accès offert retiré : la boutique de {u.display_name} n'est plus visible.")
+        else:
+            plan = get_object_or_404(SubscriptionPlan, pk=request.POST.get('plan'), is_active=True, is_trial=False)
+            raw = request.POST.get('duration', '')
+            days = int(raw) if raw in dict(GRANT_DURATIONS) and raw else None
+            sub = grant(u, plan, days, request.user, request.POST.get('note', '').strip())
+            until = 'sans limite' if days is None else f"jusqu'au {timezone.localtime(sub.end_date):%d/%m/%Y}"
+            messages.success(request, f'{u.display_name} a accès à la formule {plan.name} {until}, sans paiement.')
+    return redirect('dashboard:user_detail', pk=pk)
 
 
 @admin_required

@@ -92,7 +92,21 @@ def _build(request):
             badges['whatsapp'] = (WhatsAppChat.objects.filter(instance__store=store)
                                   .aggregate(t=Sum('unread_count'))['t'] or 0)
     return {'store': store, 'is_admin': is_admin, 'admin_mode': admin_mode, 'is_seller': user.is_seller, 'can': can, 'role': role, 'hub_urls': HUB_URLS,
-            'badges': badges, 'initials': ''.join(w[0] for w in (user.display_name or '?').split()[:2]).upper()}
+            'badges': badges, 'initials': ''.join(w[0] for w in (user.display_name or '?').split()[:2]).upper(),
+            'plan_banner': _plan_banner(store) if store is not None and owner and not is_admin else None}
+
+
+def _plan_banner(store):
+    """Bandeau du propriétaire : essai en cours, échéance proche (7 jours) ou formule expirée."""
+    from billing.limits import subscription_of
+    sub = subscription_of(store)
+    if sub is None:
+        return None
+    if not sub.is_active:
+        return {'level': 'expired', 'plan': sub.plan, 'days': 0}
+    if sub.plan.is_trial or sub.days_remaining <= 7:
+        return {'level': 'trial' if sub.plan.is_trial else 'soon', 'plan': sub.plan, 'days': sub.days_remaining}
+    return None
 
 
 def dash_nav(request):

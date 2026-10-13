@@ -1,0 +1,10 @@
+# Lance afrimarket-billing.service tous les jours à 8 h (rattrapé au démarrage si le serveur était éteint).
+[Unit]
+Description=AfriMarket - abonnements vendeurs, chaque jour à 8 h
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

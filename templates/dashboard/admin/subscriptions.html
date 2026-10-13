@@ -9,11 +9,49 @@
     </div>
 </div>
 <div class="ad-kpis">
-    <div class="ad-kpi"><div class="l"><i class="fa-solid fa-arrows-rotate"></i> Revenu mensuel récurrent</div><div class="v">{{ mrr|floatformat:0|intcomma }} F</div><div class="s">Abonnements en cours (non échus), au tarif mensuel</div></div>
+    <div class="ad-kpi"><div class="l"><i class="fa-solid fa-arrows-rotate"></i> Revenu mensuel récurrent</div><div class="v">{{ mrr|floatformat:0|intcomma }} F</div><div class="s">Abonnements payants en cours, au tarif mensuel (accès offerts exclus)</div></div>
     {% for p in plans|slice:":3" %}
-    <a class="ad-kpi" href="?plan={{ p.pk }}"><div class="l"><i class="fa-solid fa-gem"></i> {{ p.name }}</div><div class="v">{{ p.n }}</div><div class="s">actif{{ p.n|pluralize }} · {{ p.price_monthly|intcomma }} F / mois · commission {{ p.commission_rate|floatformat:0 }} %</div></a>
+    <a class="ad-kpi" href="?plan={{ p.pk }}"><div class="l"><i class="fa-solid fa-gem"></i> {{ p.name }}</div><div class="v">{{ p.n }}</div><div class="s">actif{{ p.n|pluralize }} · {{ p.price_monthly|intcomma }} F / mois</div></a>
     {% endfor %}
 </div>
+<details class="ad-card" style="margin-bottom:16px;{% if not pay_settings.is_configured %}border-left:3px solid #f04438;{% endif %}" {% if not pay_settings.is_configured %}open{% endif %}>
+    <summary style="padding:14px 16px;cursor:pointer;font-weight:700;"><i class="fa-solid fa-mobile-screen-button"></i> Où les vendeurs paient leur formule
+        {% if pay_settings.is_configured %}<span class="muted" style="font-weight:400;">· {% if pay_settings.momo_number %}MoMo {{ pay_settings.momo_number }}{% endif %}{% if pay_settings.momo_number and pay_settings.om_number %} · {% endif %}{% if pay_settings.om_number %}Orange Money {{ pay_settings.om_number }}{% endif %}</span>
+        {% else %}<span style="color:#b42318;font-weight:600;">· à renseigner : les vendeurs ne savent pas où payer</span>{% endif %}</summary>
+    <form method="post" style="padding:0 16px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">{% csrf_token %}
+        <input type="hidden" name="form" value="pay_settings">
+        <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);">Numéro MTN MoMo<input name="momo_number" value="{{ pay_settings.momo_number }}" placeholder="6XX XX XX XX" style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;"></label>
+        <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);">Nom du compte MoMo<input name="momo_name" value="{{ pay_settings.momo_name }}" style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;"></label>
+        <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);">Numéro Orange Money<input name="om_number" value="{{ pay_settings.om_number }}" placeholder="6XX XX XX XX" style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;"></label>
+        <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);">Nom du compte Orange Money<input name="om_name" value="{{ pay_settings.om_name }}" style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;"></label>
+        <label style="display:grid;gap:4px;font-size:12px;color:var(--dash-text3);grid-column:1/-1;">Instructions complémentaires (facultatif)<textarea name="instructions" rows="2" placeholder="Ex. : indiquez le nom de votre boutique en motif du transfert." style="padding:7px 10px;border:1.5px solid var(--dash-border);border-radius:7px;font-family:inherit;">{{ pay_settings.instructions }}</textarea></label>
+        <div><button class="ad-btn primary"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button></div>
+    </form>
+</details>
+{% if pending_payments %}
+<section class="ad-card" style="margin-bottom:16px;border-left:3px solid #f79009;">
+    <div style="padding:14px 16px 4px;"><strong><i class="fa-solid fa-hourglass-half" style="color:#f79009;"></i> Paiements à valider</strong>
+        <div class="muted" style="margin-top:2px;">Vérifiez que le montant est bien arrivé sur votre compte avant de valider : la formule est activée tout de suite.</div></div>
+    <div class="ad-table-wrap"><table class="ad-table">
+        <thead><tr><th>Vendeur</th><th>Formule demandée</th><th>Montant</th><th>Paiement</th><th>Demandé le</th><th></th></tr></thead>
+        <tbody>
+        {% for p in pending_payments %}
+        <tr>
+            <td><a href="{% url 'dashboard:user_detail' p.subscription.user_id %}" style="color:var(--dash-text);font-weight:600;">{{ p.subscription.user.display_name }}</a><div class="muted">{{ p.subscription.user.store.name|default:"—" }}{% if p.subscription.user.phone %} · {{ p.subscription.user.phone }}{% endif %}</div></td>
+            <td><span class="ad-pill blue">{{ p.plan.name }}</span> <span class="muted">{{ p.get_billing_cycle_display|lower }}</span></td>
+            <td style="font-weight:700;">{{ p.amount|intcomma }} F</td>
+            <td>{{ p.get_payment_method_display }}{% if p.payer_phone %}<div class="muted">depuis le {{ p.payer_phone }}</div>{% endif %}</td>
+            <td class="muted">{{ p.created_at|date:"d/m/Y H:i" }}</td>
+            <td style="white-space:nowrap;">
+                <form method="post" action="{% url 'dashboard:admin_subscription_payment' p.pk 'validate' %}" style="display:inline;">{% csrf_token %}<button class="btn btn-sm btn-orange" onclick="return confirm('Confirmez-vous avoir reçu {{ p.amount|intcomma }} F ?');"><i class="fa-solid fa-check"></i> Paiement reçu</button></form>
+                <form method="post" action="{% url 'dashboard:admin_subscription_payment' p.pk 'reject' %}" style="display:inline;">{% csrf_token %}<input type="hidden" name="reason" value=""><button class="btn btn-sm btn-outline" onclick="var r=prompt('Motif du refus (envoyé au vendeur) :');if(r===null)return false;this.form.reason.value=r;">Refuser</button></form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table></div>
+</section>
+{% endif %}
 <div class="ad-bar">
     <nav class="ad-tabs">{% for code, label, n in tabs %}<a href="?{% if code %}status={{ code }}{% endif %}{% if plan %}&plan={{ plan }}{% endif %}" class="{% if status == code %}on{% endif %}">{{ label }}<span>{{ n }}</span></a>{% endfor %}</nav>
     <form class="ad-search" method="get">{% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
@@ -27,7 +65,7 @@
         {% for s in page %}
         <tr>
             <td><a href="{% url 'dashboard:user_detail' s.user_id %}" style="color:var(--dash-text);font-weight:600;">{{ s.user.display_name }}</a><div class="muted">{{ s.user.store.name|default:"—" }}</div></td>
-            <td><span class="ad-pill blue">{{ s.plan.name }}</span></td>
+            <td><span class="ad-pill blue">{{ s.plan.name }}</span>{% if s.granted_by_id %} <span class="ad-pill green" title="{{ s.grant_note }}"><i class="fa-solid fa-gift"></i> Offert</span>{% endif %}</td>
             <td>{{ s.get_billing_cycle_display }}</td>
             <td class="muted">{{ s.start_date|date:"d/m/Y" }}</td>
             <td {% if s.status == 'active' and s.end_date < soon %}style="color:{% if s.end_date < now %}#b42318{% else %}#b54708{% endif %};font-weight:700;"{% endif %}>{{ s.end_date|date:"d/m/Y" }}{% if s.status == 'active' and s.end_date < now %} <span class="ad-pill red">dépassée</span>{% elif s.status == 'active' and s.end_date < soon %} <span class="ad-pill orange">dans {{ s.end_date|timeuntil }}</span>{% endif %}</td>

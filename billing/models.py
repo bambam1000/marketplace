@@ -5,14 +5,30 @@ import uuid
 
 
 class SubscriptionPlan(models.Model):
-    """Packages d'abonnement pour les vendeurs"""
+    """Packages d'abonnement pour les vendeurs.
+    Limites : vide = illimité, 0 = non inclus. Elles sont appliquées par billing/limits.py."""
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
     price_monthly = models.DecimalField(max_digits=10, decimal_places=0)
     price_yearly = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True)
-    max_products = models.IntegerField(default=10)
+    is_trial = models.BooleanField(default=False, help_text="Formule d'essai gratuit, attribuée à l'inscription")
+    trial_days = models.PositiveIntegerField(default=30, help_text="Durée de l'essai (formule d'essai uniquement)")
+    max_products = models.IntegerField(default=10, null=True, blank=True, help_text='Vide = illimité')
     max_images_per_product = models.IntegerField(default=3)
-    commission_rate = models.DecimalField(max_digits=4, decimal_places=2, default=10.00, help_text='% commission on sales')
+    max_warehouses = models.PositiveIntegerField(default=1, null=True, blank=True, help_text='Entrepôts propres. Vide = illimité')
+    max_registers = models.PositiveIntegerField(default=1, null=True, blank=True, help_text='Caisses actives. Vide = illimité')
+    max_staff = models.PositiveIntegerField(default=1, null=True, blank=True, help_text='Employés actifs. Vide = illimité')
+    max_suppliers = models.PositiveIntegerField(default=0, null=True, blank=True,
+                                                help_text='Fournisseurs en dropshipping. 0 = non inclus, vide = illimité')
+    ai_questions_monthly = models.PositiveIntegerField(default=0, null=True, blank=True,
+                                                       help_text="Questions à l'assistant IA par mois. 0 = non inclus, vide = illimité")
+    can_marketing = models.BooleanField(default=False, help_text='Campagnes, e-mailings, WhatsApp/Telegram')
+    can_b2b = models.BooleanField(default=False, help_text='Répondre aux demandes de devis')
+    can_payroll = models.BooleanField(default=False, help_text='Bulletins de paie')
+    can_whatsapp_inbox = models.BooleanField(default=False, help_text='Conversations WhatsApp')
+    can_dropship_auto = models.BooleanField(default=False, help_text='Transmission automatique des commandes au fournisseur')
+    commission_rate = models.DecimalField(max_digits=4, decimal_places=2, default=0,
+                                          help_text="% de commission sur les ventes en ligne (0 : Comptoir se rémunère par l'abonnement)")
     can_flash_deal = models.BooleanField(default=False)
     can_boost = models.BooleanField(default=False)
     can_analytics = models.BooleanField(default=False)
@@ -63,6 +79,12 @@ class Subscription(models.Model):
     end_date = models.DateTimeField()
     auto_renew = models.BooleanField(default=True)
     boost_credits_remaining = models.IntegerField(default=0)
+    ai_questions_used = models.PositiveIntegerField(default=0)
+    ai_period = models.CharField(max_length=7, blank=True, help_text='Mois du compteur IA (AAAA-MM)')
+    reminders_sent = models.CharField(max_length=50, blank=True, help_text='Rappels de fin déjà envoyés (ex. « 7,2 »)')
+    granted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+                                   help_text="Administrateur qui a offert l'accès (sans paiement)")
+    grant_note = models.CharField(max_length=200, blank=True, help_text="Motif de l'accès offert")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -87,6 +109,12 @@ class Subscription(models.Model):
 class SubscriptionPayment(models.Model):
     """Historique des paiements d'abonnement"""
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='payments')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, null=True, blank=True,
+                             help_text='Formule demandée : activée quand le paiement est validé')
+    billing_cycle = models.CharField(max_length=10, choices=[('monthly', 'Mensuel'), ('yearly', 'Annuel')], default='monthly')
+    payer_phone = models.CharField(max_length=20, blank=True, help_text='Numéro Mobile Money utilisé')
+    validated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    validated_at = models.DateTimeField(null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=0)
     payment_method = models.CharField(max_length=20, choices=[
         ('momo', 'MTN MoMo'), ('om', 'Orange Money'), ('card', 'Carte bancaire'), ('transfer', 'Virement'),
@@ -99,6 +127,28 @@ class SubscriptionPayment(models.Model):
 
     def __str__(self):
         return f"{self.subscription.user.username} - {self.amount}F - {self.status}"
+
+
+class SubscriptionSettings(models.Model):
+    """Où les vendeurs envoient le paiement de leur formule (une seule ligne, réglée par l'administrateur)."""
+    momo_number = models.CharField('Numéro MTN MoMo', max_length=20, blank=True)
+    momo_name = models.CharField('Nom du compte MoMo', max_length=100, blank=True)
+    om_number = models.CharField('Numéro Orange Money', max_length=20, blank=True)
+    om_name = models.CharField('Nom du compte Orange Money', max_length=100, blank=True)
+    instructions = models.TextField('Instructions complémentaires', blank=True,
+                                    help_text='Ex. : indiquez le nom de votre boutique en motif du transfert.')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Réglages des paiements d'abonnement"
+
+    @classmethod
+    def get(cls):
+        return cls.objects.first() or cls.objects.create()
+
+    @property
+    def is_configured(self):
+        return bool(self.momo_number or self.om_number)
 
 
 class PaymentConfig(models.Model):

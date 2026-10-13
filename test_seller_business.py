@@ -34,6 +34,8 @@ ProductBoost.objects.filter(product__slug='produit-mkt').delete()
 # ===== Données =====
 seller = User.objects.create_user(username=f'vend{SUFFIX}', password='testpass123', role='seller')
 store = Store.objects.create(owner=seller, name='Boutique Mkt Test', slug='boutique-mkt-test')
+from test_utils import give_plan
+give_plan(seller)
 cat = Category.objects.create(name='TestCat Mkt', slug='testcat-mkt')
 product = Product.objects.create(
     store=store, category=cat, name='Produit Mkt', slug='produit-mkt',
@@ -219,11 +221,17 @@ plan = SubscriptionPlan.objects.create(
 r = safe_get(c, '/fr/abonnement/plans/')
 check('Page plans (200)', r.status_code == 200, f'-> {r.status_code}')
 r = safe_post(c, '/fr/abonnement/souscrire/plan-mtest/', {
-    'billing_cycle': 'monthly', 'payment_method': 'momo',
+    'billing_cycle': 'monthly', 'payment_method': 'momo', 'payer_phone': '677000999',
 })
-check('Souscription (302)', r.status_code == 302, f'-> {r.status_code}')
+check('Demande de souscription (302)', r.status_code == 302, f'-> {r.status_code}')
+from billing.models import SubscriptionPayment
+pending = SubscriptionPayment.objects.filter(subscription__user=seller, status='pending', plan=plan).first()
+check('Paiement en attente, formule pas encore activée',
+      pending is not None and Subscription.objects.get(user=seller).plan != plan)
+from billing.subscriptions import validate
+validate(pending, None)  # un administrateur confirme la réception du paiement
 sub = Subscription.objects.filter(user=seller).first()
-check('Abonnement actif 30j', sub is not None and sub.is_active and sub.plan == plan)
+check('Abonnement actif 30j après validation', sub is not None and sub.is_active and sub.plan == plan)
 check('Transaction abonnement créée',
       Transaction.objects.filter(user=seller, type='subscription', amount=5000).exists())
 

@@ -9,60 +9,60 @@ from catalog.models import Product
 
 
 def plans_view(request):
-    plans = SubscriptionPlan.objects.filter(is_active=True)
-    current_sub = None
+    from .limits import comparison, highlights
+    plans = list(SubscriptionPlan.objects.filter(is_active=True, is_trial=False))
+    for plan in plans:
+        plan.highlights = highlights(plan)
+    current_sub = pending = None
     if request.user.is_authenticated:
-        current_sub = Subscription.objects.filter(user=request.user).first()
+        current_sub = Subscription.objects.filter(user=request.user).select_related('plan').first()
+        if current_sub:
+            pending = current_sub.payments.filter(status='pending').select_related('plan').first()
     return render(request, 'billing/plans.html', {
         'plans': plans,
+        'comparison': comparison(plans),
         'current_sub': current_sub,
+        'pending': pending,
     })
 
 
 @login_required
 def subscribe_view(request, plan_slug):
-    plan = get_object_or_404(SubscriptionPlan, slug=plan_slug, is_active=True)
+    """Demande d'abonnement : la formule n'est activée qu'après validation du paiement par Comptoir."""
+    plan = get_object_or_404(SubscriptionPlan, slug=plan_slug, is_active=True, is_trial=False)
+    if request.user.store is None:
+        messages.error(request, 'Créez votre boutique pour choisir une formule.')
+        return redirect('accounts:register_seller')
     if request.method == 'POST':
-        cycle = request.POST.get('billing_cycle', 'monthly')
-        amount = plan.price_yearly if cycle == 'yearly' and plan.price_yearly else plan.price_monthly
-        duration = 365 if cycle == 'yearly' else 30
-
-        sub, created = Subscription.objects.update_or_create(
-            user=request.user,
-            defaults={
-                'plan': plan,
-                'status': 'active',
-                'billing_cycle': cycle,
-                'end_date': timezone.now() + timedelta(days=duration),
-                'boost_credits_remaining': plan.boost_credits_monthly,
-            }
-        )
-        SubscriptionPayment.objects.create(
-            subscription=sub,
-            amount=amount,
-            payment_method=request.POST.get('payment_method', 'momo'),
-            status='completed',
-        )
-        # Create accounting transaction
-        from accounting.models import Transaction
-        Transaction.objects.create(
-            user=request.user, type='subscription',
-            amount=amount, status='completed',
-            payment_method=request.POST.get('payment_method', 'momo'),
-            reference=f"Abonnement {plan.name} ({cycle})",
-        )
-        messages.success(request, f'Abonnement {plan.name} activé ! Bienvenue.')
+        from .subscriptions import request_plan
+        method = request.POST.get('payment_method', 'momo')
+        if method not in dict(SubscriptionPayment._meta.get_field('payment_method').choices):
+            method = 'momo'
+        phone = request.POST.get('payer_phone', '').strip()
+        if method in ('momo', 'om') and len(''.join(c for c in phone if c.isdigit())) < 8:
+            messages.error(request, 'Indiquez le numéro Mobile Money depuis lequel vous payez.')
+            return redirect('billing:subscribe', plan_slug=plan.slug)
+        payment = request_plan(request.user, plan, request.POST.get('billing_cycle', 'monthly'), method, phone)
+        messages.success(request, f'Demande enregistrée : la formule {plan.name} sera activée dès réception de votre paiement '
+                                  f'de {int(payment.amount):,} F.'.replace(',', ' '))
         return redirect('billing:my_subscription')
-    return render(request, 'billing/subscribe.html', {'plan': plan})
+    from .models import SubscriptionSettings
+    return render(request, 'billing/subscribe.html', {
+        'plan': plan, 'pay': SubscriptionSettings.get(),
+        'fallback_instructions': getattr(settings, 'SUBSCRIPTION_PAYMENT_INSTRUCTIONS', ''),
+    })
 
 
 @login_required
 def my_subscription(request):
-    sub = Subscription.objects.filter(user=request.user).first()
-    payments = SubscriptionPayment.objects.filter(subscription=sub).order_by('-created_at')[:10] if sub else []
-    plans = SubscriptionPlan.objects.filter(is_active=True)
+    from .limits import subscription_of, usage
+    store = request.user.store
+    sub = subscription_of(store) if store else Subscription.objects.filter(user=request.user).first()
+    payments = SubscriptionPayment.objects.filter(subscription=sub).select_related('plan').order_by('-created_at')[:10] if sub else []
     return render(request, 'billing/my_subscription.html', {
-        'subscription': sub, 'payments': payments, 'plans': plans,
+        'subscription': sub, 'payments': payments,
+        'pending': next((p for p in payments if p.status == 'pending'), None),
+        'usage': usage(store) if store else [],
     })
 
 
@@ -84,6 +84,11 @@ def payment_config(request):
 @login_required
 def boost_product(request, product_id):
     product = get_object_or_404(Product, pk=product_id, store__owner=request.user)
+    from .limits import blocked
+    reason = blocked(product.store, feature='boost', user=request.user)
+    if reason:
+        messages.error(request, reason)
+        return redirect('dashboard:products')
     if request.method == 'POST':
         platform = request.POST.get('platform', 'internal')
         budget_select = request.POST.get('budget')
