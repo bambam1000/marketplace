@@ -109,11 +109,21 @@ class EvolutionClient:
 
     def connection_state(self, instance_name):
         """'open' (connecté), 'connecting' (QR affiché) ou 'close'."""
-        data = self._request('GET', f'/instance/connectionState/{self._name(instance_name)}')
+        try:
+            data = self._request('GET', f'/instance/connectionState/{self._name(instance_name)}')
+        except EvolutionError as exc:
+            if exc.status == 404:  # instance pas encore créée (ou supprimée) côté Evolution
+                return 'close'
+            raise
         return (data.get('instance') or {}).get('state') or 'close'
 
     def fetch_instance(self, instance_name):
-        data = self._request('GET', '/instance/fetchInstances', query={'instanceName': instance_name})
+        try:
+            data = self._request('GET', '/instance/fetchInstances', query={'instanceName': instance_name})
+        except EvolutionError as exc:
+            if exc.status == 404:  # Evolution v2.3+ répond 404 (et non []) pour une instance inconnue
+                return None
+            raise
         return data[0] if isinstance(data, list) and data else None
 
     def logout(self, instance_name):

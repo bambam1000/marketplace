@@ -124,6 +124,15 @@ def sender_for_store(store):
     return platform if platform and platform.is_connected else None
 
 
+def alert_sender_for_store(store):
+    """Numéro qui prévient le vendeur : celui de Comptoir s'il est connecté, sinon celui de la boutique
+    (le vendeur reçoit alors l'alerte dans « Message à vous-même » : un seul QR code à scanner)."""
+    platform = platform_instance()
+    if platform and platform.is_connected:
+        return platform
+    return WhatsAppInstance.objects.filter(store=store, status='open').first()
+
+
 def is_opted_out(number):
     return WhatsAppOptOut.objects.filter(number=normalize_phone(number)).exists()
 
@@ -402,8 +411,7 @@ def notify_order_placed(order):
         number = order.shipping_phone or order.buyer.phone
         queue_message(sender, number, 'order_placed', body, order=order, with_chat=True)
 
-    # Vendeurs : alerte depuis le numéro Comptoir
-    platform = sender_for_store(None)
+    # Vendeurs : alerte depuis le numéro Comptoir, ou à défaut depuis celui de la boutique
     for store in stores:
         store_items = [i for i in items if i.store_id == store.pk]
         amount = sum(i.price * i.quantity for i in store_items)
@@ -413,7 +421,7 @@ def notify_order_placed(order):
             + f'\n\nMontant : *{_money(amount)} FCFA*\nClient : {order.shipping_name} ({order.shipping_city})\n\n'
             f'Gérer la commande : {_site_link(reverse("dashboard:order_detail", args=[order.order_number]))}'
         )
-        queue_message(platform, store.whatsapp or store.phone, 'seller_new_order', body, order=order)
+        queue_message(alert_sender_for_store(store), store.whatsapp or store.phone, 'seller_new_order', body, order=order)
 
 
 STATUS_MESSAGES = {
@@ -525,8 +533,8 @@ def service_catalog(instance, store, is_platform):
         ]
 
     store_phone = (store.whatsapp or store.phone) if store else ''
-    if not platform_ok:
-        alert_state, alert_reason = False, "Nécessite le numéro Comptoir (géré par l'administrateur)."
+    if not (platform_ok or connected):
+        alert_state, alert_reason = False, not_connected
     elif not normalize_phone(store_phone):
         alert_state, alert_reason = False, 'Renseignez le numéro WhatsApp de la boutique dans ses paramètres.'
     else:
