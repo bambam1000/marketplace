@@ -1017,7 +1017,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 
 <div class="sb-bottom">
 <nav class="dash-nav">
-{% if nav.store and nav.can.owner %}<a href="{% url 'dashboard:settings' %}" class="{% if rm.url_name == 'settings' and rm.app_name != 'dropship' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>{% endif %}
+{% if nav.store and nav.can.owner %}<a href="{% url 'dashboard:settings' %}" class="{% if rm.url_name == 'settings' and rm.app_name == 'dashboard' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Paramètres</a>{% endif %}
 {% if nav.admin_mode %}<a href="{% url 'home' %}" target="_blank" rel="noopener"><span class="nav-icon"><i class="fa-solid fa-arrow-up-right-from-square"></i></span> Voir le site</a>{% endif %}
 <a href="#" onclick="openDashLogout();return false;"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Déconnexion</a>
 </nav>
