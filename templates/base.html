@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700;800&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
 <link rel="stylesheet" href="{% static 'css/mobile.css' %}?v=8">
 <meta name="theme-color" content="#ff6a00">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -30,6 +30,7 @@
 {% block extra_css %}{% endblock %}
 </head>
 <body>
+{% include 'includes/site_alerts.html' with alerts=site_alerts %}
 <!-- Top Bar -->
 <div class="topbar">
 <div class="topbar-inner">

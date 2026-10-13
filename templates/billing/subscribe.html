@@ -1,8 +1,8 @@
-{% extends 'base.html' %}{% load humanize %}
+{% extends 'dashboard/base.html' %}{% load humanize %}
 {% block title %}Formule {{ plan.name }}{% endblock %}
-{% block content %}
-<div style="max-width:600px;margin:0 auto;padding:2rem 16px;">
-<h2 style="font-size:20px;margin-bottom:1.2rem;">Passer à la formule {{ plan.name }}</h2>
+{% block dash %}
+<div class="dash-header"><h1><i class="fa-solid fa-gem" style="color:var(--orange);"></i> Passer à la formule {{ plan.name }}</h1><a href="{% url 'billing:plans' %}" class="btn btn-sm btn-outline">Toutes les formules</a></div>
+<div style="max-width:600px;">
 <form method="post" style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;">{% csrf_token %}
     <div style="text-align:center;padding:1.2rem;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:1.4rem;">
         <h3 style="font-size:19px;">{{ plan.name }}</h3>

@@ -44,7 +44,7 @@ PLANS = [
          can_whatsapp_inbox=True, can_dropship_auto=True, can_flash_deal=True, can_boost=True, can_analytics=True,
          can_priority_support=True, can_custom_store=True, boost_credits_monthly=15, featured_products=15,
          badge_level='platinum', is_popular=False,
-         description="Sans limite, avec un interlocuteur dédié et la commission la plus basse.",
+         description="Sans limite, avec un interlocuteur dédié et la formation de votre équipe.",
          features='Interlocuteur dédié\nBadge Platinum\nFormation de votre équipe'),
 ]
 

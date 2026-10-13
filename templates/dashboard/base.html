@@ -4,7 +4,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
 <link rel="icon" type="image/svg+xml" href="{% static 'images/brand/favicon.svg' %}">
 <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/pwa/favicon-32.png' %}">
 <link rel="stylesheet" href="{% static 'css/brand.css' %}?v=2">
@@ -941,6 +941,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <nav class="dash-nav">
 <a href="{% url 'dashboard:users' %}" class="{% if rm.url_name == 'users' or rm.url_name == 'user_detail' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-users"></i></span> Utilisateurs</a>
 <a href="{% url 'dashboard:admin_subscriptions' %}" class="{% if rm.url_name == 'admin_subscriptions' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gem"></i></span> Abonnements</a>
+<a href="{% url 'dashboard:admin_announcements' %}" class="{% if rm.url_name|slice:':18' == 'admin_announcement' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-bullhorn"></i></span> Annonces</a>
 </nav>
 
 <div class="dash-sidebar-label">Finances</div>
@@ -991,6 +992,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 <nav class="dash-nav">
 {% if nav.is_seller %}<a href="{% url 'dashboard:stores' %}" class="{% if rm.url_name == 'stores' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-store"></i></span> Boutiques</a>{% endif %}
 <a href="{% url 'dashboard:employees' %}" class="{% if rm.url_name|slice:':8' == 'employee' or rm.url_name == 'roles' or rm.url_name|slice:':3' == 'pay' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-user-tie"></i></span> Employés</a>
+{% if nav.is_seller and nav.can.owner and not nav.is_admin %}<a href="{% url 'billing:my_subscription' %}" class="{% if rm.app_name == 'billing' and rm.url_name in 'my_subscription plans subscribe' %}active{% endif %}"><span class="nav-icon"><i class="fa-solid fa-gem"></i></span> Abonnement{% if nav.plan_banner %}<span class="nav-badge" title="{% if nav.plan_banner.level == 'expired' %}Expiré{% else %}{{ nav.plan_banner.days }} jour{{ nav.plan_banner.days|pluralize }} restant{{ nav.plan_banner.days|pluralize }}{% endif %}">{% if nav.plan_banner.level == 'expired' %}!{% else %}{{ nav.plan_banner.days }} j{% endif %}</span>{% endif %}</a>{% endif %}
 </nav>
 {% endif %}
 
@@ -1149,6 +1151,7 @@ a.sb-store:hover { border-color: var(--dash-accent); background: rgba(255,106,0,
 .plan-banner a { font-weight: 700; color: inherit; white-space: nowrap; text-decoration: underline; }
 </style>
 {% endif %}{% endwith %}
+{% include 'includes/site_alerts.html' with alerts=dash_alerts compact=True %}
 {% if messages %}{% for msg in messages %}<div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
 {% block dash %}{% endblock %}
 </div>

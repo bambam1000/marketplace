@@ -1,0 +1,31 @@
+{# Alertes du haut de page (messaging/alerts.py). Paramètre : alerts ; compact=True dans le dashboard. #}
+{% if alerts %}
+<div class="sa-stack{% if compact %} compact{% endif %}" role="region" aria-label="Informations importantes">
+    {% for a in alerts %}
+    <div class="sa sa-{{ a.tone }}" data-key="{{ a.key }}" {% if a.dismissible %}data-dismissible hidden{% endif %}>
+        <div class="sa-inner">
+            <i class="fa-solid {{ a.icon }} sa-ic" aria-hidden="true"></i>
+            <p class="sa-txt"><b>{{ a.title }}</b>{% if a.text %} <span>{{ a.text }}</span>{% endif %}</p>
+            {% if a.link %}<a class="sa-link" href="{{ a.link }}">{{ a.link_label|default:"Voir" }} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>{% endif %}
+            {% if a.dismissible %}<button type="button" class="sa-x" aria-label="Masquer ce message"><i class="fa-solid fa-xmark"></i></button>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<script>
+(function () {
+    // Une annonce fermée reste masquée 7 jours (sur cet appareil) ; les alertes de paiement ne se ferment pas.
+    var WEEK = 7 * 864e5;
+    function key(el) { return 'comptoir-alert:' + el.getAttribute('data-key'); }
+    document.querySelectorAll('.sa[data-dismissible]').forEach(function (el) {
+        var closedAt = 0;
+        try { closedAt = parseInt(localStorage.getItem(key(el)) || '0', 10); } catch (e) {}
+        if (!closedAt || Date.now() - closedAt > WEEK) el.hidden = false;
+        el.querySelector('.sa-x').addEventListener('click', function () {
+            el.hidden = true;
+            try { localStorage.setItem(key(el), String(Date.now())); } catch (e) {}
+        });
+    });
+})();
+</script>
+{% endif %}

@@ -837,3 +837,65 @@ def expenses(request):
         'periods': [('month', 'Ce mois'), ('quarter', '3 derniers mois'), ('year', 'Cette année'), ('all', 'Tout')],
         'errors': errors, 'form': form, 'today': today.isoformat(),
     }, status=400 if errors else 200)
+
+
+# ───────────────────────── Annonces (communication avec les utilisateurs) ─────────────────────────
+
+def _parse_dt(value):
+    from django.utils.dateparse import parse_datetime
+    dt = parse_datetime(value) if value else None
+    return timezone.make_aware(dt) if dt and timezone.is_naive(dt) else dt
+
+
+@admin_required
+def announcements(request, pk=None):
+    """Liste des annonces + création / modification (formulaire sur la même page)."""
+    from messaging.models import Announcement
+    current = get_object_or_404(Announcement, pk=pk) if pk else None
+    if request.method == 'POST':
+        a = current or Announcement(created_by=request.user)
+        post = request.POST
+        a.title = post.get('title', '').strip()[:120]
+        a.message = post.get('message', '').strip()[:300]
+        a.link_url = post.get('link_url', '').strip()[:300]
+        a.link_label = post.get('link_label', '').strip()[:60]
+        a.audience = post.get('audience') if post.get('audience') in dict(Announcement.AUDIENCE_CHOICES) else 'all'
+        a.tone = post.get('tone') if post.get('tone') in dict(Announcement.TONE_CHOICES) else 'info'
+        a.dismissible = 'dismissible' in post
+        a.is_active = 'is_active' in post
+        a.starts_at, a.ends_at = _parse_dt(post.get('starts_at')), _parse_dt(post.get('ends_at'))
+        try:
+            a.priority = int(post.get('priority') or 0)
+        except ValueError:
+            a.priority = 0
+        if a.link_url and not a.link_url.startswith(('/', 'https://', 'http://')):
+            messages.error(request, 'Le lien doit commencer par « / » (page du site) ou « https:// ».')
+        elif not a.title:
+            messages.error(request, "Donnez un titre à l'annonce.")
+        elif a.starts_at and a.ends_at and a.ends_at <= a.starts_at:
+            messages.error(request, 'La date de fin doit être après la date de début.')
+        else:
+            a.save()
+            messages.success(request, f'Annonce « {a.title} » enregistrée.' + ('' if a.is_live else ' Elle n\'est pas affichée en ce moment (inactive ou hors dates).'))
+            return redirect('dashboard:admin_announcements')
+    items = list(Announcement.objects.all())
+    return render(request, 'dashboard/admin/announcements.html', {
+        'items': items, 'current': current,
+        'audiences': Announcement.AUDIENCE_CHOICES, 'tones': Announcement.TONE_CHOICES,
+        'live_count': sum(1 for a in items if a.is_live),
+    })
+
+
+@admin_required
+def announcement_action(request, pk, action):
+    from messaging.models import Announcement
+    a = get_object_or_404(Announcement, pk=pk)
+    if request.method == 'POST':
+        if action == 'toggle':
+            a.is_active = not a.is_active
+            a.save(update_fields=['is_active', 'updated_at'])
+            messages.success(request, f'Annonce « {a.title} » {"activée" if a.is_active else "désactivée"}.')
+        elif action == 'delete':
+            a.delete()
+            messages.success(request, f'Annonce « {a.title} » supprimée.')
+    return redirect('dashboard:admin_announcements')

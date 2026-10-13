@@ -19,3 +19,10 @@ def notifications_context(request):
             'latest_notifications': unread[:8],
         }
     return {'unread_notifications_count': 0, 'latest_notifications': []}
+
+
+def site_alerts(request):
+    """Alertes du haut de page (messaging/alerts.py), calculées seulement si le gabarit les affiche."""
+    from .alerts import alerts_for
+    return {'site_alerts': lambda: alerts_for(request),
+            'dash_alerts': lambda: alerts_for(request, in_dash=True)}

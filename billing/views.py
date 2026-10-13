@@ -18,7 +18,9 @@ def plans_view(request):
         current_sub = Subscription.objects.filter(user=request.user).select_related('plan').first()
         if current_sub:
             pending = current_sub.payments.filter(status='pending').select_related('plan').first()
+    in_dash = request.user.is_authenticated and request.user.store is not None
     return render(request, 'billing/plans.html', {
+        'layout': 'dashboard/base.html' if in_dash else 'base.html',
         'plans': plans,
         'comparison': comparison(plans),
         'current_sub': current_sub,

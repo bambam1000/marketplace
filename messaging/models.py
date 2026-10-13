@@ -136,3 +136,47 @@ class NotificationPreference(models.Model):
             'stock': self.email_stock,
             'account': self.email_account,
         }.get(notif_type, True)
+
+
+class Announcement(models.Model):
+    """Annonce affichée en haut du site (et du dashboard pour les vendeurs), rédigée par l'administration."""
+    AUDIENCE_CHOICES = [
+        ('all', 'Tout le monde'),
+        ('visitors', 'Visiteurs non connectés'),
+        ('buyers', 'Acheteurs (et visiteurs)'),
+        ('sellers', 'Vendeurs'),
+    ]
+    TONE_CHOICES = [
+        ('info', 'Information'),
+        ('promo', 'Promotion'),
+        ('success', 'Bonne nouvelle'),
+        ('warning', 'Important'),
+    ]
+    title = models.CharField('Titre', max_length=120)
+    message = models.CharField('Message', max_length=300, blank=True)
+    link_url = models.CharField('Lien', max_length=300, blank=True, help_text='Adresse ou chemin (ex. /fr/devenir-vendeur/)')
+    link_label = models.CharField('Texte du lien', max_length=60, blank=True)
+    audience = models.CharField('Public', max_length=20, choices=AUDIENCE_CHOICES, default='all')
+    tone = models.CharField('Style', max_length=20, choices=TONE_CHOICES, default='info')
+    dismissible = models.BooleanField('Peut être fermée', default=True,
+                                      help_text='Fermée, elle réapparaît au bout de 7 jours')
+    is_active = models.BooleanField('Active', default=True)
+    starts_at = models.DateTimeField('Début', null=True, blank=True)
+    ends_at = models.DateTimeField('Fin', null=True, blank=True)
+    priority = models.IntegerField('Priorité', default=0, help_text='La plus haute s\'affiche en premier')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-priority', '-created_at']
+        verbose_name = 'Annonce'
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_live(self):
+        from django.utils import timezone
+        now = timezone.now()
+        return self.is_active and (not self.starts_at or self.starts_at <= now) and (not self.ends_at or self.ends_at > now)

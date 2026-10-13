@@ -1,0 +1,94 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Annonces{% endblock %}
+{% block dash %}
+{% include 'dashboard/admin/_ui.html' %}
+<style>
+.an-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 16px; align-items: start; }
+.an-form { display: grid; gap: 12px; padding: 16px; }
+.an-form label { min-width: 0; display: grid; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--dash-text2); }
+.an-form input[type=text], .an-form input[type=datetime-local], .an-form input[type=number], .an-form select, .an-form textarea { padding: 8px 10px; border: 1.5px solid var(--dash-border); border-radius: 8px; font: inherit; font-weight: 400; color: var(--dash-text); background: #fff; width: 100%; min-width: 0; box-sizing: border-box; }
+.an-form .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.an-form .check input { width: auto; }
+.an-form .check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.an-hint { font-size: 12px; color: var(--dash-text3); font-weight: 400; }
+.an-preview { padding: 0 16px 16px; }
+.an-preview .sa { border-radius: 10px; border: 1px solid rgba(0,0,0,.07); }
+@media (max-width: 1100px) { .an-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="ad-head">
+    <div>
+        <h1><i class="fa-solid fa-bullhorn"></i> Annonces</h1>
+        <p>Messages affichés en haut du site (et du dashboard pour les vendeurs). {{ live_count }} annonce{{ live_count|pluralize }} affichée{{ live_count|pluralize }} en ce moment.
+        Les alertes de paiement (essai, abonnement, commandes à payer) s'affichent automatiquement, en plus de ces annonces.</p>
+    </div>
+    {% if current %}<a class="ad-btn" href="{% url 'dashboard:admin_announcements' %}"><i class="fa-solid fa-plus"></i> Nouvelle annonce</a>{% endif %}
+</div>
+
+<div class="an-grid">
+    <section class="ad-card">
+        <div class="ad-table-wrap"><table class="ad-table">
+            <thead><tr><th>Annonce</th><th>Public</th><th>État</th><th></th></tr></thead>
+            <tbody>
+            {% for a in items %}
+            <tr {% if current and current.pk == a.pk %}style="background:var(--dash-accent-soft, #fff7ed);"{% endif %}>
+                <td><strong>{{ a.title }}</strong>{% if a.message %}<div class="muted">{{ a.message|truncatechars:90 }}</div>{% endif %}</td>
+                <td><span class="ad-pill {% if a.audience == 'sellers' %}orange{% elif a.audience == 'all' %}blue{% else %}gray{% endif %}">{{ a.get_audience_display }}</span></td>
+                <td>{% if a.is_live %}<span class="ad-pill green">Affichée</span>{% elif a.is_active %}<span class="ad-pill orange">Hors dates</span>{% else %}<span class="ad-pill gray">Désactivée</span>{% endif %}<div class="muted" style="margin-top:4px;white-space:nowrap;">{% if a.starts_at or a.ends_at %}{{ a.starts_at|date:"d/m"|default:"…" }} → {{ a.ends_at|date:"d/m/Y"|default:"…" }}{% else %}Sans date de fin{% endif %}</div></td>
+                <td style="white-space:nowrap;"><div class="ad-acts" style="flex-wrap:nowrap;">
+                    <a class="ad-btn" href="{% url 'dashboard:admin_announcement_edit' a.pk %}" title="Modifier" aria-label="Modifier"><i class="fa-solid fa-pen"></i></a>
+                    <form method="post" action="{% url 'dashboard:admin_announcement_action' a.pk 'toggle' %}">{% csrf_token %}<button class="ad-btn" title="{% if a.is_active %}Désactiver{% else %}Activer{% endif %}" aria-label="{% if a.is_active %}Désactiver{% else %}Activer{% endif %}"><i class="fa-solid {% if a.is_active %}fa-eye-slash{% else %}fa-eye{% endif %}"></i></button></form>
+                    <form method="post" action="{% url 'dashboard:admin_announcement_action' a.pk 'delete' %}">{% csrf_token %}<button class="ad-btn danger" onclick="return confirm('Supprimer cette annonce ?');" title="Supprimer" aria-label="Supprimer"><i class="fa-solid fa-trash"></i></button></form>
+                </div></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4"><div class="ad-empty"><i class="fa-solid fa-bullhorn"></i>Aucune annonce. Rédigez la première avec le formulaire.</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="ad-card">
+        <div class="ad-card-head"><h2>{% if current %}Modifier l'annonce{% else %}Nouvelle annonce{% endif %}</h2></div>
+        <form method="post" class="an-form" id="anForm">{% csrf_token %}
+            <label>Titre <input type="text" name="title" maxlength="120" required value="{{ current.title|default:'' }}" placeholder="Ex. : Livraison offerte ce week-end"></label>
+            <label>Message <textarea name="message" rows="2" maxlength="300" placeholder="Une phrase qui donne envie de cliquer">{{ current.message|default:'' }}</textarea></label>
+            <div class="row">
+                <label>Lien <input type="text" name="link_url" maxlength="300" value="{{ current.link_url|default:'' }}" placeholder="/devenir-vendeur/"></label>
+                <label>Texte du lien <input type="text" name="link_label" maxlength="60" value="{{ current.link_label|default:'' }}" placeholder="En savoir plus"></label>
+            </div>
+            <div class="row">
+                <label>Public <select name="audience">{% for code, label in audiences %}<option value="{{ code }}" {% if current.audience == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                <label>Style <select name="tone">{% for code, label in tones %}<option value="{{ code }}" {% if current.tone == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+            </div>
+            <div class="row">
+                <label>Début <input type="datetime-local" name="starts_at" value="{{ current.starts_at|date:'Y-m-d\TH:i'|default:'' }}"></label>
+                <label>Fin <input type="datetime-local" name="ends_at" value="{{ current.ends_at|date:'Y-m-d\TH:i'|default:'' }}"></label>
+            </div>
+            <label>Priorité <input type="number" name="priority" value="{{ current.priority|default:0 }}"><span class="an-hint">Deux annonces au plus sont affichées en même temps : les plus prioritaires.</span></label>
+            <label class="check"><input type="checkbox" name="dismissible" {% if not current or current.dismissible %}checked{% endif %}> Le visiteur peut la fermer (elle revient après 7 jours)</label>
+            <label class="check"><input type="checkbox" name="is_active" {% if not current or current.is_active %}checked{% endif %}> Active</label>
+            <button class="ad-btn primary" style="justify-content:center;"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
+        </form>
+        <div class="an-preview">
+            <div class="an-hint" style="margin-bottom:6px;">Aperçu</div>
+            <div class="sa sa-info" id="anPreview"><div class="sa-inner"><i class="fa-solid fa-bullhorn sa-ic"></i><p class="sa-txt"><b></b> <span></span></p><a class="sa-link" href="#" onclick="return false;"></a></div></div>
+        </div>
+    </section>
+</div>
+<script>
+(function () {
+    var f = document.getElementById('anForm'), p = document.getElementById('anPreview');
+    var icons = { info: 'fa-bullhorn', promo: 'fa-store', success: 'fa-circle-check', warning: 'fa-triangle-exclamation' };
+    function draw() {
+        var tone = f.tone.value;
+        p.className = 'sa sa-' + tone;
+        p.querySelector('.sa-ic').className = 'fa-solid ' + (icons[tone] || 'fa-bullhorn') + ' sa-ic';
+        p.querySelector('b').textContent = f.title.value || 'Titre de l\'annonce';
+        p.querySelector('span').textContent = f.message.value;
+        var l = p.querySelector('.sa-link');
+        l.textContent = f.link_url.value ? (f.link_label.value || 'En savoir plus') + ' →' : '';
+    }
+    f.addEventListener('input', draw); f.addEventListener('change', draw); draw();
+})();
+</script>
+{% endblock %}

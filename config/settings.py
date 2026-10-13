@@ -63,6 +63,7 @@ TEMPLATES = [
                 'catalog.context_processors.categories_context',
                 'messaging.context_processors.unread_messages_count',
                 'messaging.context_processors.notifications_context',
+                'messaging.context_processors.site_alerts',
                 'dashboard.context_processors.dash_nav',
             ],
         },
